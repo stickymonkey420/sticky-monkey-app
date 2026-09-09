@@ -86,7 +86,12 @@ export default function InvestPage() {
         <h1 className="text-xl font-semibold text-text-primary">Invest</h1>
       </div>
       <div className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {/* auto-rows-fr + each card set to h-full (see PortfolioDonutCard)
+            stretches every card in a row to match the row's tallest --
+            without it, a short card (e.g. Roth IRA with 1-2 slices) sits
+            next to a tall one (13-row legend) and the row reads as uneven
+            even though the grid columns themselves are already equal-width. */}
+        <div className="grid grid-cols-1 gap-6 auto-rows-fr md:grid-cols-2 xl:grid-cols-3">
           {accountDonuts.map((b) => (
             <PortfolioDonutCard
               key={b.accountType}

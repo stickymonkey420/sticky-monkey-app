@@ -9,36 +9,52 @@ export type DonutSlice = { name: string; value: number; color: string };
 export type DonutResult = { slices: DonutSlice[]; total: number };
 
 const OTHER_LABEL = "Other";
-// Muted gray, distinct from every named slice color below -- same role as
-// RING_TRACK_COLOR in src/lib/dashboard/expenseCategories.ts (a deliberately
-// unobtrusive "not a real category" color).
+// Muted gray, distinct from every categorical slot below -- reserved for
+// "not a real category" the same way RING_TRACK_COLOR is used in
+// src/lib/dashboard/expenseCategories.ts. Never reused as a real slice color.
 const OTHER_COLOR = "#5c6478";
 
-// Cycled by rank (largest first) for per-ticker slices, since ticker names
-// aren't a fixed known set -- same "fallback palette cycled by slot index"
-// approach src/lib/dashboard/expenseCategories.ts uses for its dynamic
-// expense-category dials.
-const TICKER_COLORS = ["#4f8cff", "#3ddc97", "#a78bfa", "#ff8a65", "#f472b6", "#34c9c9", "#ffb648", "#64d8cb"];
+// Fixed, non-cycled categorical order (dark-mode steps -- this app has no
+// light theme, see src/app/globals.css). Ported from the dataviz skill's
+// reference palette (references/palette.md) and re-validated for this app
+// via `node scripts/validate_palette.js "<hexes>" --mode dark`: all 8 pass
+// the lightness band, chroma floor, CVD adjacent-separation (worst 8.4),
+// normal-vision floor (worst 19.3), and contrast checks. Every categorical
+// encoding on this page (per-ticker donut slices AND the fixed metal enum
+// below) draws from this SAME sequence and SAME order -- per the skill's
+// non-negotiable "assign categorical hues in fixed order, never cycled,"
+// a 9th+ series folds into Other rather than generating/repeating a hue.
+const CATEGORICAL_PALETTE = [
+  "#3987e5", // 1 blue
+  "#d95926", // 2 orange
+  "#199e70", // 3 aqua
+  "#c98500", // 4 yellow
+  "#d55181", // 5 magenta
+  "#008300", // 6 green
+  "#9085e9", // 7 violet
+  "#e66767", // 8 red
+];
 
-// Fixed per-metal colors (metal is a closed 5-value enum, unlike tickers).
-export const METAL_COLORS: Record<Metal, string> = {
-  Gold: "#f2c14e",
-  Silver: "#c7ccd6",
-  Platinum: "#7fd8d0",
-  Palladium: "#9b8cff",
-  Copper: "#d98a5f",
-};
+// Per-ticker slices are ranked largest-first and take the palette in order;
+// anything past this rank folds into "Other" instead of generating/cycling
+// a 9th color. Capped below the full 8 slots (not just under it) so a
+// donut's legend stays scannable -- the original <1%-threshold version let
+// well-diversified accounts render 10-13 legend rows, which was the root
+// of the "I hate it" feedback.
+const MAX_CATEGORICAL_SLICES = 6;
 
-// Slices under this share of the group's total are folded into a single
-// "Other" slice so a long tail of tiny positions doesn't crowd the donut
-// legend. NOTE: no ported reference script for the Invest page's original
-// donut widget was found in the project docs available to this increment
-// (unlike Options/Holdings, which do have a live head-code script on
-// file) -- 1% was chosen as a conventional, conservative default matching
-// the "collapse the noise instead of showing it" idea already used by the
-// Dashboard's Expense Categories dials. Flag for confirmation against the
-// original Webflow page if/when that script turns up.
-const OTHER_THRESHOLD_PCT = 1;
+// Fixed per-metal colors: metal is a closed 5-value enum (METAL_OPTIONS in
+// ./types.ts), so it gets a fixed identity mapping -- the first 5 slots of
+// the SAME categorical order used for ticker ranks above, in the enum's own
+// declared order. (Previous version hand-picked "realistic" metal colors --
+// e.g. silver #c7ccd6 vs platinum #7fd8d0 -- which the validator fails hard:
+// CVD ΔE 1.6, normal-vision ΔE 8.7, both well under the 15 floor. Metal
+// identity is already carried by the label text next to each swatch, so
+// there's no need to also mimic the metal's real-world color.)
+const METAL_ORDER: Metal[] = ["Gold", "Silver", "Platinum", "Palladium", "Copper"];
+export const METAL_COLORS: Record<Metal, string> = Object.fromEntries(
+  METAL_ORDER.map((metal, i) => [metal, CATEGORICAL_PALETTE[i]])
+) as Record<Metal, string>;
 
 function buildDonut(
   entries: { name: string; value: number }[],
@@ -51,11 +67,10 @@ function buildDonut(
   const kept: DonutSlice[] = [];
   let otherValue = 0;
   positive.forEach((e, rank) => {
-    const pct = (e.value / total) * 100;
-    if (pct < OTHER_THRESHOLD_PCT) {
-      otherValue += e.value;
-    } else {
+    if (rank < MAX_CATEGORICAL_SLICES) {
       kept.push({ name: e.name, value: e.value, color: colorFor(e.name, rank) });
+    } else {
+      otherValue += e.value;
     }
   });
 
@@ -82,7 +97,10 @@ export function groupByAccountDonut(holdings: Holding[], accountType: string): D
       const value = hasPrice ? shares * price : shares * costBasis;
       return { name: h.ticker, value };
     });
-  return buildDonut(entries, (_name, rank) => TICKER_COLORS[rank % TICKER_COLORS.length]);
+  // rank is always < MAX_CATEGORICAL_SLICES here (buildDonut folds anything
+  // past that into Other before colorFor would see it), so this is a direct
+  // fixed-order lookup -- never a cycle/modulo back to slot 1.
+  return buildDonut(entries, (_name, rank) => CATEGORICAL_PALETTE[rank]);
 }
 
 // Groups every metal holding (across both the "metals" and "sdira" account

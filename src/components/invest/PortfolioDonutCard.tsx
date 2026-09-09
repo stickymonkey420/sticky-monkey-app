@@ -36,9 +36,9 @@ export default function PortfolioDonutCard({ title, slices, total, loading, empt
   }
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card-bg p-5">
+    <div className="flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-4 text-sm font-semibold text-text-primary">{title}</h3>
-      <div className="flex items-center gap-6">
+      <div className="flex flex-1 items-center gap-6">
         <div className="relative h-24 w-24 shrink-0">
           <div className="h-24 w-24 rounded-full" style={{ backgroundImage: gradient }} />
           <div
