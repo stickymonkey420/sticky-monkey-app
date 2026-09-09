@@ -201,8 +201,9 @@ export default function OpenPositionsTable({
                 <th className="whitespace-nowrap py-2 pr-4 text-right">Premium</th>
                 <th className="whitespace-nowrap py-2 pr-4 text-right">Contracts</th>
                 <th className="whitespace-nowrap py-2 pr-4 text-right">Return %</th>
-                <th className="whitespace-nowrap py-2 pr-4 text-right">DTE</th>
                 <th className="whitespace-nowrap py-2 pr-4">Entry Date</th>
+                <th className="whitespace-nowrap py-2 pr-4">Expiration</th>
+                <th className="whitespace-nowrap py-2 pr-4 text-right">DTE</th>
                 <th className="whitespace-nowrap py-2 pr-4">Mark as...</th>
                 <th className="whitespace-nowrap py-2 pr-4">Actions</th>
               </tr>
@@ -237,10 +238,11 @@ export default function OpenPositionsTable({
                         <span style={{ color: "#3ddc97" }}>{p.returnPct.toFixed(2)}%</span>
                       )}
                     </td>
+                    <td className="whitespace-nowrap py-2.5 pr-4 text-text-muted">{fmtDate(p.entryDate)}</td>
+                    <td className="whitespace-nowrap py-2.5 pr-4 text-text-muted">{fmtDate(p.expiration)}</td>
                     <td className="whitespace-nowrap py-2.5 pr-4 text-right" style={{ color: dteColor(dte) }}>
                       {dte === null ? <span className="text-text-muted">—</span> : dte}
                     </td>
-                    <td className="whitespace-nowrap py-2.5 pr-4 text-text-muted">{fmtDate(p.entryDate)}</td>
                     <td className="py-2.5 pr-4" style={{ minWidth: 160 }}>
                       <MarkStatusSelect
                         position={p}
