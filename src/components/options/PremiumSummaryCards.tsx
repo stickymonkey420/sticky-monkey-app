@@ -7,6 +7,7 @@ import { EMPTY_PREMIUM_SUMMARY, type PremiumSummary } from "@/lib/options/types"
 
 type PremiumSummaryCardsProps = {
   accountType: string | null;
+  refreshKey?: number;
 };
 
 const STAT_CARDS: {
@@ -23,7 +24,7 @@ const STAT_CARDS: {
 // Mirrors the "Premium Collected" summary row from the live Webflow Options
 // page (`opt-prem-<account>-*` elements, loadPremiumSummary() in the ported
 // script) -- same stat-card layout as Dashboard's IncomeCard.
-export default function PremiumSummaryCards({ accountType }: PremiumSummaryCardsProps) {
+export default function PremiumSummaryCards({ accountType, refreshKey = 0 }: PremiumSummaryCardsProps) {
   const [summary, setSummary] = useState<PremiumSummary>(EMPTY_PREMIUM_SUMMARY);
   const [loading, setLoading] = useState(true);
 
@@ -64,7 +65,7 @@ export default function PremiumSummaryCards({ accountType }: PremiumSummaryCards
       cancelled = true;
       window.removeEventListener("pageshow", onPageShow);
     };
-  }, [accountType]);
+  }, [accountType, refreshKey]);
 
   return (
     <div className="rounded-2xl border border-card-border bg-card-bg p-5">

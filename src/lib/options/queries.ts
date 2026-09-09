@@ -217,3 +217,79 @@ export function fmtDate(d: string | null): string {
   const parts = String(d).slice(0, 10).split("-");
   return parts.length === 3 ? `${parts[1]}/${parts[2]}/${parts[0].slice(2)}` : d;
 }
+
+// ---- Mutation-adjacent reads (used by the Add/Edit and Roll modals) ----
+
+export type CostBasisLookup = { shares: number; costBasis: number | null } | null;
+
+// Matches the script's `updateCostHint()` fetch: the equity holding (if
+// any) already on file for this ticker/account, so the Add/Edit Trade
+// modal can show what was actually paid for the shares and warn when a
+// covered call's strike is below it.
+export async function fetchCostBasis(
+  supabase: SupabaseClient,
+  userId: string,
+  ticker: string,
+  accountType: string
+): Promise<CostBasisLookup> {
+  if (!ticker || !accountType) return null;
+  const { data, error } = await supabase
+    .from("positions")
+    .select("shares,cost_basis")
+    .eq("user_id", userId)
+    .eq("ticker", ticker)
+    .eq("account_type", accountType)
+    .limit(1);
+  const row = !error && data && (data[0] as { shares: number | string; cost_basis: number | string | null } | undefined);
+  if (!row) return null;
+  return {
+    shares: Number(row.shares) || 0,
+    costBasis: row.cost_basis === null || row.cost_basis === undefined ? null : Number(row.cost_basis),
+  };
+}
+
+export type RollChainHistoryRow = {
+  id: string;
+  premium: number | string | null;
+  contracts: number | string | null;
+  close_price: number | string | null;
+  entry_date: string | null;
+};
+
+// Matches the script's `loadRollChainPnl()` fetch: every leg sharing this
+// position's origin id (the position's own origin_trade_id, or its own id
+// when it's the first leg), so realized P&L can be summed across the
+// whole roll chain, not just the leg currently being rolled.
+export async function fetchRollChainHistory(
+  supabase: SupabaseClient,
+  userId: string,
+  originId: string
+): Promise<RollChainHistoryRow[]> {
+  const { data, error } = await supabase
+    .from("wheel_trades")
+    .select("id,premium,contracts,close_price,entry_date")
+    .eq("user_id", userId)
+    .or(`id.eq.${originId},origin_trade_id.eq.${originId}`)
+    .order("entry_date", { ascending: true });
+  return error ? [] : ((data as RollChainHistoryRow[]) || []);
+}
+
+export type RollChainPnl = { total: number; legCount: number };
+
+// Ported 1:1 from the summing loop in the script's loadRollChainPnl():
+// realized P&L per prior leg = premium collected minus buy-to-close cost
+// paid, summed across every leg in the chain except the one currently
+// being rolled.
+export function computeRollChainPnl(
+  rows: RollChainHistoryRow[],
+  currentLegId: string
+): RollChainPnl {
+  const history = (rows || []).filter((r) => r.id !== currentLegId);
+  let total = 0;
+  history.forEach((r) => {
+    const collected = (Number(r.premium) || 0) * (Number(r.contracts) || 0) * 100;
+    const paid = (Number(r.close_price) || 0) * (Number(r.contracts) || 0) * 100;
+    total += collected - paid;
+  });
+  return { total, legCount: history.length };
+}
