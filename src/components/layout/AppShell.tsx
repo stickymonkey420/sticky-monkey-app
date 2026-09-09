@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/holdings", label: "Holdings" },
   { href: "/options", label: "Options" },
+  { href: "/closed-positions", label: "Closed Positions" },
 ];
 
 function NavLink({ href, label }: { href: string; label: string }) {
