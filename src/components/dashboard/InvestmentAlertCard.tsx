@@ -1,0 +1,278 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { descLine, formatPrice, relTime, titleLine } from "@/lib/dashboard/investmentAlerts";
+import type { InvestmentAlert } from "@/lib/types/dashboard";
+
+const ALERT_COLUMNS = "id,title,description,ticker,action,price,message,triggered_at";
+const POLL_MS = 60000;
+
+export default function InvestmentAlertCard() {
+  const [alerts, setAlerts] = useState<InvestmentAlert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [webhookOpen, setWebhookOpen] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
+  const [webhookError, setWebhookError] = useState<string | null>(null);
+  const [webhookLoading, setWebhookLoading] = useState(false);
+  const userIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+
+    async function load() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      userIdRef.current = user.id;
+
+      const { data, error } = await supabase
+        .from("investment_alerts")
+        .select(ALERT_COLUMNS)
+        .eq("user_id", user.id)
+        .eq("dismissed", false)
+        .order("triggered_at", { ascending: false })
+        .limit(100);
+
+      if (cancelled) return;
+      setAlerts(error ? [] : (data as InvestmentAlert[]) || []);
+      setLoading(false);
+    }
+
+    load();
+    const interval = setInterval(load, POLL_MS);
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) load();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setModalOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [modalOpen]);
+
+  async function dismissAlert(id: string) {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("investment_alerts")
+      .update({ dismissed: true, dismissed_at: new Date().toISOString() })
+      .eq("id", id);
+    if (!error) setAlerts((prev) => prev.filter((a) => a.id !== id));
+  }
+
+  async function deleteAlert(id: string) {
+    if (!window.confirm("Delete this alert? This cannot be undone.")) return;
+    const supabase = createClient();
+    const { error } = await supabase.from("investment_alerts").delete().eq("id", id);
+    if (!error) setAlerts((prev) => prev.filter((a) => a.id !== id));
+  }
+
+  async function toggleWebhook() {
+    const opening = !webhookOpen;
+    setWebhookOpen(opening);
+    if (!opening || webhookUrl || webhookLoading) return;
+
+    setWebhookLoading(true);
+    setWebhookError(null);
+    const supabase = createClient();
+    const uid = userIdRef.current;
+    if (!uid) {
+      setWebhookError("Could not load your webhook URL. Try again.");
+      setWebhookLoading(false);
+      return;
+    }
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("alert_webhook_token")
+      .eq("id", uid)
+      .single();
+
+    const token = data?.alert_webhook_token as string | undefined;
+    if (error || !token) {
+      setWebhookError("Could not load your webhook URL. Try again.");
+      setWebhookLoading(false);
+      return;
+    }
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    setWebhookUrl(`${base}/functions/v1/tradingview-webhook?token=${token}`);
+    setWebhookLoading(false);
+  }
+
+  const latest = alerts[0];
+  const dotColor = latest ? "#3ddc97" : "hsla(224.62, 17.97%, 42.55%, 0.35)";
+  const summaryText = latest ? titleLine(latest) : "No alerts yet.";
+  const descText = latest ? descLine(latest).slice(0, 80) + (descLine(latest).length > 80 ? "…" : "") : "";
+  const metaText = latest
+    ? relTime(latest.triggered_at) + (alerts.length > 1 ? `  ·  +${alerts.length - 1} more` : "")
+    : "";
+
+  return (
+    <>
+      <button
+        type="button"
+        id="ia-alert-card"
+        onClick={() => setModalOpen(true)}
+        className="w-full rounded-2xl border border-card-border bg-[rgb(32,40,56)] p-5 text-left"
+      >
+        <div className="mb-3 flex items-center gap-2">
+          <span
+            id="ia-alert-dot"
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: dotColor }}
+          />
+          <h3 className="text-sm font-semibold text-text-primary">Investment Alerts</h3>
+        </div>
+        <div id="ia-alert-summary" className="text-sm font-medium text-text-primary">
+          {loading ? "Loading…" : summaryText}
+        </div>
+        {descText && (
+          <div id="ia-alert-desc" className="mt-1 text-sm text-text-muted">
+            {descText}
+          </div>
+        )}
+        {metaText && (
+          <div id="ia-alert-meta" className="mt-2 text-xs text-text-muted">
+            {metaText}
+          </div>
+        )}
+      </button>
+
+      {modalOpen && (
+        <div
+          id="ia-alert-overlay"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setModalOpen(false);
+          }}
+        >
+          <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-2xl border border-card-border bg-card-bg p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-text-primary">Investment Alerts</h3>
+              <button
+                id="ia-alert-close"
+                type="button"
+                onClick={() => setModalOpen(false)}
+                className="text-text-muted hover:text-text-primary"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div id="ia-alert-list">
+              {alerts.length === 0 ? (
+                <div className="py-2.5 text-sm text-text-muted">
+                  No alerts yet. Alerts triggered from TradingView will show up here, and stay
+                  listed until you dismiss or delete them.
+                </div>
+              ) : (
+                alerts.map((a) => {
+                  const priceText = formatPrice(a.price);
+                  const desc = descLine(a);
+                  return (
+                    <div
+                      key={a.id}
+                      data-alert-row={a.id}
+                      className="border-b border-white/10 py-3 last:border-b-0"
+                    >
+                      <div className="flex items-baseline justify-between gap-2.5">
+                        <span className="text-sm font-semibold text-text-primary">
+                          {titleLine(a)}
+                        </span>
+                        <span className="shrink-0 text-xs text-text-muted">
+                          {relTime(a.triggered_at)}
+                        </span>
+                      </div>
+                      {a.ticker && (
+                        <div className="mt-0.5 text-xs text-text-muted">
+                          {a.ticker}
+                          {a.action ? ` · ${a.action}` : ""}
+                        </div>
+                      )}
+                      {priceText && (
+                        <div className="mt-0.5 text-sm" style={{ color: "#3ddc97" }}>
+                          {priceText}
+                        </div>
+                      )}
+                      {desc && <div className="mt-1 text-sm text-text-muted">{desc}</div>}
+                      <div className="mt-2 flex gap-3.5">
+                        <button
+                          type="button"
+                          onClick={() => dismissAlert(a.id)}
+                          className="p-0 text-xs"
+                          style={{ color: "#4f8cff" }}
+                        >
+                          Dismiss
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteAlert(a.id)}
+                          className="p-0 text-xs"
+                          style={{ color: "#e05656" }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="mt-4 border-t border-card-border pt-3">
+              <button
+                id="ia-webhook-toggle"
+                type="button"
+                onClick={toggleWebhook}
+                className="text-xs font-medium text-text-muted hover:text-text-primary"
+              >
+                {webhookOpen ? "Hide" : "Show"} TradingView webhook setup
+              </button>
+              {webhookOpen && (
+                <div id="ia-webhook-details" className="mt-2.5 text-xs text-text-muted">
+                  {webhookLoading && "Loading…"}
+                  {!webhookLoading && webhookError && webhookError}
+                  {!webhookLoading && !webhookError && webhookUrl && (
+                    <>
+                      <div className="mb-1.5">
+                        Paste this as the Webhook URL in your TradingView alert:
+                      </div>
+                      <div className="select-all rounded-md border border-[#2a2f3f] bg-[#0d0f17] px-2.5 py-2 font-mono text-[11px] text-[#e7e9f5]">
+                        {webhookUrl}
+                      </div>
+                      <div className="mb-1.5 mt-2.5">
+                        Example alert Message (JSON — set this as the alert&apos;s Message so the
+                        title/description show up here):
+                      </div>
+                      <div className="select-all rounded-md border border-[#2a2f3f] bg-[#0d0f17] px-2.5 py-2 font-mono text-[11px] text-[#e7e9f5]">
+                        {
+                          '{"title":"SELL COVERED CALLS","description":"Alert to sell CC on this stock.","ticker":"{{ticker}}","price":{{close}}}'
+                        }
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

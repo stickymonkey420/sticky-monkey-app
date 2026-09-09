@@ -1,26 +1,41 @@
 @import "tailwindcss";
 
+/*
+ * Sticky Monkey Finance dark theme -- matches the color tokens used on the
+ * live Webflow app's Dashboard page (card backgrounds, text, accents) so
+ * the ported widgets look identical.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: hsla(222, 33%, 9%, 1);
+  --foreground: hsla(240, 15.15%, 93.53%, 1);
+
+  --card-bg: hsla(221.05, 31.15%, 11.96%, 1);
+  --card-border: hsla(220, 20%, 20%, 1);
+
+  --text-primary: hsla(240, 15.15%, 93.53%, 1);
+  --text-muted: hsla(223.9, 28.67%, 71.96%, 1);
+
+  --accent-blue: #4f8cff;
+  --accent-green: #3ddc97;
+  --accent-purple: #a06bff;
+  --accent-orange: #ffb648;
+  --accent-red: #ff5c7a;
+  --accent-teal: #34c9c9;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card-bg: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-text-primary: var(--text-primary);
+  --color-text-muted: var(--text-muted);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
