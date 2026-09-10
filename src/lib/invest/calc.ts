@@ -1,47 +1,21 @@
+import { CATEGORICAL_PALETTE, MAX_CATEGORICAL_SLICES, OTHER_COLOR } from "@/lib/palette";
 import type { Holding, Metal, MetalHolding } from "./types";
 
 // Donut-grouping helpers for the Invest page's Portfolio Allocation cards.
 // Rendering itself reuses the Dashboard Net Worth card's conic-gradient
 // approach (src/components/dashboard/NetWorthCard.tsx) -- this module only
 // builds the {name, value, color} slice list each card renders.
+//
+// Colors and the top-N-then-Other cap come from src/lib/palette.ts, the ONE
+// fixed categorical sequence shared by every chart in this app (Wallet's
+// spending donut and debit/credit chart included) -- per the dataviz
+// skill's non-negotiable "assign categorical hues in fixed order, never
+// cycled." See that file for the validator results.
 
 export type DonutSlice = { name: string; value: number; color: string };
 export type DonutResult = { slices: DonutSlice[]; total: number };
 
 const OTHER_LABEL = "Other";
-// Muted gray, distinct from every categorical slot below -- reserved for
-// "not a real category" the same way RING_TRACK_COLOR is used in
-// src/lib/dashboard/expenseCategories.ts. Never reused as a real slice color.
-const OTHER_COLOR = "#5c6478";
-
-// Fixed, non-cycled categorical order (dark-mode steps -- this app has no
-// light theme, see src/app/globals.css). Ported from the dataviz skill's
-// reference palette (references/palette.md) and re-validated for this app
-// via `node scripts/validate_palette.js "<hexes>" --mode dark`: all 8 pass
-// the lightness band, chroma floor, CVD adjacent-separation (worst 8.4),
-// normal-vision floor (worst 19.3), and contrast checks. Every categorical
-// encoding on this page (per-ticker donut slices AND the fixed metal enum
-// below) draws from this SAME sequence and SAME order -- per the skill's
-// non-negotiable "assign categorical hues in fixed order, never cycled,"
-// a 9th+ series folds into Other rather than generating/repeating a hue.
-const CATEGORICAL_PALETTE = [
-  "#3987e5", // 1 blue
-  "#d95926", // 2 orange
-  "#199e70", // 3 aqua
-  "#c98500", // 4 yellow
-  "#d55181", // 5 magenta
-  "#008300", // 6 green
-  "#9085e9", // 7 violet
-  "#e66767", // 8 red
-];
-
-// Per-ticker slices are ranked largest-first and take the palette in order;
-// anything past this rank folds into "Other" instead of generating/cycling
-// a 9th color. Capped below the full 8 slots (not just under it) so a
-// donut's legend stays scannable -- the original <1%-threshold version let
-// well-diversified accounts render 10-13 legend rows, which was the root
-// of the "I hate it" feedback.
-const MAX_CATEGORICAL_SLICES = 6;
 
 // Fixed per-metal colors: metal is a closed 5-value enum (METAL_OPTIONS in
 // ./types.ts), so it gets a fixed identity mapping -- the first 5 slots of
