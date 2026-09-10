@@ -3,6 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  LayoutDashboard,
+  Wallet,
+  CircleDollarSign,
+  Repeat,
+  TrendingUp,
+  Receipt,
+  User,
+  Tag,
+  Search,
+  Users,
+  FileText,
+  ShieldCheck,
+  KeyRound,
+  type LucideIcon,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import SignOutButton from "./SignOutButton";
 
@@ -35,15 +51,29 @@ import SignOutButton from "./SignOutButton";
 // feature set plus the admin tools, not the paid trading features, unless
 // their role is separately app_director.
 type Role = "free" | "paid" | "app_director" | "support" | "developer";
-type NavNode = { label: string; href?: string; children?: NavNode[]; requires?: "paid" | "admin" };
+type NavNode = {
+  label: string;
+  href?: string;
+  children?: NavNode[];
+  requires?: "paid" | "admin";
+  icon?: LucideIcon;
+};
 
+// Icons match the live Webflow site's convention: only top-level items and
+// group headers carry an icon (pulled from the site's actual sidebar
+// images -- Dashboard's layout tile, the wallet, the trending-up arrow on
+// Invest, the document icon on Transactions, the person icon on Banking,
+// etc.), while nested children under a group render as plain text links,
+// same as on the live site. Reproduced with lucide-react (MIT, $0/month)
+// rather than lifting Webflow's raster PNGs 1:1.
 const NAV_TREE: NavNode[] = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/wallet", label: "My Wallet" },
-  { href: "/income", label: "Income", requires: "paid" },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/wallet", label: "My Wallet", icon: Wallet },
+  { href: "/income", label: "Income", requires: "paid", icon: CircleDollarSign },
   {
     label: "Trade Options",
     requires: "paid",
+    icon: Repeat,
     children: [
       { href: "/options", label: "Options" },
       { href: "/closed-positions", label: "Closed Positions" },
@@ -53,6 +83,7 @@ const NAV_TREE: NavNode[] = [
   {
     label: "Invest",
     requires: "paid",
+    icon: TrendingUp,
     children: [
       { href: "/invest", label: "Portfolio" },
       {
@@ -72,14 +103,14 @@ const NAV_TREE: NavNode[] = [
       { href: "/invest#vault-section", label: "Vault" },
     ],
   },
-  { href: "/transactions", label: "Transactions" },
-  { href: "/accounts", label: "Banking" },
-  { href: "/edit-categories", label: "Edit Categories" },
-  { href: "/stock-screener", label: "Stock Screener" },
-  { href: "/investors", label: "Investors" },
-  { href: "/smu", label: "SMU" },
-  { href: "/users-groups", label: "Users & Groups", requires: "admin" },
-  { href: "/update-api-key", label: "Update API Key", requires: "admin" },
+  { href: "/transactions", label: "Transactions", icon: Receipt },
+  { href: "/accounts", label: "Banking", icon: User },
+  { href: "/edit-categories", label: "Edit Categories", icon: Tag },
+  { href: "/stock-screener", label: "Stock Screener", icon: Search },
+  { href: "/investors", label: "Investors", icon: Users },
+  { href: "/smu", label: "SMU", icon: FileText },
+  { href: "/users-groups", label: "Users & Groups", requires: "admin", icon: ShieldCheck },
+  { href: "/update-api-key", label: "Update API Key", requires: "admin", icon: KeyRound },
 ];
 
 function passesGate(requires: NavNode["requires"], role: Role | null): boolean {
@@ -139,6 +170,7 @@ function NavItem({
   const hasActiveChild = node.children ? containsActive(node, pathname) : false;
   const [open, setOpen] = useState(hasActiveChild);
   const indent = 12 + depth * 14;
+  const Icon = node.icon;
 
   if (node.children) {
     return (
@@ -151,7 +183,10 @@ function NavItem({
           }`}
           style={{ paddingLeft: `${indent}px` }}
         >
-          <span>{node.label}</span>
+          <span className="flex items-center gap-2.5">
+            {Icon && <Icon size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />}
+            <span>{node.label}</span>
+          </span>
           <span
             className="text-[10px] text-text-muted transition-transform"
             style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}
@@ -181,10 +216,13 @@ function NavItem({
     <Link
       href={node.href!}
       onClick={onNavigate}
-      className={`block rounded-md py-2 pr-3 text-sm font-medium text-text-primary ${active ? "bg-white/5" : ""}`}
+      className={`flex items-center gap-2.5 rounded-md py-2 pr-3 text-sm font-medium text-text-primary ${
+        active ? "bg-white/5" : ""
+      }`}
       style={{ paddingLeft: `${indent}px` }}
     >
-      {node.label}
+      {Icon && <Icon size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />}
+      <span>{node.label}</span>
     </Link>
   );
 }
