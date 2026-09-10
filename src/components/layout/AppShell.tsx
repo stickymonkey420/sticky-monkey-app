@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: "/transactions", label: "Transactions" },
   { href: "/options", label: "Options" },
   { href: "/closed-positions", label: "Closed Positions" },
+  { href: "/smu", label: "SMU" },
 ];
 
 function NavLink({ href, label }: { href: string; label: string }) {
