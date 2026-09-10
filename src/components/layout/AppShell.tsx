@@ -7,38 +7,43 @@ import {
   LayoutDashboard,
   Wallet,
   CircleDollarSign,
-  Repeat,
   TrendingUp,
   Receipt,
   User,
-  Tag,
-  Search,
   Users,
   FileText,
   ShieldCheck,
-  KeyRound,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import SignOutButton from "./SignOutButton";
 
-// Nested sidebar nav, ported to match the live Webflow site's real grouped
-// structure (confirmed via Webflow's page list + a fetch of the live
-// rendered sidebar HTML, not guessed from the screenshot alone). Left out
-// on purpose:
-//   - "Card Center" (My Wallet), "Accounts" (Invest), "Search"/"My
-//     Business" (Businesses) -- these are real, non-draft Webflow pages
-//     that just haven't been ported to this app yet. Add their Link once
-//     each one is built, following the same page-by-page pattern as
-//     everything else in this app.
-//   - "Travel" (Businesses) -- the live site's own link is an unwired `#`
-//     placeholder, not a real destination yet.
-//   - "Game-a-Fi" -- its own SEO description calls it a "Director test
-//     build," so it's held back pending a decision on whether it's meant
-//     for every user or just admins.
-//   - "Invoice List"/"Create Invoices" (confirmed unused template
-//     boilerplate), and the generic Webflow template pages (Setting, FAQ,
-//     404, 401, Changelog, License) -- none of these have real content.
+// Nested sidebar nav. The grouping below matches the live Webflow site's
+// REAL DOM nesting (verified directly off its accessibility tree, not
+// inferred from a screenshot's indentation -- an earlier pass had gotten
+// "Trade Options" and "Stock Screener"/"Edit Categories" wrong):
+//   - "Invest" is a single dropdown containing Portfolio, Stock Screener,
+//     Taxable > Brokerage/Crypto, Retirement > Traditional/Roth, and Vault
+//     -- Stock Screener genuinely lives inside Invest on the live site.
+//   - "Income" is a single dropdown containing the Income overview page
+//     plus a "Trade Options" sub-group (Options/Closed Positions/
+//     Simulator) -- there is no separate top-level "Trade Options" entry.
+//   - "Utilities" is a dropdown containing Edit Categories and Update API
+//     Key (the live site also lists Knowledge Base/404/Protected Page/
+//     Changelog/License in there, but those are confirmed unused template
+//     boilerplate, same as Invoice List/Create Invoices before).
+//   - "Investors" and "Users & Groups" are each a real dropdown with
+//     exactly one child ("Overview") on the live site; flattened here to
+//     single links since a 1-item accordion adds a click for no benefit.
+// Left out on purpose: "Card Center" (My Wallet) and "Accounts" (Invest,
+// href /invest-accounts, distinct from Banking's /accounts) -- real,
+// non-draft Webflow pages not yet ported to this app; "Businesses" (Search/
+// My Business/Travel/a mislabeled second "Invoices" that's actually a style
+// guide) -- confirmed generic Webflow-template leftover unrelated to this
+// app; "Game-a-Fi" -- its own SEO description calls it a "Director test
+// build," held back pending a visibility decision; "Authentication"
+// (Sign In/Sign Up) -- redundant with this app's own /sign-in flow.
 //
 // `requires` gates a node by role, derived from the ACTUAL Supabase RLS
 // policies rather than guessed -- `transactions`/`custom_transaction_categories`
@@ -49,7 +54,12 @@ import SignOutButton from "./SignOutButton";
 // write. "admin" means app_director/support/developer -- staff roles that
 // are not automatically 'paid' under RLS, so they see the base (free-tier)
 // feature set plus the admin tools, not the paid trading features, unless
-// their role is separately app_director.
+// their role is separately app_director. A `requires` on a group node
+// gates the whole subtree at once (fine when every child needs the same
+// gate, e.g. Income); a group left ungated but with individually-gated
+// children (e.g. Invest, Utilities) lets a free child (Stock Screener,
+// Edit Categories) surface even though a sibling in the same group is
+// paid- or admin-only -- see filterNode below.
 type Role = "free" | "paid" | "app_director" | "support" | "developer";
 type NavNode = {
   label: string;
@@ -69,25 +79,15 @@ type NavNode = {
 const NAV_TREE: NavNode[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/wallet", label: "My Wallet", icon: Wallet },
-  { href: "/income", label: "Income", requires: "paid", icon: CircleDollarSign },
-  {
-    label: "Trade Options",
-    requires: "paid",
-    icon: Repeat,
-    children: [
-      { href: "/options", label: "Options" },
-      { href: "/closed-positions", label: "Closed Positions" },
-      { href: "/simulator", label: "Simulator" },
-    ],
-  },
   {
     label: "Invest",
-    requires: "paid",
     icon: TrendingUp,
     children: [
-      { href: "/invest", label: "Portfolio" },
+      { href: "/invest", label: "Portfolio", requires: "paid" },
+      { href: "/stock-screener", label: "Stock Screener" },
       {
         label: "Taxable",
+        requires: "paid",
         children: [
           { href: "/holdings?account=brokerage", label: "Brokerage" },
           { href: "/holdings?account=crypto", label: "Crypto" },
@@ -95,22 +95,44 @@ const NAV_TREE: NavNode[] = [
       },
       {
         label: "Retirement",
+        requires: "paid",
         children: [
           { href: "/holdings?account=traditional", label: "Traditional IRA" },
           { href: "/holdings?account=roth", label: "Roth IRA" },
         ],
       },
-      { href: "/invest#vault-section", label: "Vault" },
+      { href: "/invest#vault-section", label: "Vault", requires: "paid" },
+    ],
+  },
+  {
+    label: "Income",
+    icon: CircleDollarSign,
+    requires: "paid",
+    children: [
+      { href: "/income", label: "Overview" },
+      {
+        label: "Trade Options",
+        children: [
+          { href: "/options", label: "Options" },
+          { href: "/closed-positions", label: "Closed Positions" },
+          { href: "/simulator", label: "Simulator" },
+        ],
+      },
     ],
   },
   { href: "/transactions", label: "Transactions", icon: Receipt },
   { href: "/accounts", label: "Banking", icon: User },
-  { href: "/edit-categories", label: "Edit Categories", icon: Tag },
-  { href: "/stock-screener", label: "Stock Screener", icon: Search },
-  { href: "/investors", label: "Investors", icon: Users },
   { href: "/smu", label: "SMU", icon: FileText },
+  { href: "/investors", label: "Investors", icon: Users },
+  {
+    label: "Utilities",
+    icon: Wrench,
+    children: [
+      { href: "/edit-categories", label: "Edit Categories" },
+      { href: "/update-api-key", label: "Update API Key", requires: "admin" },
+    ],
+  },
   { href: "/users-groups", label: "Users & Groups", requires: "admin", icon: ShieldCheck },
-  { href: "/update-api-key", label: "Update API Key", requires: "admin", icon: KeyRound },
 ];
 
 function passesGate(requires: NavNode["requires"], role: Role | null): boolean {
