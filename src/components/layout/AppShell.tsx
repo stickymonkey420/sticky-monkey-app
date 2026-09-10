@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import SignOutButton from "./SignOutButton";
 
 // Nested sidebar nav, ported to match the live Webflow site's real grouped
@@ -22,14 +23,27 @@ import SignOutButton from "./SignOutButton";
 //   - "Invoice List"/"Create Invoices" (confirmed unused template
 //     boilerplate), and the generic Webflow template pages (Setting, FAQ,
 //     404, 401, Changelog, License) -- none of these have real content.
-type NavNode = { label: string; href?: string; children?: NavNode[] };
+//
+// `requires` gates a node by role, derived from the ACTUAL Supabase RLS
+// policies rather than guessed -- `transactions`/`custom_transaction_categories`
+// have zero role restriction (free), `stock_universe` is explicitly
+// readable by any authenticated user (free), while `wheel_trades`,
+// `positions`, `metal_holdings`, `manual_accounts`, and
+// `recurring_investments` all require role IN ('paid','app_director') to
+// write. "admin" means app_director/support/developer -- staff roles that
+// are not automatically 'paid' under RLS, so they see the base (free-tier)
+// feature set plus the admin tools, not the paid trading features, unless
+// their role is separately app_director.
+type Role = "free" | "paid" | "app_director" | "support" | "developer";
+type NavNode = { label: string; href?: string; children?: NavNode[]; requires?: "paid" | "admin" };
 
 const NAV_TREE: NavNode[] = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/wallet", label: "My Wallet" },
-  { href: "/income", label: "Income" },
+  { href: "/income", label: "Income", requires: "paid" },
   {
     label: "Trade Options",
+    requires: "paid",
     children: [
       { href: "/options", label: "Options" },
       { href: "/closed-positions", label: "Closed Positions" },
@@ -38,9 +52,9 @@ const NAV_TREE: NavNode[] = [
   },
   {
     label: "Invest",
+    requires: "paid",
     children: [
       { href: "/invest", label: "Portfolio" },
-      { href: "/stock-screener", label: "Stock Screener" },
       {
         label: "Taxable",
         children: [
@@ -60,17 +74,34 @@ const NAV_TREE: NavNode[] = [
   },
   { href: "/transactions", label: "Transactions" },
   { href: "/accounts", label: "Banking" },
-  {
-    label: "Utilities",
-    children: [
-      { href: "/edit-categories", label: "Edit Categories" },
-      { href: "/update-api-key", label: "Update API Key" },
-    ],
-  },
+  { href: "/edit-categories", label: "Edit Categories" },
+  { href: "/stock-screener", label: "Stock Screener" },
   { href: "/investors", label: "Investors" },
-  { href: "/users-groups", label: "Users & Groups" },
   { href: "/smu", label: "SMU" },
+  { href: "/users-groups", label: "Users & Groups", requires: "admin" },
+  { href: "/update-api-key", label: "Update API Key", requires: "admin" },
 ];
+
+function passesGate(requires: NavNode["requires"], role: Role | null): boolean {
+  if (!requires) return true;
+  if (!role) return false; // role not loaded yet -- hide gated items until known, never flash them
+  if (requires === "admin") return role === "app_director" || role === "support" || role === "developer";
+  if (requires === "paid") return role === "paid" || role === "app_director";
+  return true;
+}
+
+// Recursive: a group with `requires` is dropped whole (no need to also
+// check children); an ungated group is kept only if at least one child
+// survives filtering.
+function filterNode(node: NavNode, role: Role | null): NavNode | null {
+  if (!passesGate(node.requires, role)) return null;
+  if (node.children) {
+    const children = node.children.map((c) => filterNode(c, role)).filter((c): c is NavNode => c !== null);
+    if (children.length === 0 && !node.href) return null;
+    return { ...node, children };
+  }
+  return node;
+}
 
 // Query strings and hashes are stripped for matching -- the four Holdings
 // deep links (?account=brokerage/crypto/traditional/roth) all resolve to
@@ -158,10 +189,11 @@ function NavItem({
   );
 }
 
-function NavTree({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function NavTree({ pathname, role, onNavigate }: { pathname: string; role: Role | null; onNavigate?: () => void }) {
+  const visible = NAV_TREE.map((node) => filterNode(node, role)).filter((n): n is NavNode => n !== null);
   return (
     <>
-      {NAV_TREE.map((node) => (
+      {visible.map((node) => (
         <NavItem key={node.label + (node.href ?? "")} node={node} depth={0} pathname={pathname} onNavigate={onNavigate} />
       ))}
     </>
@@ -171,6 +203,32 @@ function NavTree({ pathname, onNavigate }: { pathname: string; onNavigate?: () =
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Fetched once per page load (AppShell isn't a shared layout -- every
+  // page mounts its own instance -- so this is a cheap single-row lookup,
+  // same cost profile as the role checks already done independently on
+  // Investors/Users & Groups). Starts null so gated items stay hidden
+  // rather than flashing before the role is known.
+  const [role, setRole] = useState<Role | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+
+    async function load() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+      if (cancelled) return;
+      if (data) setRole((data as { role: Role }).role);
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="flex min-h-screen w-full flex-col md:flex-row">
@@ -211,7 +269,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <nav className="flex flex-1 flex-col gap-1 px-3">
-              <NavTree pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+              <NavTree pathname={pathname} role={role} onNavigate={() => setMobileOpen(false)} />
             </nav>
             <div className="flex flex-col gap-1 px-3 pb-6">
               <SignOutButton />
@@ -223,7 +281,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="hidden w-64 shrink-0 border-r border-card-border bg-card-bg md:flex md:flex-col">
         <div className="px-5 py-6 text-lg font-semibold text-text-primary">Sticky Monkey</div>
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-4">
-          <NavTree pathname={pathname} />
+          <NavTree pathname={pathname} role={role} />
         </nav>
         <div className="flex flex-col gap-1 px-3 pb-4">
           <SignOutButton />
