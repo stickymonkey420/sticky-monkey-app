@@ -111,7 +111,9 @@ export default function InvestPage() {
           />
         </div>
 
-        <VaultSummary holdings={metalHoldings} loading={loading} />
+        <div id="vault-section">
+          <VaultSummary holdings={metalHoldings} loading={loading} />
+        </div>
       </div>
     </AppShell>
   );
