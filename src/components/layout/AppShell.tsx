@@ -25,6 +25,9 @@ const NAV_ITEMS = [
   { href: "/simulator", label: "Simulator" },
   { href: "/closed-positions", label: "Closed Positions" },
   { href: "/smu", label: "SMU" },
+  { href: "/investors", label: "Investors" },
+  { href: "/users-groups", label: "Users & Groups" },
+  { href: "/update-api-key", label: "Update API Key" },
 ];
 
 function NavLink({ href, label }: { href: string; label: string }) {
