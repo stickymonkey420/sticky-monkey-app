@@ -10,7 +10,8 @@ import {
   TrendingUp,
   Receipt,
   User,
-  Users,
+  Search,
+  Crown,
   FileText,
   ShieldCheck,
   Wrench,
@@ -19,23 +20,24 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import SignOutButton from "./SignOutButton";
 
-// Nested sidebar nav. The grouping below matches the live Webflow site's
-// REAL DOM nesting (verified directly off its accessibility tree, not
-// inferred from a screenshot's indentation -- an earlier pass had gotten
-// "Trade Options" and "Stock Screener"/"Edit Categories" wrong):
-//   - "Invest" is a single dropdown containing Portfolio, Stock Screener,
-//     Taxable > Brokerage/Crypto, Retirement > Traditional/Roth, and Vault
-//     -- Stock Screener genuinely lives inside Invest on the live site.
-//   - "Income" is a single dropdown containing the Income overview page
-//     plus a "Trade Options" sub-group (Options/Closed Positions/
+// Nested sidebar nav. The live Webflow site nests Stock Screener inside
+// Invest, but here Invest is a fully paid-gated group (Portfolio/Taxable/
+// Retirement/Vault) and Stock Screener is meant to stay visible to free
+// accounts too -- so it's pulled out to its own top-level link instead of
+// living inside Invest, since nesting it there would hide it whenever the
+// whole group is gated. Everything else follows the live site's real
+// nesting (confirmed off its accessibility tree, not a screenshot):
+//   - "Income" is a single paid-gated group containing the Income overview
+//     page plus a "Trade Options" sub-group (Options/Closed Positions/
 //     Simulator) -- there is no separate top-level "Trade Options" entry.
-//   - "Utilities" is a dropdown containing Edit Categories and Update API
-//     Key (the live site also lists Knowledge Base/404/Protected Page/
-//     Changelog/License in there, but those are confirmed unused template
-//     boilerplate, same as Invoice List/Create Invoices before).
-//   - "Investors" and "Users & Groups" are each a real dropdown with
-//     exactly one child ("Overview") on the live site; flattened here to
-//     single links since a 1-item accordion adds a click for no benefit.
+//   - "Utilities" is a dropdown containing Edit Categories (free) and
+//     Update API Key (admin) -- ungated at the group level so the free
+//     child still shows even though its sibling doesn't.
+//   - "Owners" (Webflow calls this page "Investors"; renamed here since
+//     it's really about tracking company ownership, not app members) and
+//     "Users & Groups" are each a real dropdown with exactly one child on
+//     the live site; flattened here to single links since a 1-item
+//     accordion adds a click for no benefit.
 // Left out on purpose: "Card Center" (My Wallet) and "Accounts" (Invest,
 // href /invest-accounts, distinct from Banking's /accounts) -- real,
 // non-draft Webflow pages not yet ported to this app; "Businesses" (Search/
@@ -51,21 +53,25 @@ import SignOutButton from "./SignOutButton";
 // readable by any authenticated user (free), while `wheel_trades`,
 // `positions`, `metal_holdings`, `manual_accounts`, and
 // `recurring_investments` all require role IN ('paid','app_director') to
-// write. "admin" means app_director/support/developer -- staff roles that
-// are not automatically 'paid' under RLS, so they see the base (free-tier)
-// feature set plus the admin tools, not the paid trading features, unless
-// their role is separately app_director. A `requires` on a group node
-// gates the whole subtree at once (fine when every child needs the same
-// gate, e.g. Income); a group left ungated but with individually-gated
-// children (e.g. Invest, Utilities) lets a free child (Stock Screener,
-// Edit Categories) surface even though a sibling in the same group is
-// paid- or admin-only -- see filterNode below.
+// write; the sidebar treats those as fully paid-gated (view included, not
+// just write) per your explicit call, not just a write-time restriction.
+// "admin" means app_director/support/developer -- staff roles that are not
+// automatically 'paid' under RLS, so they see the base (free-tier) feature
+// set plus the admin tools, not the paid trading features, unless their
+// role is separately app_director. "owner" is narrower still: only
+// app_director, the small handful of people who actually own the company
+// -- support/developer staff do NOT pass this gate even though they do
+// pass "admin". A `requires` on a group node gates the whole subtree at
+// once (fine when every child needs the same gate, e.g. Income); a group
+// left ungated but with individually-gated children (e.g. Utilities) lets
+// a free child (Edit Categories) surface even though a sibling in the
+// same group is admin-only -- see filterNode below.
 type Role = "free" | "paid" | "app_director" | "support" | "developer";
 type NavNode = {
   label: string;
   href?: string;
   children?: NavNode[];
-  requires?: "paid" | "admin";
+  requires?: "paid" | "admin" | "owner";
   icon?: LucideIcon;
 };
 
@@ -82,12 +88,11 @@ const NAV_TREE: NavNode[] = [
   {
     label: "Invest",
     icon: TrendingUp,
+    requires: "paid",
     children: [
-      { href: "/invest", label: "Portfolio", requires: "paid" },
-      { href: "/stock-screener", label: "Stock Screener" },
+      { href: "/invest", label: "Portfolio" },
       {
         label: "Taxable",
-        requires: "paid",
         children: [
           { href: "/holdings?account=brokerage", label: "Brokerage" },
           { href: "/holdings?account=crypto", label: "Crypto" },
@@ -95,13 +100,12 @@ const NAV_TREE: NavNode[] = [
       },
       {
         label: "Retirement",
-        requires: "paid",
         children: [
           { href: "/holdings?account=traditional", label: "Traditional IRA" },
           { href: "/holdings?account=roth", label: "Roth IRA" },
         ],
       },
-      { href: "/invest#vault-section", label: "Vault", requires: "paid" },
+      { href: "/invest#vault-section", label: "Vault" },
     ],
   },
   {
@@ -120,10 +124,11 @@ const NAV_TREE: NavNode[] = [
       },
     ],
   },
+  { href: "/stock-screener", label: "Stock Screener", icon: Search },
   { href: "/transactions", label: "Transactions", icon: Receipt },
   { href: "/accounts", label: "Banking", icon: User },
   { href: "/smu", label: "SMU", icon: FileText },
-  { href: "/investors", label: "Investors", icon: Users },
+  { href: "/investors", label: "Owners", requires: "owner", icon: Crown },
   {
     label: "Utilities",
     icon: Wrench,
@@ -138,6 +143,7 @@ const NAV_TREE: NavNode[] = [
 function passesGate(requires: NavNode["requires"], role: Role | null): boolean {
   if (!requires) return true;
   if (!role) return false; // role not loaded yet -- hide gated items until known, never flash them
+  if (requires === "owner") return role === "app_director"; // company ownership, not staff/support access
   if (requires === "admin") return role === "app_director" || role === "support" || role === "developer";
   if (requires === "paid") return role === "paid" || role === "app_director";
   return true;
