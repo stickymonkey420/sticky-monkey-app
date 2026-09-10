@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: "/accounts", label: "Banking" },
   { href: "/holdings", label: "Holdings" },
   { href: "/invest", label: "Invest" },
+  { href: "/stock-screener", label: "Stock Screener" },
   { href: "/transactions", label: "Transactions" },
   { href: "/edit-categories", label: "Edit Categories" },
   { href: "/income", label: "Income" },
