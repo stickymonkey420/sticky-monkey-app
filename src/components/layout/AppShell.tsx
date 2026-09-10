@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { href: "/holdings", label: "Holdings" },
   { href: "/invest", label: "Invest" },
   { href: "/transactions", label: "Transactions" },
+  { href: "/income", label: "Income" },
   { href: "/options", label: "Options" },
   { href: "/simulator", label: "Simulator" },
   { href: "/closed-positions", label: "Closed Positions" },
