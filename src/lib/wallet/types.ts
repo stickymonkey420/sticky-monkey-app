@@ -1,26 +1,10 @@
-// Row shapes for the My Wallet page. Both tables verified column-by-column
-// via the Supabase MCP `list_tables`/`execute_sql` tools against project
-// gxxjxslnsjgsuonnxxgq. Numeric columns are typed `number | string` to
-// match the existing convention (see src/lib/options/types.ts) since
-// numeric columns can come back from supabase-js as strings.
+// Row shape for `plaid_transactions`, verified column-by-column via the
+// Supabase MCP `list_tables`/`execute_sql` tools against project
+// gxxjxslnsjgsuonnxxgq. `ManualAccount` lives in src/lib/accounts/types.ts
+// now (the Banking page's canonical home for that table) and is re-exported
+// here since My Wallet's balance/spending calcs also read it.
 
-export type ManualAccount = {
-  id: string;
-  user_id: string;
-  category: string; // e.g. "checking", "savings", "credit_card" -- free-text column, not a DB enum
-  institution_name: string;
-  account_name: string;
-  balance: number | string;
-  interest_rate: number | string | null;
-  annual_fee: number | string | null;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-  retirement_type: string | null;
-  ira_asset_type: string | null;
-  mask: string | null;
-  account_subtype: string | null;
-};
+export type { ManualAccount } from "@/lib/accounts/types";
 
 // Only the columns the wallet's read-only charts/cards use -- this app
 // never inserts/updates plaid_transactions from the client (no INSERT RLS

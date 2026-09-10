@@ -200,11 +200,20 @@ export function daysToExpiration(dateStr: string | null): number | null {
   return Math.round((exp.getTime() - startToday.getTime()) / (24 * 60 * 60 * 1000));
 }
 
+// Every caller across this app has historically passed non-negative
+// amounts (premium, holdings value, etc.), so the sign was never handled --
+// Banking's Credit Card Balance card is the first negative value to reach
+// this helper, and toLocaleString alone renders "$-1,200.00" instead of
+// the conventional "-$1,200.00". Fixed here since every existing caller
+// still gets the same output for non-negative input.
 export function money(n: number | null | undefined): string {
   if (n === null || n === undefined || Number.isNaN(n)) return "$0.00";
+  const value = Number(n);
+  const sign = value < 0 ? "-" : "";
   return (
+    sign +
     "$" +
-    Number(n).toLocaleString("en-US", {
+    Math.abs(value).toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })

@@ -14,6 +14,7 @@ import SignOutButton from "./SignOutButton";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/wallet", label: "My Wallet" },
+  { href: "/accounts", label: "Banking" },
   { href: "/holdings", label: "Holdings" },
   { href: "/invest", label: "Invest" },
   { href: "/options", label: "Options" },

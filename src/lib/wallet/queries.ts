@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ManualAccount, PlaidTransaction } from "./types";
+import type { PlaidTransaction } from "./types";
 
 // Fetch functions for the My Wallet page, ported from the live Webflow
 // page's two head-code scripts (project doc list didn't have a saved copy
@@ -8,22 +8,12 @@ import type { ManualAccount, PlaidTransaction } from "./types";
 // id 665f5b07319971d77a6e1313). Both queries are plain SELECTs: this page
 // has no write actions, matching the read-only RLS policies on both
 // tables (see pg_policies -- no INSERT policy on plaid_transactions at
-// all; account rows are only ever written by the Accounts page).
+// all; account rows are only ever written on the Banking page).
 
-export async function fetchManualAccounts(
-  supabase: SupabaseClient,
-  userId: string
-): Promise<ManualAccount[]> {
-  const { data, error } = await supabase
-    .from("manual_accounts")
-    .select("*")
-    .eq("user_id", userId);
-  if (error) {
-    console.error("fetchManualAccounts failed", error);
-    return [];
-  }
-  return (data ?? []) as ManualAccount[];
-}
+// manual_accounts fetch now lives in src/lib/accounts/queries.ts (the
+// Banking page's canonical home for that table) -- re-exported here since
+// this page's balance/spending calcs read it too.
+export { fetchManualAccounts } from "@/lib/accounts/queries";
 
 // Matches the live script's query exactly: only non-pending transactions
 // count toward balances/charts (a pending debit can still be reversed).
