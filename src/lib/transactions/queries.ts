@@ -51,6 +51,36 @@ export async function addCustomCategory(
   return { category: data as CustomCategory, error: null };
 }
 
+// Rename and/or recolor one of the signed-in user's custom categories.
+// Plain table UPDATE (not an RPC) -- the "update own custom categories"
+// RLS policy (user_id = auth.uid()) on custom_transaction_categories
+// already scopes this to the caller's own rows, so no server-side
+// function is needed for it.
+export async function updateCustomCategory(
+  supabase: SupabaseClient,
+  id: string,
+  changes: { label?: string; color?: string }
+): Promise<{ category: CustomCategory | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from("custom_transaction_categories")
+    .update(changes)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) return { category: null, error: error.message };
+  return { category: data as CustomCategory, error: null };
+}
+
+// Removes a custom category outright. Transactions already tagged with
+// its key are left as-is (category_bucket is a loose text column, not a
+// foreign key) -- CategoryBadge/categoryByKey already fall back to the
+// raw key label for an unrecognized category, so a deleted category's
+// past transactions just show their bucket key instead of breaking.
+export async function deleteCustomCategory(supabase: SupabaseClient, id: string): Promise<MutationResult> {
+  const { error } = await supabase.from("custom_transaction_categories").delete().eq("id", id);
+  return { error: error ? error.message : null };
+}
+
 export async function updateTransactionCategory(
   supabase: SupabaseClient,
   transactionId: string,
