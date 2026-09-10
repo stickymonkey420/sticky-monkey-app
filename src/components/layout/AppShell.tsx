@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { href: "/invest", label: "Invest" },
   { href: "/transactions", label: "Transactions" },
   { href: "/options", label: "Options" },
+  { href: "/simulator", label: "Simulator" },
   { href: "/closed-positions", label: "Closed Positions" },
   { href: "/smu", label: "SMU" },
 ];
