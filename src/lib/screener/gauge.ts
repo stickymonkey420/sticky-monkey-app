@@ -73,3 +73,84 @@ export const ROE_GAUGE_CONFIG: GaugeConfig = {
     { offset: 100, color: "#3ddc97" },
   ],
 };
+
+// Current Ratio gauge: current assets / current liabilities. Below 1.0 (red)
+// means short-term obligations may outrun short-term assets; 1.0-1.5
+// (yellow) is a thin cushion; the widely-cited healthy band is roughly
+// 1.5-3.0 (green); above 3.0 tapers back to yellow since a very high ratio
+// can mean idle cash/inventory rather than efficient use of assets. Scale
+// ceiling of 4.0 keeps most real-world readings on-scale.
+export const CURRENT_RATIO_GAUGE_CONFIG: GaugeConfig = {
+  maxV: 4,
+  gradId: "currentRatioGaugeGrad",
+  label: "Current Ratio",
+  decimals: 2,
+  ticks: [0, 1, 2, 3, 4],
+  stops: [
+    { offset: 0, color: "#ff5c5c" },
+    { offset: 25, color: "#ffd93d" },
+    { offset: 37.5, color: "#3ddc97" },
+    { offset: 75, color: "#3ddc97" },
+    { offset: 100, color: "#ffd93d" },
+  ],
+};
+
+// Return on Assets gauge: like ROE but measured against total assets rather
+// than just equity, so typical readings run much lower -- Finnhub's own
+// AAPL sample metric shows ~30%+ ROA against ~150%+ ROE for the same
+// company. Higher is better (monotonic, like ROE), so the same red->
+// yellow->green left-to-right ramp applies. Scale ceiling of 20% comfortably
+// covers all but the most asset-light standout businesses.
+export const ROA_GAUGE_CONFIG: GaugeConfig = {
+  maxV: 20,
+  gradId: "roaGaugeGrad",
+  label: "Return on Assets",
+  decimals: 1,
+  ticks: [0, 5, 10, 15, 20],
+  stops: [
+    { offset: 0, color: "#ff5c5c" },
+    { offset: 33, color: "#ffd93d" },
+    { offset: 66, color: "#3ddc97" },
+    { offset: 100, color: "#3ddc97" },
+  ],
+};
+
+// Net Profit Margin gauge: how much of every sales dollar becomes actual
+// profit after all expenses, interest, and taxes. Higher is better
+// (monotonic); under ~5% is thin, 10-20% is solid, 20%+ is excellent.
+// Scale ceiling of 30% covers the vast majority of profitable businesses.
+export const NET_PROFIT_MARGIN_GAUGE_CONFIG: GaugeConfig = {
+  maxV: 30,
+  gradId: "netMarginGaugeGrad",
+  label: "Net Profit Margin",
+  decimals: 1,
+  ticks: [0, 10, 20, 30],
+  stops: [
+    { offset: 0, color: "#ff5c5c" },
+    { offset: 33, color: "#ffd93d" },
+    { offset: 66, color: "#3ddc97" },
+    { offset: 100, color: "#3ddc97" },
+  ],
+};
+
+// Price/Free Cash Flow gauge: a valuation gauge like PEG/Debt-Equity where
+// lower is cheaper, so the color ramp runs green->yellow->red left-to-right.
+// Under ~15x is cheap relative to real cash generation, 15-25x is fair,
+// above ~25x is pricey. Scale ceiling of 40 covers most non-extreme
+// readings; negative or zero P/FCF (negative free cash flow) is treated as
+// unavailable by the UI rather than plotted, since the ratio is meaningless
+// there -- same convention as the PEG gauge.
+export const PRICE_FCF_GAUGE_CONFIG: GaugeConfig = {
+  maxV: 40,
+  gradId: "priceFcfGaugeGrad",
+  label: "Price/Free Cash Flow",
+  decimals: 1,
+  ticks: [0, 10, 20, 30, 40],
+  stops: [
+    { offset: 0, color: "#3ddc97" },
+    { offset: 37.5, color: "#3ddc97" },
+    { offset: 62.5, color: "#ffd93d" },
+    { offset: 87.5, color: "#ff5c5c" },
+    { offset: 100, color: "#ff5c5c" },
+  ],
+};

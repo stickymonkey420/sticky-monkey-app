@@ -3,7 +3,15 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { changeColored, MARKET_STATE_LABELS, money } from "@/lib/screener/calc";
-import { DEBT_EQUITY_GAUGE_CONFIG, PEG_GAUGE_CONFIG, ROE_GAUGE_CONFIG } from "@/lib/screener/gauge";
+import {
+  CURRENT_RATIO_GAUGE_CONFIG,
+  DEBT_EQUITY_GAUGE_CONFIG,
+  NET_PROFIT_MARGIN_GAUGE_CONFIG,
+  PEG_GAUGE_CONFIG,
+  PRICE_FCF_GAUGE_CONFIG,
+  ROA_GAUGE_CONFIG,
+  ROE_GAUGE_CONFIG,
+} from "@/lib/screener/gauge";
 import { fetchTickerQuote } from "@/lib/screener/queries";
 import type { TickerQuoteResult } from "@/lib/screener/types";
 import Gauge, { GaugeUnavailable } from "./Gauge";
@@ -50,7 +58,8 @@ export default function TickerLookup() {
     <div className="rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-1 text-sm font-semibold text-text-primary">Ticker Lookup</h3>
       <p className="mb-4 text-xs text-text-muted">
-        Live quote plus Peter Lynch-style PEG and Debt/Equity valuation gauges, and Return on Equity, for any ticker.
+        Live quote plus 7 gauges for any ticker: Peter Lynch-style PEG and Debt/Equity valuation, Return on Equity,
+        Return on Assets, Current Ratio, Net Profit Margin, and Price/Free Cash Flow.
       </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -80,8 +89,8 @@ export default function TickerLookup() {
       {status && <div className="mb-4 text-sm text-text-muted">{status}</div>}
 
       {result && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-[14px] border border-white/[0.12] bg-white/[0.03] p-5 sm:col-span-2">
+        <div className="flex flex-col gap-4">
+          <div className="rounded-[14px] border border-white/[0.12] bg-white/[0.03] p-5">
             <div className="text-lg font-bold text-text-primary">{result.symbol}</div>
             {result.companyName && <div className="mt-0.5 text-base text-text-muted">{result.companyName}</div>}
             <div className="mt-1.5 text-xl">
@@ -103,7 +112,7 @@ export default function TickerLookup() {
             )}
           </div>
 
-          <div className="flex flex-col gap-4 sm:col-span-2 lg:col-span-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {result.pegRatio !== null && result.pegRatio !== undefined && result.pegRatio > 0 ? (
               <Gauge value={result.pegRatio} config={PEG_GAUGE_CONFIG} />
             ) : (
@@ -118,6 +127,28 @@ export default function TickerLookup() {
               <Gauge value={result.returnOnEquity} config={ROE_GAUGE_CONFIG} />
             ) : (
               <GaugeUnavailable label="Return on Equity" />
+            )}
+            {result.returnOnAssets !== null && result.returnOnAssets !== undefined ? (
+              <Gauge value={result.returnOnAssets} config={ROA_GAUGE_CONFIG} />
+            ) : (
+              <GaugeUnavailable label="Return on Assets" />
+            )}
+            {result.currentRatio !== null && result.currentRatio !== undefined ? (
+              <Gauge value={result.currentRatio} config={CURRENT_RATIO_GAUGE_CONFIG} />
+            ) : (
+              <GaugeUnavailable label="Current Ratio" />
+            )}
+            {result.netProfitMargin !== null && result.netProfitMargin !== undefined ? (
+              <Gauge value={result.netProfitMargin} config={NET_PROFIT_MARGIN_GAUGE_CONFIG} />
+            ) : (
+              <GaugeUnavailable label="Net Profit Margin" />
+            )}
+            {result.priceToFreeCashFlow !== null &&
+            result.priceToFreeCashFlow !== undefined &&
+            result.priceToFreeCashFlow > 0 ? (
+              <Gauge value={result.priceToFreeCashFlow} config={PRICE_FCF_GAUGE_CONFIG} />
+            ) : (
+              <GaugeUnavailable label="Price/Free Cash Flow" />
             )}
           </div>
         </div>

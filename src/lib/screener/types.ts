@@ -68,6 +68,10 @@ export type TickerQuoteResult = {
   pegSource: "trailing" | "forward" | "estimated" | null;
   debtToEquity: number | null;
   returnOnEquity: number | null; // Finnhub roeTTM/roeRfy, as a percent (e.g. 24.5 = 24.5%)
+  currentRatio: number | null; // Finnhub currentRatioQuarterly/currentRatioAnnual
+  returnOnAssets: number | null; // Finnhub roaTTM/roaRfy, as a percent
+  netProfitMargin: number | null; // Finnhub netProfitMarginTTM/netProfitMarginAnnual, as a percent
+  priceToFreeCashFlow: number | null; // Finnhub pfcfShareTTM/pfcfShareAnnual
 };
 
 export type TickerLookupError = "invalid_symbol" | "not_found" | "failed";
