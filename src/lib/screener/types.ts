@@ -50,6 +50,17 @@ export type ExtendedQuote = {
 
 export type MarketState = "PRE" | "REGULAR" | "POST" | "CLOSED";
 
+// Same-industry comparison for the Sticky Monkey Score, computed server-side
+// from Finnhub's peer list (up to 6 peers, each scored the same way as the
+// searched ticker) -- see the `ticker-quote-lookup` edge function.
+// industryAvgScore/industryName are independently null-able: a ticker can
+// have a known industry name with too few peers to average, or vice versa.
+export type IndustryComparison = {
+  industryName: string | null;
+  peerCount: number;
+  industryAvgScore: number | null; // 0-100, average Sticky Monkey Score across peerCount peers
+};
+
 export type TickerQuoteResult = {
   symbol: string;
   companyName: string | null;
@@ -72,6 +83,15 @@ export type TickerQuoteResult = {
   returnOnAssets: number | null; // Finnhub roaTTM/roaRfy, as a percent
   netProfitMargin: number | null; // Finnhub netProfitMarginTTM/netProfitMarginAnnual, as a percent
   priceToFreeCashFlow: number | null; // Finnhub pfcfShareTTM/pfcfShareAnnual
+  // v6: composite score tallying the 7 gauges above (0-100, higher is
+  // better), plus how the ticker's industry peers score on average, plus a
+  // Graham Number intrinsic value estimate. See the edge function for the
+  // full methodology notes.
+  stickyMonkeyScore: number | null;
+  intrinsicValue: number | null; // Graham Number, $/share
+  intrinsicValueMethod: "graham" | null;
+  intrinsicValueNote: string | null; // why intrinsicValue is null, when it is
+  industry: IndustryComparison | null;
 };
 
 export type TickerLookupError = "invalid_symbol" | "not_found" | "failed";

@@ -48,6 +48,22 @@ export function pctPlain(n: number | null | undefined): string {
   return n === null || n === undefined || Number.isNaN(n) ? "—" : Number(n).toFixed(2) + "%";
 }
 
+export type ScoreBand = { label: string; color: string };
+
+// Descriptive label for the Sticky Monkey Score -- same green/yellow/orange/
+// red semantics already used across the 7 gauges it's tallied from.
+// Describes the fundamentals only; deliberately not phrased as a buy/sell
+// call.
+export function scoreBand(score: number | null | undefined): ScoreBand {
+  if (score === null || score === undefined || Number.isNaN(score)) return { label: "—", color: NEUTRAL };
+  const s = Number(score);
+  if (s >= 80) return { label: "Excellent fundamentals", color: "#3ddc97" };
+  if (s >= 60) return { label: "Solid fundamentals", color: "#3ddc97" };
+  if (s >= 40) return { label: "Mixed fundamentals", color: "#ffd93d" };
+  if (s >= 20) return { label: "Weak fundamentals", color: "#e67e22" };
+  return { label: "Poor fundamentals", color: "#ff5c5c" };
+}
+
 export const MARKET_STATE_LABELS: Record<string, string> = {
   REGULAR: "Market open",
   PRE: "Pre-market",

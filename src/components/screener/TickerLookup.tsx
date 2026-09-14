@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { changeColored, MARKET_STATE_LABELS, money } from "@/lib/screener/calc";
+import { changeColored, MARKET_STATE_LABELS, money, scoreBand } from "@/lib/screener/calc";
 import {
   CURRENT_RATIO_GAUGE_CONFIG,
   DEBT_EQUITY_GAUGE_CONFIG,
@@ -59,7 +59,8 @@ export default function TickerLookup() {
       <h3 className="mb-1 text-sm font-semibold text-text-primary">Ticker Lookup</h3>
       <p className="mb-4 text-xs text-text-muted">
         Live quote plus 7 gauges for any ticker: Peter Lynch-style PEG and Debt/Equity valuation, Return on Equity,
-        Return on Assets, Current Ratio, Net Profit Margin, and Price/Free Cash Flow.
+        Return on Assets, Current Ratio, Net Profit Margin, and Price/Free Cash Flow -- tallied into a Sticky Monkey
+        Score, compared against the ticker&apos;s industry peers, alongside a Graham Number intrinsic value estimate.
       </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -91,25 +92,33 @@ export default function TickerLookup() {
       {result && (
         <div className="flex flex-col gap-4">
           <div className="rounded-[14px] border border-white/[0.12] bg-white/[0.03] p-5">
-            <div className="text-lg font-bold text-text-primary">{result.symbol}</div>
-            {result.companyName && <div className="mt-0.5 text-base text-text-muted">{result.companyName}</div>}
-            <div className="mt-1.5 text-xl">
-              <span className="font-semibold text-text-primary">{money(result.price)}</span>{" "}
-              {change && <span style={{ color: change.color }}>{change.text}</span>}
-            </div>
-            <div className="mt-1.5 text-sm text-text-muted">
-              {MARKET_STATE_LABELS[result.marketState] || result.marketState} &nbsp;Prev close:{" "}
-              {money(result.previousClose)}
-            </div>
-            <div className="mt-1 text-xs text-text-muted/80">As of {quoteTimeStr}</div>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="text-lg font-bold text-text-primary">{result.symbol}</div>
+                {result.companyName && <div className="mt-0.5 text-base text-text-muted">{result.companyName}</div>}
+                <div className="mt-1.5 text-xl">
+                  <span className="font-semibold text-text-primary">{money(result.price)}</span>{" "}
+                  {change && <span style={{ color: change.color }}>{change.text}</span>}
+                </div>
+                <div className="mt-1.5 text-sm text-text-muted">
+                  {MARKET_STATE_LABELS[result.marketState] || result.marketState} &nbsp;Prev close:{" "}
+                  {money(result.previousClose)}
+                </div>
+                <div className="mt-1 text-xs text-text-muted/80">As of {quoteTimeStr}</div>
 
-            {result.extended && result.extended.price !== null && result.extended.price !== undefined && (
-              <div className="mt-2.5 text-sm">
-                <span className="text-text-muted">{result.extended.label}:</span>{" "}
-                <span className="font-semibold text-text-primary">{money(result.extended.price)}</span>{" "}
-                {extendedChange && <span style={{ color: extendedChange.color }}>{extendedChange.text}</span>}
+                {result.extended && result.extended.price !== null && result.extended.price !== undefined && (
+                  <div className="mt-2.5 text-sm">
+                    <span className="text-text-muted">{result.extended.label}:</span>{" "}
+                    <span className="font-semibold text-text-primary">{money(result.extended.price)}</span>{" "}
+                    {extendedChange && <span style={{ color: extendedChange.color }}>{extendedChange.text}</span>}
+                  </div>
+                )}
               </div>
-            )}
+
+              {result.stickyMonkeyScore !== null && result.stickyMonkeyScore !== undefined && (
+                <StickyMonkeyScoreCard result={result} />
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -139,6 +148,70 @@ export default function TickerLookup() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Composite score (0-100) tallying the 7 gauges above -- see the
+// `ticker-quote-lookup` edge function for the scoring methodology, industry
+// comparison, and Graham Number intrinsic value estimate. All three numbers
+// are computed server-side; this component only formats what it's given.
+function StickyMonkeyScoreCard({ result }: { result: TickerQuoteResult }) {
+  const score = result.stickyMonkeyScore;
+  if (score === null || score === undefined) return null;
+  const band = scoreBand(score);
+  const industry = result.industry;
+  const hasIndustryAvg =
+    industry && industry.industryAvgScore !== null && industry.industryAvgScore !== undefined && industry.peerCount > 0;
+  const delta = hasIndustryAvg ? score - (industry!.industryAvgScore as number) : null;
+
+  return (
+    <div className="w-full shrink-0 rounded-2xl border border-white/[0.12] bg-white/[0.04] p-4 sm:w-[260px]">
+      <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Sticky Monkey Score</div>
+      <div className="mt-1.5 flex items-baseline gap-2">
+        <span className="text-3xl font-bold" style={{ color: band.color }}>
+          {score}
+        </span>
+        <span className="text-sm text-text-muted">/ 100</span>
+      </div>
+      <div className="mt-0.5 text-sm font-medium" style={{ color: band.color }}>
+        {band.label}
+      </div>
+
+      <div className="mt-3 border-t border-white/[0.08] pt-3 text-sm">
+        <div className="text-text-muted">
+          {industry?.industryName ? industry.industryName : "Industry"} average
+          {hasIndustryAvg ? ` (${industry!.peerCount} peers)` : ""}
+        </div>
+        {hasIndustryAvg ? (
+          <div className="mt-0.5">
+            <span className="font-semibold text-text-primary">{industry!.industryAvgScore}</span>
+            <span className="text-text-muted"> / 100</span>{" "}
+            <span style={{ color: delta !== null && delta >= 0 ? "#3ddc97" : "#ff5c5c" }}>
+              {delta === 0
+                ? `(even with ${result.symbol})`
+                : delta !== null && delta > 0
+                  ? `(${result.symbol} is ${delta} above)`
+                  : `(${result.symbol} is ${Math.abs(delta ?? 0)} below)`}
+            </span>
+          </div>
+        ) : (
+          <div className="mt-0.5 text-text-muted/80">Not enough peer data available.</div>
+        )}
+      </div>
+
+      <div className="mt-3 border-t border-white/[0.08] pt-3 text-sm">
+        <div className="text-text-muted">Intrinsic value (Graham Number)</div>
+        {result.intrinsicValue !== null && result.intrinsicValue !== undefined ? (
+          <div className="mt-0.5 font-semibold text-text-primary">{money(result.intrinsicValue)} / share</div>
+        ) : (
+          <div className="mt-0.5 text-text-muted/80">{result.intrinsicValueNote || "Not available for this ticker."}</div>
+        )}
+      </div>
+
+      <div className="mt-3 text-[11px] leading-snug text-text-muted/70">
+        Tallies the 7 gauges below plus peer/book-value data. Informational only -- not investment advice.
+      </div>
     </div>
   );
 }
