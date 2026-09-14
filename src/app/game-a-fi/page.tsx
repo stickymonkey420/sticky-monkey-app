@@ -3,17 +3,23 @@
 import { useEffect, useState } from "react";
 import AppShell from "@/components/layout/AppShell";
 import LeaderboardTable from "@/components/gameAfi/LeaderboardTable";
+import PaperTradingPanel from "@/components/gameAfi/PaperTradingPanel";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAvailableWeeks, fetchSeasonLeaderboard, fetchWeeklyLeaderboard } from "@/lib/gameAfi/queries";
 import type { LeaderboardRow } from "@/lib/gameAfi/types";
 
-// Game-a-Fi Phase 1: a fantasy-football-style weekly standings board (not
-// head-to-head matchups) that ranks members by real portfolio return %,
-// plus a season-long cumulative standings tab. Free tier -- everyone sees
-// everyone's rank and % return, never a dollar amount (see
-// lib/gameAfi/queries.ts + the game_afi_* SQL functions). Phase 2 (a
-// separate paper-trading competition with real $ + % since it's not real
-// money) is a later build.
+// Game-a-Fi: a fantasy-football-style weekly standings board (not
+// head-to-head matchups). Two separate games, switched at the top of this
+// page:
+//   - "Live Portfolio" (Phase 1): ranks members by real portfolio return
+//     %. Dollar amounts stay private -- only rank and % are shown (see
+//     lib/gameAfi/queries.ts + the game_afi_* SQL functions).
+//   - "Paper Trading" (Phase 2): a simulated $10,000 account members trade
+//     with, priced off the real stock_universe table. $ amounts are shown
+//     here since nothing real is at risk (see
+//     components/gameAfi/PaperTradingPanel.tsx + lib/gameAfi/paperQueries.ts
+//     + the game_afi_paper_* SQL functions).
+// Both are free tier.
 function formatWeekLabel(weekStartIso: string): string {
   const start = new Date(`${weekStartIso}T00:00:00`);
   const end = new Date(start);
@@ -23,6 +29,7 @@ function formatWeekLabel(weekStartIso: string): string {
 }
 
 export default function GameAFiPage() {
+  const [game, setGame] = useState<"live" | "paper">("live");
   const [tab, setTab] = useState<"weekly" | "season">("weekly");
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -80,76 +87,106 @@ export default function GameAFiPage() {
       </div>
       <div className="flex flex-col gap-6">
         <p className="text-sm text-text-muted">
-          A weekly standings board, not head-to-head matchups -- every member&apos;s real portfolio return % for the
-          week shapes their placement. Dollar amounts stay private; only rank and % are shown.
+          A weekly standings board, not head-to-head matchups -- every member&apos;s weekly performance shapes their
+          placement.
         </p>
 
         <div className="flex gap-2">
           <button
-            onClick={() => setTab("weekly")}
+            onClick={() => setGame("live")}
             className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-              tab === "weekly" ? "bg-[#4f8cff] text-white" : "bg-white/5 text-text-muted hover:bg-white/10"
+              game === "live" ? "bg-white/10 text-text-primary" : "bg-white/5 text-text-muted hover:bg-white/10"
             }`}
           >
-            This Week
+            Live Portfolio
           </button>
           <button
-            onClick={() => setTab("season")}
+            onClick={() => setGame("paper")}
             className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-              tab === "season" ? "bg-[#4f8cff] text-white" : "bg-white/5 text-text-muted hover:bg-white/10"
+              game === "paper" ? "bg-white/10 text-text-primary" : "bg-white/5 text-text-muted hover:bg-white/10"
             }`}
           >
-            Season Standings
+            Paper Trading
           </button>
         </div>
 
-        {loading ? (
-          <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">
-            Loading leaderboard…
-          </div>
-        ) : tab === "weekly" ? (
-          <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-text-primary">Weekly Placement</h3>
-              {weeks.length > 0 && (
-                <select
-                  value={selectedWeek ?? ""}
-                  onChange={(e) => handleWeekChange(e.target.value)}
-                  className="rounded-md border border-card-border bg-[#0f131c] px-3 py-1.5 text-sm text-text-primary outline-none"
-                >
-                  {weeks.map((w) => (
-                    <option key={w} value={w}>
-                      {formatWeekLabel(w)}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-            <LeaderboardTable
-              rows={weeklyRows}
-              currentUserId={userId}
-              emptyLabel="No weekly results yet -- come back once two weeks of portfolio data have been tracked."
-            />
-          </div>
+        {game === "paper" ? (
+          <PaperTradingPanel userId={userId} />
         ) : (
-          <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-text-primary">Season Standings</h3>
-              {seasonStart && (
-                <span className="text-xs text-text-muted">
-                  Since {new Date(`${seasonStart}T00:00:00`).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
-              )}
+          <div className="flex flex-col gap-6">
+            <p className="text-sm text-text-muted">
+              Every member&apos;s real portfolio return % for the week shapes their placement. Dollar amounts stay
+              private; only rank and % are shown.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTab("weekly")}
+                className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+                  tab === "weekly" ? "bg-[#4f8cff] text-white" : "bg-white/5 text-text-muted hover:bg-white/10"
+                }`}
+              >
+                This Week
+              </button>
+              <button
+                onClick={() => setTab("season")}
+                className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+                  tab === "season" ? "bg-[#4f8cff] text-white" : "bg-white/5 text-text-muted hover:bg-white/10"
+                }`}
+              >
+                Season Standings
+              </button>
             </div>
-            <LeaderboardTable
-              rows={seasonRows}
-              currentUserId={userId}
-              emptyLabel="No season standings yet -- come back once a few weeks of portfolio data have been tracked."
-            />
+
+            {loading ? (
+              <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">
+                Loading leaderboard…
+              </div>
+            ) : tab === "weekly" ? (
+              <div className="rounded-2xl border border-card-border bg-card-bg p-5">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-text-primary">Weekly Placement</h3>
+                  {weeks.length > 0 && (
+                    <select
+                      value={selectedWeek ?? ""}
+                      onChange={(e) => handleWeekChange(e.target.value)}
+                      className="rounded-md border border-card-border bg-[#0f131c] px-3 py-1.5 text-sm text-text-primary outline-none"
+                    >
+                      {weeks.map((w) => (
+                        <option key={w} value={w}>
+                          {formatWeekLabel(w)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <LeaderboardTable
+                  rows={weeklyRows}
+                  currentUserId={userId}
+                  emptyLabel="No weekly results yet -- come back once two weeks of portfolio data have been tracked."
+                />
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-card-border bg-card-bg p-5">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-text-primary">Season Standings</h3>
+                  {seasonStart && (
+                    <span className="text-xs text-text-muted">
+                      Since{" "}
+                      {new Date(`${seasonStart}T00:00:00`).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                  )}
+                </div>
+                <LeaderboardTable
+                  rows={seasonRows}
+                  currentUserId={userId}
+                  emptyLabel="No season standings yet -- come back once a few weeks of portfolio data have been tracked."
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
