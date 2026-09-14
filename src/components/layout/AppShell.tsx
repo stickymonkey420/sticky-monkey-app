@@ -38,24 +38,33 @@ import SignOutButton from "./SignOutButton";
 //     "Users & Groups" are each a real dropdown with exactly one child on
 //     the live site; flattened here to single links since a 1-item
 //     accordion adds a click for no benefit.
-// Left out on purpose: "Card Center" (My Wallet) and "Accounts" (Invest,
-// href /invest-accounts, distinct from Banking's /accounts) -- real,
-// non-draft Webflow pages not yet ported to this app; "Businesses" (Search/
-// My Business/Travel/a mislabeled second "Invoices" that's actually a style
-// guide) -- confirmed generic Webflow-template leftover unrelated to this
-// app; "Game-a-Fi" -- its own SEO description calls it a "Director test
-// build," held back pending a visibility decision; "Authentication"
-// (Sign In/Sign Up) -- redundant with this app's own /sign-in flow.
+// "My Wallet" is now also a group: "Overview" is the original wallet
+// dashboard, "Card Center" (Webflow slug moneyfarm-webflow-html-website-
+// template) is a real credit-card list/add/edit/delete screen over
+// manual_accounts (category='credit_card') -- viewing stays free (RLS
+// SELECT has no role check, same as Banking), only add/edit/delete
+// requires paid, shown inline on that page rather than hidden here.
+//
+// Left out on purpose: "Accounts" (Invest, href /invest-accounts, distinct
+// from Banking's /accounts) -- a real, non-draft Webflow page not yet
+// ported to this app; "Businesses" (Search/My Business/Travel/a mislabeled
+// second "Invoices" that's actually a style guide) -- confirmed generic
+// Webflow-template leftover unrelated to this app; "Game-a-Fi" -- its own
+// SEO description calls it a "Director test build," held back pending a
+// visibility decision; "Authentication" (Sign In/Sign Up) -- redundant
+// with this app's own /sign-in flow.
 //
 // `requires` gates a node by role, derived from the ACTUAL Supabase RLS
 // policies rather than guessed -- `transactions`/`custom_transaction_categories`
 // have zero role restriction (free), `stock_universe` is explicitly
-// readable by any authenticated user (free), while `wheel_trades`,
-// `positions`, `metal_holdings`, `manual_accounts`, and
-// `recurring_investments` all require role IN ('paid','app_director') to
-// write; the sidebar treats those as fully paid-gated (view included, not
-// just write) per your explicit call, not just a write-time restriction.
-// "admin" means app_director/support/developer -- staff roles that are not
+// readable by any authenticated user (free). `wheel_trades`, `positions`,
+// `metal_holdings`, and `recurring_investments` all require role IN
+// ('paid','app_director') to write, and the Invest group treats those as
+// fully paid-gated (view included, not just write) per your explicit
+// call. `manual_accounts` has the same write restriction but is used more
+// broadly (Banking, Card Center) where viewing is meant to stay free --
+// those pages gate add/edit/delete inline instead of hiding the whole
+// nav entry. "admin" means app_director/support/developer -- staff roles that are not
 // automatically 'paid' under RLS, so they see the base (free-tier) feature
 // set plus the admin tools, not the paid trading features, unless their
 // role is separately app_director. "owner" is narrower still: only
@@ -84,7 +93,14 @@ type NavNode = {
 // rather than lifting Webflow's raster PNGs 1:1.
 const NAV_TREE: NavNode[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/wallet", label: "My Wallet", icon: Wallet },
+  {
+    label: "My Wallet",
+    icon: Wallet,
+    children: [
+      { href: "/wallet", label: "Overview" },
+      { href: "/card-center", label: "Card Center" },
+    ],
+  },
   {
     label: "Invest",
     icon: TrendingUp,
