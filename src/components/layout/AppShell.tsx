@@ -15,6 +15,7 @@ import {
   FileText,
   ShieldCheck,
   Wrench,
+  Briefcase,
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -53,12 +54,27 @@ import SignOutButton from "./SignOutButton";
 // Retirement/Vault -- the whole Invest group being paid-gated is what
 // keeps it from free tier.
 //
-// Left out on purpose: "Businesses" (Search/My Business/Travel/a
-// mislabeled second "Invoices" that's actually a style guide) --
-// confirmed generic Webflow-template leftover unrelated to this app;
-// "Game-a-Fi" -- its own SEO description calls it a "Director test
-// build," held back pending a visibility decision; "Authentication"
-// (Sign In/Sign Up) -- redundant with this app's own /sign-in flow.
+// "Businesses" is a new group: "Find a Gig" (Webflow's nav label was
+// "Search", slug side-gigs) is a searchable directory over gig_categories
+// (50 rows, 10 groups) that creates a user_businesses row when you pick
+// one; "My Business" (slug my-business) manages that business's Clients,
+// a Jobs board (Lead/Scheduled/In Progress/Completed/Cancelled), and a
+// Scheduler. Both were confirmed as real, actively-used features (live
+// data already in all four tables), not template boilerplate -- and
+// unlike almost everything else in this app, none of their RLS policies
+// have a paid/app_director check, so this whole group is free-tier.
+// My Business's own "Invoices" sub-section (bill clients via "the
+// existing invoicing tools") is left out -- it points at the Invoice
+// List/Create Invoices Webflow pages, confirmed unused template
+// boilerplate, so it's omitted rather than shipped as a dead link.
+//
+// Left out on purpose: "Travel" (Businesses) -- the live site's own link
+// is an unwired `#` placeholder; a second, mislabeled "Invoices" dropdown
+// under Businesses that's actually a Color/Typography/Iconography/Button
+// style guide -- confirmed generic Webflow-template leftover; "Game-a-Fi"
+// -- its own SEO description calls it a "Director test build," held back
+// pending a visibility decision; "Authentication" (Sign In/Sign Up) --
+// redundant with this app's own /sign-in flow.
 //
 // `requires` gates a node by role, derived from the ACTUAL Supabase RLS
 // policies rather than guessed -- `transactions`/`custom_transaction_categories`
@@ -151,6 +167,14 @@ const NAV_TREE: NavNode[] = [
   { href: "/transactions", label: "Transactions", icon: Receipt },
   { href: "/accounts", label: "Banking", icon: User },
   { href: "/smu", label: "SMU", icon: FileText },
+  {
+    label: "Businesses",
+    icon: Briefcase,
+    children: [
+      { href: "/side-gigs", label: "Find a Gig" },
+      { href: "/my-business", label: "My Business" },
+    ],
+  },
   { href: "/investors", label: "Owners", requires: "owner", icon: Crown },
   {
     label: "Utilities",
