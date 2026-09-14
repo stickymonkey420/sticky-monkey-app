@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { fmtDate, money } from "@/lib/options/queries";
 import { CLOSED_POSITION_TYPE_COLOR, statusLabel } from "@/lib/closedPositions/calc";
+import { deleteClosedPosition } from "@/lib/closedPositions/mutations";
 import {
   fetchClosedLongOptionTrades,
   fetchClosedWheelTrades,
@@ -90,15 +91,26 @@ function PctCell({ pct }: { pct: number | null }) {
 // sorting and the "All Accounts" / per-account filter bar, all read from
 // that page's freeform head code via the Webflow MCP data_scripts_tool.
 //
-// Deliberately has NO row actions: the source script's per-row "Del"
-// button (a hard delete of the closed-trade record) is not ported -- see
-// this port's report. This page is meant to stay free-tier-accessible and
-// purely informational, so it never imports anything from
-// src/lib/options/mutations.ts.
+// The source script's per-row "Del" button (a hard delete of the closed-
+// trade record) was initially left un-ported -- now added back per your
+// explicit request, via src/lib/closedPositions/mutations.ts rather than
+// reusing Options' deleteTrade (that one only knows "wheel"/"leap", not
+// this page's "wheel"/"long" split). Gated the same way Card Center gates
+// add/edit/delete: viewing stays available to any signed-in role (neither
+// wheel_trades nor long_option_trades SELECT has a role check), but the
+// Delete button only renders for paid/app_director, matching both
+// tables' DELETE policies ("Paid users can delete own wheel trades" /
+// "...own long option trades"). In practice this page only ever appears
+// under the Income nav group, which is already paid-gated -- this is a
+// second, defense-in-depth check in case someone reaches the URL
+// directly.
 export default function ClosedPositionsTable() {
   const [positions, setPositions] = useState<ClosedPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterValue>("all");
   const [sortState, setSortState] = useState<Record<ClosedPositionAccount, SortState>>({
     brokerage: { key: null, dir: 1 },
@@ -127,12 +139,14 @@ export default function ClosedPositionsTable() {
       }
 
       try {
-        const [wheelRows, longRows] = await Promise.all([
+        const [wheelRows, longRows, profile] = await Promise.all([
           fetchClosedWheelTrades(supabase, user.id),
           fetchClosedLongOptionTrades(supabase, user.id),
+          supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
         ]);
         if (cancelled) return;
         setPositions(normalizeClosedPositions(wheelRows, longRows));
+        if (profile.data) setRole((profile.data as { role: string }).role);
         setLoading(false);
       } catch {
         if (!cancelled) {
@@ -174,6 +188,22 @@ export default function ClosedPositionsTable() {
     });
   }
 
+  const canDelete = role === "paid" || role === "app_director";
+
+  async function handleDelete(p: ClosedPosition) {
+    if (!window.confirm(`Permanently delete this ${p.ticker} ${p.type} record? This can't be undone.`)) return;
+    setDeleteError(null);
+    setDeletingId(p.id);
+    const supabase = createClient();
+    const { error } = await deleteClosedPosition(supabase, p.source, p.id);
+    setDeletingId(null);
+    if (error) {
+      setDeleteError(error === "forbidden" ? "Deleting closed positions requires a paid account." : error);
+      return;
+    }
+    setPositions((prev) => prev.filter((row) => !(row.source === p.source && row.id === p.id)));
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap gap-2 rounded-2xl border border-card-border bg-card-bg p-2">
@@ -199,6 +229,8 @@ export default function ClosedPositionsTable() {
           Could not load closed positions. Try refreshing.
         </div>
       )}
+
+      {deleteError && <div className="text-sm text-[#ff5c7a]">{deleteError}</div>}
 
       {!loadError &&
         CLOSED_POSITION_ACCOUNTS.filter((acct) => filter === "all" || filter === acct).map((acct) => {
@@ -232,6 +264,7 @@ export default function ClosedPositionsTable() {
                           </th>
                         ))}
                         <th className="whitespace-nowrap py-2 pr-4">Status</th>
+                        {canDelete && <th className="whitespace-nowrap py-2 pr-4">&nbsp;</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/10">
@@ -267,6 +300,18 @@ export default function ClosedPositionsTable() {
                           <td className="whitespace-nowrap py-2.5 pr-4 text-xs text-text-muted">
                             {statusLabel(p)}
                           </td>
+                          {canDelete && (
+                            <td className="whitespace-nowrap py-2.5 pr-4 text-right">
+                              <button
+                                type="button"
+                                disabled={deletingId === p.id}
+                                onClick={() => handleDelete(p)}
+                                className="text-xs font-medium text-[#ff5c7a] hover:underline disabled:opacity-50"
+                              >
+                                {deletingId === p.id ? "Deleting…" : "Delete"}
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
