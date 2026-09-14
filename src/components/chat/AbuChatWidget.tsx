@@ -47,6 +47,11 @@ import { createClient } from "@/lib/supabase/client";
 //   equivalent in this rewrite.
 // - The abu-chat Edge Function's CARD_REGISTRY and CORS allowlist were
 //   updated to match (see Supabase dashboard; not part of this repo).
+// - The launcher's face is now the two "clean" open/closed-eyes stills the
+//   user made in Webflow (ABU_EYES_OPEN_URL/ABU_EYES_CLOSED_URL, hotlinked
+//   from Webflow's own asset CDN -- no re-hosting cost), swapped on a timer
+//   to blink, instead of the original's vector SVG face with animated
+//   eyelid rects. The panel's full-body vector figure is untouched.
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -75,9 +80,16 @@ const ABU_CARDS: Record<string, Record<string, CardLocator>> = {
 // Verbatim from the Webflow footer script's injected <style> block.
 const ABU_CSS = `.abu-figure{width:100%;height:100%;display:block;overflow:visible;}.abu-eyelid{transform:scaleY(0);}.abu-mouth-open{opacity:0;}.abu-mouth-closed{opacity:1;}.abu-laser-dot{opacity:0;filter:drop-shadow(0 0 4px #ff3b3b);transition:opacity .2s ease;}.abu-thinking-dots ellipse{opacity:0;}.abu-arm-r-rest{opacity:1;transition:opacity .25s ease;}.abu-arm-r-point{opacity:0;transition:opacity .25s ease;}#abu-launcher .abu-eyelid,#abu-stage .abu-eyelid{animation:abuBlink 4.6s infinite;}#abu-launcher .abu-body-group,#abu-stage .abu-body-group{animation:abuBreathe 3.2s ease-in-out infinite;}@keyframes abuBlink{0%,90%,100%{transform:scaleY(0);}94%{transform:scaleY(1);}}@keyframes abuBreathe{0%,100%{transform:translateY(0);}50%{transform:translateY(-1.5px);}}#abu-stage.state-talking .abu-mouth-open{animation:abuTalk .24s steps(1) infinite;}#abu-stage.state-talking .abu-mouth-closed{animation:abuTalkInv .24s steps(1) infinite;}@keyframes abuTalk{0%,100%{opacity:0;}50%{opacity:1;}}@keyframes abuTalkInv{0%,100%{opacity:1;}50%{opacity:0;}}#abu-stage.state-thinking .abu-head-group{animation:abuThink 1.6s ease-in-out infinite;}@keyframes abuThink{0%,100%{transform:rotate(0deg);}50%{transform:rotate(3deg);}}#abu-stage.state-thinking .abu-thinking-dots ellipse{animation:abuDots 1.4s infinite;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(2){animation-delay:.2s;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(3){animation-delay:.4s;}#abu-stage.state-pointing .abu-arm-r-point{opacity:1;}#abu-stage.state-pointing .abu-arm-r-rest{opacity:0;}#abu-stage.state-pointing .abu-laser-dot{opacity:1;animation:abuLaser .9s ease-in-out infinite;}@keyframes abuLaser{0%,100%{opacity:.6;}50%{opacity:1;}}#abu-stage.state-entering .abu-figure{animation:abuEnter .6s cubic-bezier(.34,1.56,.64,1) both;}@keyframes abuEnter{0%{transform:translateY(70px) scale(.7);opacity:0;}60%{transform:translateY(-8px) scale(1.05);opacity:1;}100%{transform:translateY(0) scale(1);}}#abu-stage-wrap{width:100%;height:132px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:center;background:radial-gradient(ellipse at center 85%, rgba(245,208,32,0.08), transparent 70%);border-bottom:1px solid rgba(255,255,255,0.08);}#abu-stage{width:150px;height:150px;margin-bottom:-14px;}#abu-launcher .abu-figure{transform:scale(1.9) translateY(6px);}.abu-icon-btn{cursor:pointer;color:#8a90a8;font-size:15px;line-height:1;padding:4px 6px;border-radius:6px;user-select:none;}.abu-icon-btn:hover{background:rgba(255,255,255,0.08);color:#eef0f7;}.abu-icon-btn.active{color:#f5d020;}@keyframes abuMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,59,0.5);}50%{box-shadow:0 0 0 6px rgba(255,59,59,0);}}#abu-mic.listening{background:#ff3b3b !important;color:#fff !important;animation:abuMicPulse 1s infinite;}@keyframes abuCardPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,208,32,.65),0 0 0 0 rgba(245,208,32,.35);}50%{box-shadow:0 0 0 6px rgba(245,208,32,.45),0 0 26px 10px rgba(245,208,32,.25);}}.abu-card-glow{animation:abuCardPulse 1.3s ease-in-out 2;border-radius:12px;position:relative;z-index:5;}`;
 
-// Verbatim from the Webflow footer script's launcher button SVG (the
-// zoomed-in face crop used inside the 60px round launcher).
-const ABU_LAUNCHER_SVG = `<svg class="abu-figure " viewBox="35 30 130 110" xmlns="http://www.w3.org/2000/svg"><g class="abu-head-group" transform-origin="100 70"><path d="M56,72 C60,40 80,30 100,32 C120,30 140,40 144,72 C132,58 120,50 100,48 C80,50 68,58 56,72 Z" fill="#4a4038"/><ellipse class="abu-fur" cx="54" cy="100" rx="11" ry="16" fill="#5b4a3f"/><ellipse cx="54" cy="100" rx="6" ry="10" fill="#caa27a"/><ellipse class="abu-fur" cx="146" cy="100" rx="11" ry="16" fill="#5b4a3f"/><ellipse cx="146" cy="100" rx="6" ry="10" fill="#caa27a"/><g transform="translate(50,76)"><ellipse cx="0" cy="-9" rx="6" ry="8" fill="#f7c948"/><ellipse cx="0" cy="9" rx="6" ry="8" fill="#f7c948"/><ellipse cx="-9" cy="0" rx="8" ry="6" fill="#f7c948"/><ellipse cx="9" cy="0" rx="8" ry="6" fill="#f7c948"/><circle cx="0" cy="0" r="5" fill="#e8963c"/></g><ellipse class="abu-fur" cx="100" cy="92" rx="50" ry="56" fill="#5b4a3f"/><ellipse cx="100" cy="100" rx="36" ry="42" fill="#caa27a"/><path d="M67,80 Q78,74 92,79" stroke="#3a2e22" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M108,79 Q122,74 133,80" stroke="#3a2e22" stroke-width="4" fill="none" stroke-linecap="round"/><rect x="64" y="84" width="34" height="28" rx="14" ry="13" fill="rgba(255,255,255,0.06)" stroke="#3a2e22" stroke-width="3.5"/><rect x="102" y="84" width="34" height="28" rx="14" ry="13" fill="rgba(255,255,255,0.06)" stroke="#3a2e22" stroke-width="3.5"/><line x1="98" y1="97" x2="102" y2="97" stroke="#3a2e22" stroke-width="3.5"/><line x1="64" y1="92" x2="54" y2="90" stroke="#3a2e22" stroke-width="3"/><line x1="136" y1="92" x2="146" y2="90" stroke="#3a2e22" stroke-width="3"/><ellipse cx="81" cy="99" rx="8" ry="8" fill="#fff"/><circle class="abu-pupil" cx="81" cy="100" r="3.4" fill="#2a1f18"/><ellipse cx="119" cy="99" rx="8" ry="8" fill="#fff"/><circle class="abu-pupil" cx="119" cy="100" r="3.4" fill="#2a1f18"/><rect class="abu-eyelid" x="72" y="90" width="18" height="17" rx="8" transform-origin="81 90" fill="#caa27a"/><rect class="abu-eyelid" x="110" y="90" width="18" height="17" rx="8" transform-origin="119 90" fill="#caa27a"/><ellipse cx="100" cy="118" rx="6" ry="4" fill="#3a2e22"/><path class="abu-mouth-closed" d="M82,128 Q100,138 118,128" stroke="#3a2e22" stroke-width="3.5" fill="none" stroke-linecap="round"/><g class="abu-mouth-open"><ellipse cx="100" cy="130" rx="13" ry="9" fill="#3a2e22"/><rect x="90" y="123" width="20" height="5" rx="2" fill="#f5f1e6"/></g></g><g class="abu-body-group"><path d="M50,155 C35,165 30,196 34,226 L48,226 C50,196 55,171 60,159 Z" fill="#b9a583"/><circle cx="37" cy="229" r="9" fill="#caa27a"/><path d="M50,150 C40,150 40,152 42,240 L158,240 C160,152 160,150 150,150 Z" fill="#b9a583"/><path d="M50,150 L88,150 L78,186 L55,165 Z" fill="#a08e6c"/><path d="M150,150 L112,150 L122,186 L145,165 Z" fill="#a08e6c"/><path d="M92,150 L108,150 L100,172 Z" fill="#f5f1e6"/><path d="M97,156 L103,156 L107,182 L100,226 L93,182 Z" fill="#6b4a2f"/><path d="M88,150 L112,150 L102,224 L98,224 Z" fill="#8d7a5c" opacity="0.55"/><circle cx="63" cy="169" r="5.5" fill="#1f2a4d"/><circle cx="63" cy="169" r="2.2" fill="#f5d020"/><g class="abu-arm-r-rest"><path d="M150,155 C165,165 170,196 166,226 L152,226 C150,196 145,171 140,159 Z" fill="#b9a583"/><circle cx="163" cy="229" r="9" fill="#caa27a"/></g><g class="abu-arm-r-point"><path d="M150,156 C168,150 178,130 176,108 L162,104 C162,122 156,138 145,150 Z" fill="#b9a583"/><circle cx="174" cy="102" r="9" fill="#caa27a"/><rect x="175.5" y="66" width="5" height="34" rx="2.5" fill="#8a8f9c" transform="rotate(18 178 83)"/><circle class="abu-laser-dot" cx="184" cy="61" r="3" fill="#ff3b3b"/></g></g><g class="abu-thinking-dots"><ellipse cx="132" cy="34" rx="4" ry="4" fill="#eef0f7"/><ellipse cx="148" cy="24" rx="3.4" ry="3.4" fill="#eef0f7"/><ellipse cx="162" cy="12" rx="2.8" ry="2.8" fill="#eef0f7"/></g></svg>`;
+// The two "clean" illustrated Abu-face stills the user had made in Webflow
+// (open-eyed / closed-eyed), hosted permanently on Webflow's own asset CDN
+// (site_id 665f5b07319971d77a6e12a1). Swapped on a timer below to blink the
+// launcher button -- this replaces the old vector eyelid-blink SVG that used
+// to sit here (the panel's full-body vector figure in ABU_PANEL_HTML is
+// unchanged and still blinks via its own SVG eyelids).
+const ABU_EYES_OPEN_URL =
+  "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/6a97f76bdc2bb83ea21e174f_abu-eyes-open-clean.png";
+const ABU_EYES_CLOSED_URL =
+  "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/6a97f76b30947ecce636c900_abu-eyes-closed-clean.png";
 
 // Verbatim from the Webflow footer script's panel innerHTML (header, the
 // full-body avatar stage, the messages list, and the input form) --
@@ -169,7 +181,9 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
   launcher.title = "Double-click to summon Abu";
   launcher.style.cssText =
     "position:fixed;right:24px;bottom:24px;width:60px;height:60px;border-radius:50%;background:#161925;border:2px solid #f5d020;box-shadow:0 4px 16px rgba(0,0,0,0.4);cursor:pointer;z-index:99998;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:transform .15s ease;";
-  launcher.innerHTML = ABU_LAUNCHER_SVG;
+  launcher.innerHTML = `<img id="abu-launcher-img" src="${ABU_EYES_OPEN_URL}" alt="Abu" draggable="false" style="width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none;" />`;
+  // Preload the closed-eyes frame so the first blink swap is instant.
+  new Image().src = ABU_EYES_CLOSED_URL;
 
   const panel = document.createElement("div");
   panel.id = "abu-panel";
@@ -179,6 +193,18 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
 
   document.body.appendChild(launcher);
   document.body.appendChild(panel);
+
+  // Blink loop for the launcher's photo icon: same 4.6s cadence as the old
+  // vector eyelid animation, briefly swapping to the closed-eyes frame.
+  const launcherImg = launcher.querySelector<HTMLImageElement>("#abu-launcher-img")!;
+  const BLINK_CYCLE_MS = 4600;
+  const BLINK_DURATION_MS = 180;
+  const blinkInterval = window.setInterval(() => {
+    launcherImg.src = ABU_EYES_CLOSED_URL;
+    window.setTimeout(() => {
+      launcherImg.src = ABU_EYES_OPEN_URL;
+    }, BLINK_DURATION_MS);
+  }, BLINK_CYCLE_MS);
 
   const messagesEl = panel.querySelector<HTMLDivElement>("#abu-messages")!;
   const formEl = panel.querySelector<HTMLFormElement>("#abu-form")!;
@@ -470,6 +496,7 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
       }
       currentAudio = null;
     }
+    window.clearInterval(blinkInterval);
     launcher.remove();
     panel.remove();
     styleEl.remove();
