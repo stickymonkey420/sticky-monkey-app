@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Wrench,
   Briefcase,
+  Trophy,
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -68,13 +69,29 @@ import SignOutButton from "./SignOutButton";
 // List/Create Invoices Webflow pages, confirmed unused template
 // boilerplate, so it's omitted rather than shipped as a dead link.
 //
+// "Game-a-Fi" (href /game-a-fi) was the live site's "Director test build"
+// stub -- restructured per your explicit call into a fantasy-football-
+// style weekly standings board (not head-to-head matchups): every
+// member's real portfolio return % for the week sets their placement,
+// plus a season-long cumulative standings tab. Shipped free-tier, same as
+// Stock Screener/Businesses. It reads from the existing net_worth_snapshots
+// table (already populated by the daily snapshot-net-worth cron) via new
+// SECURITY DEFINER SQL functions (game_afi_weekly_leaderboard /
+// game_afi_season_leaderboard / game_afi_available_weeks, migration
+// game_afi_leaderboard_phase1) that return only {user_id, display_name,
+// pct_return, rank} -- no member's raw dollar balance is ever exposed to
+// anyone else, so this replaces (rather than reuses) the old
+// app_director-only RLS on game_players/game_watchlist, which are left
+// untouched and unused for now. A later Phase 2 (a separate paper-trading
+// competition, where $ amounts are fine to show since it's not real
+// money) is a bigger, not-yet-built follow-up.
+//
 // Left out on purpose: "Travel" (Businesses) -- the live site's own link
 // is an unwired `#` placeholder; a second, mislabeled "Invoices" dropdown
 // under Businesses that's actually a Color/Typography/Iconography/Button
-// style guide -- confirmed generic Webflow-template leftover; "Game-a-Fi"
-// -- its own SEO description calls it a "Director test build," held back
-// pending a visibility decision; "Authentication" (Sign In/Sign Up) --
-// redundant with this app's own /sign-in flow.
+// style guide -- confirmed generic Webflow-template leftover;
+// "Authentication" (Sign In/Sign Up) -- redundant with this app's own
+// /sign-in flow.
 //
 // `requires` gates a node by role, derived from the ACTUAL Supabase RLS
 // policies rather than guessed -- `transactions`/`custom_transaction_categories`
@@ -175,6 +192,7 @@ const NAV_TREE: NavNode[] = [
       { href: "/my-business", label: "My Business" },
     ],
   },
+  { href: "/game-a-fi", label: "Game-a-Fi", icon: Trophy },
   { href: "/investors", label: "Owners", requires: "owner", icon: Crown },
   {
     label: "Utilities",
