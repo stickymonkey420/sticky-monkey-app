@@ -57,7 +57,7 @@ export default function IncomeCard() {
   }, []);
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card-bg p-5">
+    <div id="income-breakdown-card" className="rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-4 text-sm font-semibold text-text-primary">Options Income</h3>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {WHEEL_INCOME_ACCOUNTS.map((acct) => {

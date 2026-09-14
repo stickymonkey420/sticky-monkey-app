@@ -7,6 +7,11 @@ type PortfolioDonutCardProps = {
   total: number;
   loading: boolean;
   emptyLabel: string;
+  // Optional id passthrough -- used by invest/page.tsx to tag the Brokerage
+  // instance as "eq-brokerage-card" for the Abu chatbot's card-highlight
+  // feature (see components/chat/AbuChatWidget.tsx). Every other bucket
+  // renders without one.
+  id?: string;
 };
 
 // One reusable donut card, parameterized by title/slices/total so it
@@ -20,7 +25,7 @@ type PortfolioDonutCardProps = {
 // (src/components/dashboard/NetWorthCard.tsx): a plain CSS conic-gradient
 // circle with an absolutely-centered total, not a canvas/SVG chart library,
 // so this page's donuts look identical to the Dashboard's.
-export default function PortfolioDonutCard({ title, slices, total, loading, emptyLabel }: PortfolioDonutCardProps) {
+export default function PortfolioDonutCard({ title, slices, total, loading, emptyLabel, id }: PortfolioDonutCardProps) {
   let gradient = "none";
   if (slices.length && total > 0) {
     const parts: string[] = [];
@@ -36,7 +41,7 @@ export default function PortfolioDonutCard({ title, slices, total, loading, empt
   }
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-5">
+    <div id={id} className="flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-4 text-sm font-semibold text-text-primary">{title}</h3>
       <div className="flex flex-1 items-center gap-6">
         <div className="relative h-24 w-24 shrink-0">

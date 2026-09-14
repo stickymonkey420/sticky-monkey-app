@@ -55,7 +55,7 @@ export default function ExpenseCategoriesCard() {
   const visibleSlots = slots.filter((s): s is NonNullable<ExpenseCategorySlot> => s !== null);
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card-bg p-5">
+    <div id="expense-categories-card" className="rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-4 text-sm font-semibold text-text-primary">Expense Categories</h3>
       {!loading && visibleSlots.length === 0 ? (
         <div className="text-sm text-text-muted">No spending recorded this month.</div>

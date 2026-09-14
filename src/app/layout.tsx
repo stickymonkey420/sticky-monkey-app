@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import AbuChatWidget from "@/components/chat/AbuChatWidget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,6 +26,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {children}
+        {/* Site-wide, exactly like the Webflow footer script -- renders
+            nothing itself and only builds its DOM once a session exists. */}
+        <AbuChatWidget />
       </body>
     </html>
   );

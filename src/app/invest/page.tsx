@@ -95,6 +95,7 @@ export default function InvestPage() {
           {accountDonuts.map((b) => (
             <PortfolioDonutCard
               key={b.accountType}
+              id={b.accountType === "brokerage" ? "eq-brokerage-card" : undefined}
               title={b.title}
               slices={b.donut.slices}
               total={b.donut.total}

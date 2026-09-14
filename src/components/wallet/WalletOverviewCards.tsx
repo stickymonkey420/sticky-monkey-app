@@ -14,7 +14,7 @@ export default function WalletOverviewCards({ overview, loading }: WalletOvervie
   const netUp = overview.netThisMonth >= 0;
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card-bg p-5">
+    <div id="wallet-balance-card" className="rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-1 text-sm font-semibold text-text-primary">Wallet Overview</h3>
       <div className="mb-1 text-3xl font-semibold text-text-primary">
         {loading ? "…" : money(overview.balance)}

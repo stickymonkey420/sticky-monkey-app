@@ -309,6 +309,10 @@ function NavItem({
     <Link
       href={node.href!}
       onClick={onNavigate}
+      // id targeted by the Abu chatbot's card-highlight feature (see
+      // components/chat/AbuChatWidget.tsx) -- undefined for every other
+      // link, so this never shows up as a stray attribute elsewhere.
+      id={node.href === "/income" ? "income-nav-link" : undefined}
       className={`flex items-center gap-2.5 rounded-md py-2 pr-3 text-sm font-medium text-text-primary ${
         active ? "bg-white/5" : ""
       }`}
