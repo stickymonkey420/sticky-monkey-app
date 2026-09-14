@@ -67,6 +67,7 @@ export type TickerQuoteResult = {
   pegRatio: number | null;
   pegSource: "trailing" | "forward" | "estimated" | null;
   debtToEquity: number | null;
+  returnOnEquity: number | null; // Finnhub roeTTM/roeRfy, as a percent (e.g. 24.5 = 24.5%)
 };
 
 export type TickerLookupError = "invalid_symbol" | "not_found" | "failed";

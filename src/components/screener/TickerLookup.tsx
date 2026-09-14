@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { changeColored, MARKET_STATE_LABELS, money } from "@/lib/screener/calc";
-import { DEBT_EQUITY_GAUGE_CONFIG, PEG_GAUGE_CONFIG } from "@/lib/screener/gauge";
+import { DEBT_EQUITY_GAUGE_CONFIG, PEG_GAUGE_CONFIG, ROE_GAUGE_CONFIG } from "@/lib/screener/gauge";
 import { fetchTickerQuote } from "@/lib/screener/queries";
 import type { TickerQuoteResult } from "@/lib/screener/types";
 import Gauge, { GaugeUnavailable } from "./Gauge";
@@ -50,7 +50,7 @@ export default function TickerLookup() {
     <div className="rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-1 text-sm font-semibold text-text-primary">Ticker Lookup</h3>
       <p className="mb-4 text-xs text-text-muted">
-        Live quote plus Peter Lynch-style PEG and Debt/Equity valuation gauges for any ticker.
+        Live quote plus Peter Lynch-style PEG and Debt/Equity valuation gauges, and Return on Equity, for any ticker.
       </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -113,6 +113,11 @@ export default function TickerLookup() {
               <Gauge value={result.debtToEquity} config={DEBT_EQUITY_GAUGE_CONFIG} />
             ) : (
               <GaugeUnavailable label="Debt-to-Equity ratio" />
+            )}
+            {result.returnOnEquity !== null && result.returnOnEquity !== undefined ? (
+              <Gauge value={result.returnOnEquity} config={ROE_GAUGE_CONFIG} />
+            ) : (
+              <GaugeUnavailable label="Return on Equity" />
             )}
           </div>
         </div>

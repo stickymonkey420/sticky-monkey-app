@@ -52,3 +52,24 @@ export const DEBT_EQUITY_GAUGE_CONFIG: GaugeConfig = {
     { offset: 100, color: "#ff5c5c" },
   ],
 };
+
+// Return on Equity gauge: unlike PEG/Debt-Equity, higher is better here, so
+// the color ramp runs the opposite direction -- red at 0% (or negative,
+// clamped to the 0 position but still shown as its true, possibly
+// negative, number per Gauge.tsx's valueDisplay) up to green at 20%+.
+// Scale ceiling of 30% covers the S&P 500's typical ~15-18% average with
+// room above it for standout businesses; ~15% average large-cap ROE is
+// the widely cited benchmark this gauge is calibrated against.
+export const ROE_GAUGE_CONFIG: GaugeConfig = {
+  maxV: 30,
+  gradId: "roeGaugeGrad",
+  label: "Return on Equity",
+  decimals: 1,
+  ticks: [0, 10, 20, 30],
+  stops: [
+    { offset: 0, color: "#ff5c5c" },
+    { offset: 33, color: "#ffd93d" },
+    { offset: 66, color: "#3ddc97" },
+    { offset: 100, color: "#3ddc97" },
+  ],
+};
