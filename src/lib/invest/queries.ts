@@ -26,3 +26,37 @@ export async function fetchMetalHoldings(supabase: SupabaseClient, userId: strin
 }
 
 export { fetchHoldings } from "@/lib/holdings/queries";
+
+// Write side, added for Invest Accounts' "Add Metals" sub-form -- lets a
+// newly-created Self-Directed IRA account (manual_accounts,
+// category='retirement_account', retirement_type='self_directed_ira',
+// ira_asset_type='precious_metals') get its metal holdings tied to it via
+// account_id, same table/relationship the Vault Summary already reads
+// (fetchMetalHoldings above is not scoped to a single account_id, so this
+// row shows up there too once added). RLS: paid/app_director only, same
+// as manual_accounts.
+export type MetalHoldingInput = {
+  product_name: string;
+  metal: MetalHolding["metal"];
+  quantity: number;
+  current_value: number;
+  account_type: string;
+  account_id: string;
+};
+
+export async function addMetalHolding(
+  supabase: SupabaseClient,
+  userId: string,
+  input: MetalHoldingInput
+): Promise<{ holding: MetalHolding | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from("metal_holdings")
+    .insert({ ...input, user_id: userId })
+    .select(METAL_HOLDING_COLUMNS)
+    .single();
+  if (error) {
+    console.error("addMetalHolding failed", error);
+    return { holding: null, error: error.code === "42501" ? "forbidden" : error.message };
+  }
+  return { holding: data as MetalHolding, error: null };
+}

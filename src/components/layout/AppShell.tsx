@@ -45,14 +45,20 @@ import SignOutButton from "./SignOutButton";
 // SELECT has no role check, same as Banking), only add/edit/delete
 // requires paid, shown inline on that page rather than hidden here.
 //
-// Left out on purpose: "Accounts" (Invest, href /invest-accounts, distinct
-// from Banking's /accounts) -- a real, non-draft Webflow page not yet
-// ported to this app; "Businesses" (Search/My Business/Travel/a mislabeled
-// second "Invoices" that's actually a style guide) -- confirmed generic
-// Webflow-template leftover unrelated to this app; "Game-a-Fi" -- its own
-// SEO description calls it a "Director test build," held back pending a
-// visibility decision; "Authentication" (Sign In/Sign Up) -- redundant
-// with this app's own /sign-in flow.
+// "Invest" now also has an "Accounts" child (href /invest-accounts,
+// distinct from Banking's own /accounts) -- manages the account-level
+// record (institution/name/balance) for brokerage, retirement, and
+// precious-metal manual accounts, not the positions/vault items inside
+// them. It has no separate in-page role check, same as Portfolio/Taxable/
+// Retirement/Vault -- the whole Invest group being paid-gated is what
+// keeps it from free tier.
+//
+// Left out on purpose: "Businesses" (Search/My Business/Travel/a
+// mislabeled second "Invoices" that's actually a style guide) --
+// confirmed generic Webflow-template leftover unrelated to this app;
+// "Game-a-Fi" -- its own SEO description calls it a "Director test
+// build," held back pending a visibility decision; "Authentication"
+// (Sign In/Sign Up) -- redundant with this app's own /sign-in flow.
 //
 // `requires` gates a node by role, derived from the ACTUAL Supabase RLS
 // policies rather than guessed -- `transactions`/`custom_transaction_categories`
@@ -107,6 +113,7 @@ const NAV_TREE: NavNode[] = [
     requires: "paid",
     children: [
       { href: "/invest", label: "Portfolio" },
+      { href: "/invest-accounts", label: "Accounts" },
       {
         label: "Taxable",
         children: [
