@@ -14,7 +14,7 @@ import {
 } from "@/lib/screener/gauge";
 import { fetchTickerQuote } from "@/lib/screener/queries";
 import type { TickerQuoteResult } from "@/lib/screener/types";
-import Gauge, { GaugeUnavailable } from "./Gauge";
+import Gauge from "./Gauge";
 
 // Port of the live script's ticker-search widget: a single input + button
 // hitting the `ticker-quote-lookup` edge function, rendering a price card
@@ -113,43 +113,29 @@ export default function TickerLookup() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {result.pegRatio !== null && result.pegRatio !== undefined && result.pegRatio > 0 ? (
+            {result.pegRatio !== null && result.pegRatio !== undefined && result.pegRatio > 0 && (
               <Gauge value={result.pegRatio} config={PEG_GAUGE_CONFIG} />
-            ) : (
-              <GaugeUnavailable label="PEG ratio" />
             )}
-            {result.debtToEquity !== null && result.debtToEquity !== undefined ? (
+            {result.debtToEquity !== null && result.debtToEquity !== undefined && (
               <Gauge value={result.debtToEquity} config={DEBT_EQUITY_GAUGE_CONFIG} />
-            ) : (
-              <GaugeUnavailable label="Debt-to-Equity ratio" />
             )}
-            {result.returnOnEquity !== null && result.returnOnEquity !== undefined ? (
+            {result.returnOnEquity !== null && result.returnOnEquity !== undefined && (
               <Gauge value={result.returnOnEquity} config={ROE_GAUGE_CONFIG} />
-            ) : (
-              <GaugeUnavailable label="Return on Equity" />
             )}
-            {result.returnOnAssets !== null && result.returnOnAssets !== undefined ? (
+            {result.returnOnAssets !== null && result.returnOnAssets !== undefined && (
               <Gauge value={result.returnOnAssets} config={ROA_GAUGE_CONFIG} />
-            ) : (
-              <GaugeUnavailable label="Return on Assets" />
             )}
-            {result.currentRatio !== null && result.currentRatio !== undefined ? (
+            {result.currentRatio !== null && result.currentRatio !== undefined && (
               <Gauge value={result.currentRatio} config={CURRENT_RATIO_GAUGE_CONFIG} />
-            ) : (
-              <GaugeUnavailable label="Current Ratio" />
             )}
-            {result.netProfitMargin !== null && result.netProfitMargin !== undefined ? (
+            {result.netProfitMargin !== null && result.netProfitMargin !== undefined && (
               <Gauge value={result.netProfitMargin} config={NET_PROFIT_MARGIN_GAUGE_CONFIG} />
-            ) : (
-              <GaugeUnavailable label="Net Profit Margin" />
             )}
             {result.priceToFreeCashFlow !== null &&
-            result.priceToFreeCashFlow !== undefined &&
-            result.priceToFreeCashFlow > 0 ? (
-              <Gauge value={result.priceToFreeCashFlow} config={PRICE_FCF_GAUGE_CONFIG} />
-            ) : (
-              <GaugeUnavailable label="Price/Free Cash Flow" />
-            )}
+              result.priceToFreeCashFlow !== undefined &&
+              result.priceToFreeCashFlow > 0 && (
+                <Gauge value={result.priceToFreeCashFlow} config={PRICE_FCF_GAUGE_CONFIG} />
+              )}
           </div>
         </div>
       )}
