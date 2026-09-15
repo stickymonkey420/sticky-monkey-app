@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/dashboard/netWorth";
 import { fetchManualAccounts, fetchPlaidTransactions } from "@/lib/wallet/queries";
 import { computeWalletOverview, type WalletOverview } from "@/lib/wallet/calc";
+import { useProfile } from "@/lib/profile/ProfileProvider";
 import InvestmentAlertCard from "./InvestmentAlertCard";
 import QuickAccessCard from "./QuickAccessCard";
 
@@ -24,15 +25,13 @@ const EMPTY_OVERVIEW: WalletOverview = {
   monthExpense: 0,
 };
 
-type ProfileLite = { name: string | null; email: string | null; avatar_url: string | null };
-
 // Right-side profile panel for the Dashboard -- ported to match the live
 // Webflow site's actual chrome (solid rgb(21,27,40) outer card, 30px
 // radius, no border; a darker rgb(32,40,56) nested "Current Balance" box;
 // Investment Alert and Quick Access nested inside the same panel) rather
 // than the earlier pass's invented green-border treatment.
 export default function ProfileSummaryCard() {
-  const [profile, setProfile] = useState<ProfileLite | null>(null);
+  const { profile } = useProfile();
   const [overview, setOverview] = useState<WalletOverview>(EMPTY_OVERVIEW);
   const [loading, setLoading] = useState(true);
 
@@ -49,14 +48,12 @@ export default function ProfileSummaryCard() {
         return;
       }
 
-      const [{ data: profileData }, accounts, txs] = await Promise.all([
-        supabase.from("profiles").select("name,email,avatar_url").eq("id", user.id).maybeSingle(),
+      const [accounts, txs] = await Promise.all([
         fetchManualAccounts(supabase, user.id),
         fetchPlaidTransactions(supabase, user.id),
       ]);
 
       if (cancelled) return;
-      if (profileData) setProfile(profileData as ProfileLite);
       setOverview(computeWalletOverview(accounts, txs));
       setLoading(false);
     }

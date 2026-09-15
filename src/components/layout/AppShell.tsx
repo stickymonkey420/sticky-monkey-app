@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import ProfileSummaryCard from "@/components/dashboard/ProfileSummaryCard";
+import { ProfileProvider } from "@/lib/profile/ProfileProvider";
 import SignOutButton from "./SignOutButton";
 import TopBar from "./TopBar";
 
@@ -379,6 +380,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
+    <ProfileProvider>
     <div className="flex min-h-screen w-full flex-col overflow-x-hidden md:flex-row md:gap-4 md:p-4">
       {/* Mobile top bar: below the md breakpoint the desktop sidebar is
           hidden, so a hamburger opens the same nested nav as a full-height
@@ -475,5 +477,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <ProfileSummaryCard />
       </div>
     </div>
+    </ProfileProvider>
   );
 }

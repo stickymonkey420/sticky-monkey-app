@@ -4,14 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, ChevronDown, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useProfile } from "@/lib/profile/ProfileProvider";
 import SignOutButton from "./SignOutButton";
 
 // Fallback avatar -- same Webflow-hosted asset used as the default
 // `abu-avatar.jpg` everywhere else a user hasn't set profiles.avatar_url.
 const DEFAULT_AVATAR_URL =
   "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/6a973826f57d905329bc6275_abu-avatar-p-500.jpg";
-
-type ProfileLite = { name: string | null; email: string | null; avatar_url: string | null };
 
 // Global top bar: search, alerts bell (unread investment_alerts count), and
 // a profile avatar/dropdown. Lives in AppShell so it shows on every page
@@ -22,8 +21,8 @@ type ProfileLite = { name: string | null; email: string | null; avatar_url: stri
 // literal border the live design uses.
 export default function TopBar() {
   const router = useRouter();
+  const { profile } = useProfile();
   const [query, setQuery] = useState("");
-  const [profile, setProfile] = useState<ProfileLite | null>(null);
   const [alertCount, setAlertCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -38,17 +37,13 @@ export default function TopBar() {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [{ data: profileData }, { count }] = await Promise.all([
-        supabase.from("profiles").select("name,email,avatar_url").eq("id", user.id).maybeSingle(),
-        supabase
-          .from("investment_alerts")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .eq("dismissed", false),
-      ]);
+      const { count } = await supabase
+        .from("investment_alerts")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("dismissed", false);
 
       if (cancelled) return;
-      if (profileData) setProfile(profileData as ProfileLite);
       setAlertCount(count || 0);
     }
 
