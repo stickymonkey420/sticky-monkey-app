@@ -153,22 +153,28 @@ export default function GameAFiOverviewPage() {
             </select>
           </div>
 
-          <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-3">
-            <PortfolioDonutCard
-              title="Allocation"
-              slices={allocation.slices}
-              total={allocation.total}
-              loading={loading}
-              emptyLabel="No open positions yet -- place your first trade to get started."
-            />
-            <HeadToHeadCard loading={summaryLoading} summary={matchSummary} />
-            <PortfolioDonutCard
-              title="Industry Concentration"
-              slices={industryConcentration.slices}
-              total={industryConcentration.total}
-              loading={loading}
-              emptyLabel="No open positions yet -- place your first trade to get started."
-            />
+          <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-4">
+            <div className="md:col-span-1">
+              <PortfolioDonutCard
+                title="Allocation"
+                slices={allocation.slices}
+                total={allocation.total}
+                loading={loading}
+                emptyLabel="No open positions yet -- place your first trade to get started."
+              />
+            </div>
+            <div className="md:col-span-2">
+              <HeadToHeadCard loading={summaryLoading} summary={matchSummary} />
+            </div>
+            <div className="md:col-span-1">
+              <PortfolioDonutCard
+                title="Industry Concentration"
+                slices={industryConcentration.slices}
+                total={industryConcentration.total}
+                loading={loading}
+                emptyLabel="No open positions yet -- place your first trade to get started."
+              />
+            </div>
           </div>
 
           {loading ? (
