@@ -19,17 +19,19 @@ import type { PaperHolding } from "@/lib/gameAfi/paperTypes";
 // Replaces the old standalone "Holdings" leaf (formerly
 // app/(app)/monkey-monkey-holdings/page.tsx) per your call to merge Holdings
 // into a single Overview: the same match-scoped holdings table (Head to
-// Head paper trading -- see the paper-account-scoping migration) plus an
-// Allocation donut (per ticker, mirrors Invest's Portfolio Allocation
-// donuts) and, on the right, the OPPONENT's own holdings donut -- swapped in
-// per your call to replace Industry Concentration (still available as
-// IndustryBarChart/groupHoldingsByIndustry, just not surfaced here). Backed
-// by the same game_afi_match_opponent_trades RPC pattern as
-// game_afi_match_summary: a head-to-head match is a 1:1 agreement both
-// sides accepted, so exposing the opponent's per-ticker positions (not just
-// their totals) is fine here, scoped to just this one match. Both donuts
-// append a "Cash" row at the bottom (see allocationCalc's appendCash) so
-// the breakdown covers the whole account, not just the invested portion.
+// Head paper trading -- see the paper-account-scoping migration) plus a
+// per-ticker holdings donut (mirrors Invest's Portfolio Allocation donuts),
+// titled with the signed-in member's own @handle, and on the right the
+// OPPONENT's own holdings donut, titled with THEIR @handle -- swapped in per
+// your call to replace Industry Concentration (still available as
+// IndustryBarChart/groupHoldingsByIndustry, just not surfaced here). The
+// opponent donut is backed by the same game_afi_match_opponent_trades RPC
+// pattern as game_afi_match_summary: a head-to-head match is a 1:1
+// agreement both sides accepted, so exposing the opponent's per-ticker
+// positions (not just their totals) is fine here, scoped to just this one
+// match. Both donuts append a "Cash" row at the bottom (see allocationCalc's
+// appendCash) so the breakdown covers the whole account, not just the
+// invested portion.
 // These are simulated shares only -- never real holdings (those live under
 // Invest > Holdings, paid tier).
 export default function GameAFiOverviewPage() {
@@ -135,6 +137,10 @@ export default function GameAFiOverviewPage() {
     return matchSummary ? appendCash(base, matchSummary.opponent.cashBalance) : base;
   }, [oppHoldings, matchSummary]);
 
+  const myTitle = matchSummary
+    ? `@${matchSummary.me.username ?? matchSummary.me.name ?? "Me"} Holdings`
+    : "Allocation";
+
   const opponentTitle = matchSummary
     ? `@${matchSummary.opponent.username ?? matchSummary.opponent.name ?? "Opponent"} Holdings`
     : "Opponent Holdings";
@@ -176,7 +182,7 @@ export default function GameAFiOverviewPage() {
           <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-4">
             <div className="md:col-span-1">
               <PortfolioDonutCard
-                title="Allocation"
+                title={myTitle}
                 slices={allocation.slices}
                 total={allocation.total}
                 loading={loading}
