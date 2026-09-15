@@ -15,6 +15,7 @@ import {
 import { fetchTickerQuote } from "@/lib/screener/queries";
 import type { TickerQuoteResult } from "@/lib/screener/types";
 import Gauge from "./Gauge";
+import TickerCostAndActions from "./TickerCostAndActions";
 
 // Port of the live script's ticker-search widget: a single input + button
 // hitting the `ticker-quote-lookup` edge function, rendering a price card
@@ -92,7 +93,7 @@ export default function TickerLookup() {
       {result && (
         <div className="flex flex-col gap-4">
           <div className="rounded-[14px] border border-white/[0.12] bg-white/[0.03] p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="text-lg font-bold text-text-primary">{result.symbol}</div>
                 {result.companyName && <div className="mt-0.5 text-base text-text-muted">{result.companyName}</div>}
@@ -114,6 +115,8 @@ export default function TickerLookup() {
                   </div>
                 )}
               </div>
+
+              <TickerCostAndActions ticker={result.symbol} />
 
               {result.stickyMonkeyScore !== null && result.stickyMonkeyScore !== undefined && (
                 <StickyMonkeyScoreCard result={result} />

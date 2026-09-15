@@ -20,6 +20,39 @@ export async function fetchHoldings(
   return error ? [] : ((data as Holding[]) || []);
 }
 
+// Actual (real) average cost for one ticker, across every account_type row
+// that holds it -- used by the Stock Screener ticker card's "Actual Avg
+// Cost" line (see components/screener/TickerCostAndActions.tsx). Weighted
+// by shares rather than a plain average of cost_basis, since the same
+// ticker can be split across a brokerage + retirement account at different
+// cost bases. Callers are expected to gate this behind a paid-tier check
+// first (same as the Invest/Holdings nav group) -- free tier has no real
+// holdings tracked in the app at all, so there's nothing meaningful to
+// query here for them.
+export async function fetchActualAvgCostForTicker(
+  supabase: SupabaseClient,
+  userId: string,
+  ticker: string
+): Promise<{ shares: number; avgCost: number } | null> {
+  const { data, error } = await supabase
+    .from("positions")
+    .select("shares,cost_basis")
+    .eq("user_id", userId)
+    .eq("ticker", ticker);
+  if (error || !data || data.length === 0) return null;
+
+  let totalShares = 0;
+  let totalCost = 0;
+  for (const row of data as { shares: number | string; cost_basis: number | string | null }[]) {
+    const shares = Number(row.shares) || 0;
+    const costBasis = row.cost_basis === null ? 0 : Number(row.cost_basis) || 0;
+    totalShares += shares;
+    totalCost += shares * costBasis;
+  }
+  if (totalShares <= 0) return null;
+  return { shares: totalShares, avgCost: totalCost / totalShares };
+}
+
 // Unlike the Options page's fetchAccountTypeOptions() (filtered to
 // wheel_eligible=true -- that page only cares about accounts that support
 // the wheel strategy), Holdings shows positions across every configured

@@ -34,6 +34,55 @@ export async function fetchPaperTrades(supabase: SupabaseClient, userId: string)
   return (data ?? []) as PaperTrade[];
 }
 
+// Same as fetchPaperTrades but scoped to one ticker -- used by the Stock
+// Screener ticker card's "Monkey Monkey Avg Cost" box, which only needs
+// one ticker's position rather than the whole trade history.
+export async function fetchPaperTradesForTicker(
+  supabase: SupabaseClient,
+  userId: string,
+  ticker: string
+): Promise<PaperTrade[]> {
+  const { data, error } = await supabase
+    .from("paper_trades")
+    .select("id,ticker,side,shares,price,trade_date")
+    .eq("user_id", userId)
+    .eq("ticker", ticker)
+    .order("trade_date", { ascending: false });
+  if (error) {
+    console.error("fetchPaperTradesForTicker failed", error);
+    return [];
+  }
+  return (data ?? []) as PaperTrade[];
+}
+
+// Net position + simple average cost basis for a single ticker's trades
+// (already filtered to one ticker by the caller). Shared by computeHoldings
+// (one call per ticker group) and any single-ticker lookup (e.g. the Stock
+// Screener ticker card) so the walk-the-trades math lives in one place.
+export function computeAvgCost(tradesForOneTicker: PaperTrade[]): { shares: number; avgCost: number } | null {
+  // Walk trades oldest-first, maintaining a running average cost basis
+  // that only moves on buys -- a sell realizes P&L but doesn't change
+  // the remaining shares' average cost, standard simple-average method.
+  const chronological = tradesForOneTicker.slice().sort((a, b) => a.trade_date.localeCompare(b.trade_date));
+  let shares = 0;
+  let avgCost = 0;
+  for (const t of chronological) {
+    const qty = Number(t.shares);
+    const price = Number(t.price);
+    if (t.side === "buy") {
+      avgCost = shares + qty > 0 ? (avgCost * shares + price * qty) / (shares + qty) : price;
+      shares += qty;
+    } else {
+      shares -= qty;
+      if (shares <= 0) {
+        shares = 0;
+        avgCost = 0;
+      }
+    }
+  }
+  return shares > 0 ? { shares, avgCost } : null;
+}
+
 // Net position + simple average cost basis per ticker, derived from trade
 // history -- there's no separate holdings table. Current price comes from
 // stock_universe (same curated, already-synced universe paper trades are
@@ -49,27 +98,8 @@ export async function computeHoldings(supabase: SupabaseClient, trades: PaperTra
 
   const positions: { ticker: string; shares: number; avgCost: number }[] = [];
   for (const [ticker, rows] of byTicker) {
-    // Walk trades oldest-first, maintaining a running average cost basis
-    // that only moves on buys -- a sell realizes P&L but doesn't change
-    // the remaining shares' average cost, standard simple-average method.
-    const chronological = rows.slice().sort((a, b) => a.trade_date.localeCompare(b.trade_date));
-    let shares = 0;
-    let avgCost = 0;
-    for (const t of chronological) {
-      const qty = Number(t.shares);
-      const price = Number(t.price);
-      if (t.side === "buy") {
-        avgCost = shares + qty > 0 ? (avgCost * shares + price * qty) / (shares + qty) : price;
-        shares += qty;
-      } else {
-        shares -= qty;
-        if (shares <= 0) {
-          shares = 0;
-          avgCost = 0;
-        }
-      }
-    }
-    if (shares > 0) positions.push({ ticker, shares, avgCost });
+    const net = computeAvgCost(rows);
+    if (net) positions.push({ ticker, shares: net.shares, avgCost: net.avgCost });
   }
 
   if (positions.length === 0) return [];
