@@ -205,15 +205,10 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
                 className={FIELD_CLASS}
               />
             </div>
-            <div className="mb-3">
-              <label className="mb-1.5 block text-xs text-text-muted">Avatar URL</label>
-              <input
-                type="text"
-                value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
-                className={FIELD_CLASS}
-              />
-            </div>
+            {/* Avatar URL is intentionally not shown here -- it's a raw
+                storage/database URL and the user asked not to display those.
+                The value is still loaded and saved back unchanged (via
+                avatarUrl state below) so this form never wipes it out. */}
 
             <h3 className="mb-2.5 mt-5 text-xs font-bold uppercase tracking-wide text-text-muted">Account Types</h3>
             <div className="mb-2 flex flex-col gap-1">
