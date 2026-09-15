@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import PaperHoldingsTable from "@/components/gameAfi/PaperHoldingsTable";
 import PortfolioDonutCard from "@/components/invest/PortfolioDonutCard";
 import HeadToHeadCard from "@/components/gameAfi/HeadToHeadCard";
+import IndustryBarChart from "@/components/gameAfi/IndustryBarChart";
 import { usePaperTradingAccount } from "@/lib/gameAfi/usePaperTrading";
 import { fetchChallenges, fetchMatchSummary } from "@/lib/gameAfi/challengeQueries";
 import { fetchIndustryByTicker } from "@/lib/gameAfi/paperQueries";
@@ -20,12 +21,15 @@ import type { ChallengeRow, MatchSummary } from "@/lib/gameAfi/challengeTypes";
 // into a single Overview: the same match-scoped holdings table (Head to
 // Head paper trading -- see the paper-account-scoping migration) plus an
 // Allocation donut (per ticker, mirrors Invest's Portfolio Allocation
-// donuts) and an Industry Concentration donut (per stock_universe.industry,
-// so a member can see how much of a match's capital rides on one industry
-// regardless of how many different tickers it's split across). Both donuts
-// reuse PortfolioDonutCard/lib/palette.ts's fixed categorical order, same as
-// every other chart in this app. These are simulated shares only -- never
-// real holdings (those live under Invest > Holdings, paid tier).
+// donuts) and an Industry Concentration horizontal bar chart (per
+// stock_universe.industry, full descriptive name above each bar -- switched
+// from a donut per your call, since the shortened legend names it needed
+// read worse than the space they saved) so a member can see how much of a
+// match's capital rides on one industry regardless of how many different
+// tickers it's split across. Both charts pull from the same fixed
+// categorical order in lib/palette.ts as every other chart in this app.
+// These are simulated shares only -- never real holdings (those live under
+// Invest > Holdings, paid tier).
 export default function GameAFiOverviewPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [matches, setMatches] = useState<ChallengeRow[]>([]);
@@ -168,7 +172,7 @@ export default function GameAFiOverviewPage() {
               <HeadToHeadCard loading={summaryLoading} summary={matchSummary} holdings={holdings} />
             </div>
             <div className="md:col-span-1">
-              <PortfolioDonutCard
+              <IndustryBarChart
                 title="Industry Concentration"
                 slices={industryConcentration.slices}
                 total={industryConcentration.total}

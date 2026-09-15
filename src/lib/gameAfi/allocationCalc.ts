@@ -56,57 +56,23 @@ export function groupHoldingsByTicker(holdings: PaperHolding[]): DonutResult {
   return buildDonut(entries, (_name, rank) => CATEGORICAL_PALETTE[rank]);
 }
 
-// stock_universe.industry is Finnhub's full taxonomy label (e.g. "Drug
-// Manufacturers—General", "Information Technology Services") -- fine as
-// data, too long as a donut legend row. Explicit overrides for every
-// industry actually present in stock_universe as of this migration (see
-// `select distinct industry from stock_universe`), so the abbreviation is a
-// deliberate editorial choice rather than a truncation guess; anything not
-// in this list (a ticker the universe adds later, in a new industry) falls
-// back to a plain character-count truncation rather than crashing or
-// showing nothing.
-const INDUSTRY_LABEL_OVERRIDES: Record<string, string> = {
-  "Asset Management": "Asset Mgmt",
-  "Banks—Diversified": "Banks",
-  "Beverages—Non-Alcoholic": "Beverages",
-  "Communication Equipment": "Comm. Equipment",
-  "Diagnostics & Research": "Diagnostics",
-  "Drug Manufacturers—General": "Drug Manufacturers",
-  "Farm & Heavy Construction Machinery": "Heavy Machinery",
-  "Footwear & Accessories": "Footwear",
-  "Home Improvement Retail": "Home Improvement",
-  "Household & Personal Products": "Household Products",
-  "Information Technology Services": "IT Services",
-  "Integrated Freight & Logistics": "Freight & Logistics",
-  "Internet Content & Information": "Internet Content",
-  "Oil & Gas Equipment & Services": "Oil & Gas Equipment",
-  "REIT—Industrial": "REIT (Industrial)",
-  "REIT—Retail": "REIT (Retail)",
-  "REIT—Specialty": "REIT (Specialty)",
-  "Software—Application": "Software (App)",
-  "Software—Infrastructure": "Software (Infra)",
-  "Specialty Chemicals": "Chemicals",
-  "Utilities—Regulated Electric": "Utilities (Electric)",
-};
-const INDUSTRY_LABEL_MAX = 22;
-
-function shortenIndustry(name: string): string {
-  const mapped = INDUSTRY_LABEL_OVERRIDES[name] ?? name;
-  return mapped.length > INDUSTRY_LABEL_MAX ? `${mapped.slice(0, INDUSTRY_LABEL_MAX - 1)}…` : mapped;
-}
-
 // Industry concentration -- same holdings, grouped by stock_universe.industry
 // instead of ticker, so a member can see how much of a match's capital rides
 // on one industry regardless of how many different tickers it's split
 // across. A ticker whose industry hasn't synced (or that's since dropped out
-// of stock_universe) folds into "Unknown" rather than disappearing.
+// of stock_universe) folds into "Unknown" rather than disappearing. Uses the
+// full Finnhub taxonomy label as-is (e.g. "Drug Manufacturers—General") --
+// an earlier pass shortened these for a donut legend, but per your call to
+// revert to the descriptive names now that this renders as a bar list
+// (IndustryBarChart) with a full-width label line above each bar instead of
+// a cramped legend row.
 export function groupHoldingsByIndustry(
   holdings: PaperHolding[],
   industryByTicker: Map<string, string | null>
 ): DonutResult {
   const totals = new Map<string, number>();
   holdings.forEach((h) => {
-    const industry = shortenIndustry(industryByTicker.get(h.ticker) || "Unknown");
+    const industry = industryByTicker.get(h.ticker) || "Unknown";
     totals.set(industry, (totals.get(industry) || 0) + holdingValue(h));
   });
   const entries = Array.from(totals, ([name, value]) => ({ name, value }));
