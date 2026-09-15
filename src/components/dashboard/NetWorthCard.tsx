@@ -25,8 +25,15 @@ function money2(n: number | null | undefined): string {
 // (sampled via getComputedStyle): solid rgb(21,27,40) fill, 30px radius,
 // no border -- not the app's generic bordered rounded-2xl card used
 // elsewhere.
-const CARD_CLASS = "flex-1 rounded-[30px] p-[30px]";
+const CARD_CLASS = "rounded-[30px] p-[30px]";
 const CARD_BG = "#151b28";
+// Webflow's #nw-pie-card is its own fixed-ish width (~341px measured via
+// getComputedStyle on the live site), not an equal flex-1 split with Net
+// Worth -- Net Worth is wider because it also carries the Income table.
+// Asset Allocation stays full-width on mobile and caps at that width from
+// md up; Net Worth keeps flex-1 to fill whatever's left.
+const PIE_CARD_CLASS = `${CARD_CLASS} w-full shrink-0 md:w-[341px]`;
+const NW_CARD_CLASS = `${CARD_CLASS} min-w-0 flex-1`;
 
 export default function NetWorthCard() {
   const [summary, setSummary] = useState<NetWorthSummary>(EMPTY_SUMMARY);
@@ -87,7 +94,7 @@ export default function NetWorthCard() {
   return (
     <div id="nw-row" className="flex flex-col gap-6 md:flex-row">
       {/* Asset Allocation card */}
-      <div id="nw-pie-card" className={CARD_CLASS} style={{ backgroundColor: CARD_BG }}>
+      <div id="nw-pie-card" className={PIE_CARD_CLASS} style={{ backgroundColor: CARD_BG }}>
         <h3 className="mb-4 text-sm font-semibold text-text-primary">Asset Allocation</h3>
         {/* Webflow's own #nw-pie-card stacks the donut on top of the legend
             list (donut centered, legend rows full-width below) -- it does
@@ -141,7 +148,7 @@ export default function NetWorthCard() {
           side, and an embedded Income (Week/Month/YTD/Collateral) table,
           matching the live site's layout exactly rather than stacking
           Income as its own separate widget. */}
-      <div id="nw-card" className={CARD_CLASS} style={{ backgroundColor: CARD_BG }}>
+      <div id="nw-card" className={NW_CARD_CLASS} style={{ backgroundColor: CARD_BG }}>
         <h3 className="mb-4 text-sm font-semibold text-text-primary">Net Worth</h3>
         <div id="nw-net-worth-value" className="mb-4 text-4xl font-bold text-text-primary">
           {loading ? "…" : money(netWorth)}
