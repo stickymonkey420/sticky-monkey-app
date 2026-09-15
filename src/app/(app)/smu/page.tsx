@@ -51,7 +51,7 @@ export default function SmuPage() {
             controls
             preload="metadata"
             poster={SMU_CREST_URL}
-            className="w-full max-w-2xl rounded-xl border border-card-border"
+            className="w-full max-w-4xl rounded-xl border border-card-border"
           >
             <source src={VIDEO_URL} type="video/mp4" />
             Your browser doesn&apos;t support embedded video. You can{" "}
