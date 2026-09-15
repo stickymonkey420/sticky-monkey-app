@@ -107,7 +107,11 @@ export default function TopBar() {
           <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 rounded-xl border border-card-border bg-card-bg p-2 shadow-xl">
             <div className="px-3 py-2">
               <div className="truncate text-sm font-medium text-text-primary">{profile?.name || "Account"}</div>
-              {profile?.email && <div className="truncate text-xs text-text-muted">{profile.email}</div>}
+              {profile?.username ? (
+                <div className="truncate text-xs text-text-muted">@{profile.username}</div>
+              ) : (
+                profile?.email && <div className="truncate text-xs text-text-muted">{profile.email}</div>
+              )}
             </div>
             <div className="my-1 border-t border-card-border" />
             <button

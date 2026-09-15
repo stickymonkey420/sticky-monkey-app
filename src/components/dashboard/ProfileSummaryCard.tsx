@@ -70,15 +70,21 @@ export default function ProfileSummaryCard() {
       className="sticky top-4 flex w-full flex-col gap-6 overflow-y-auto rounded-[30px] p-[30px] md:h-[calc(100vh-2rem)] md:w-80 md:shrink-0"
       style={{ backgroundColor: "#151b28" }}
     >
-      {/* Avatar / name / email */}
+      {/* Avatar / name / handle (falls back to email if no handle is set yet) */}
       <div className="flex flex-col items-center text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={avatarUrl} alt={displayName} className="h-24 w-24 rounded-full object-cover" />
         <div className="mt-4 text-base font-semibold text-text-primary">{displayName}</div>
-        {profile?.email && (
-          <a href={`mailto:${profile.email}`} className="mt-1 text-sm" style={{ color: "#4f8cff" }}>
-            {profile.email}
-          </a>
+        {profile?.username ? (
+          <div className="mt-1 text-sm" style={{ color: "#4f8cff" }}>
+            @{profile.username}
+          </div>
+        ) : (
+          profile?.email && (
+            <a href={`mailto:${profile.email}`} className="mt-1 text-sm" style={{ color: "#4f8cff" }}>
+              {profile.email}
+            </a>
+          )
         )}
       </div>
 

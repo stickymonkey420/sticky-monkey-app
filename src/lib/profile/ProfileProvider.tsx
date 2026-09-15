@@ -3,7 +3,12 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export type ProfileLite = { name: string | null; email: string | null; avatar_url: string | null };
+export type ProfileLite = {
+  name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+  username: string | null; // the Game-a-Fi "handle" -- see src/lib/profile/handle.ts
+};
 
 const CACHE_KEY_PREFIX = "sm_profile_cache_";
 // Points at whichever user's cache entry above was written most recently,
@@ -121,7 +126,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
 
-      const { data } = await supabase.from("profiles").select("name,email,avatar_url").eq("id", user.id).maybeSingle();
+      const { data } = await supabase.from("profiles").select("name,email,avatar_url,username").eq("id", user.id).maybeSingle();
       if (cancelled) return;
       if (data) {
         const fresh = data as ProfileLite;
@@ -163,7 +168,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-    const { data } = await supabase.from("profiles").select("name,email,avatar_url").eq("id", user.id).maybeSingle();
+    const { data } = await supabase.from("profiles").select("name,email,avatar_url,username").eq("id", user.id).maybeSingle();
     if (data) {
       const fresh = data as ProfileLite;
       setProfile(fresh);
