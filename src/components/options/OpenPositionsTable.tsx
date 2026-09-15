@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   daysToExpiration,
@@ -49,6 +49,50 @@ function dteColor(dte: number | null): string | undefined {
 
 const ACTION_BTN_CLASS = "rounded-md border border-[#2a2f3f] px-2 py-1 text-xs text-text-primary hover:bg-white/5";
 
+// Sortable columns only -- "Mark as..." and "Actions" aren't data fields, so
+// clicking them wouldn't mean anything. "dte" is derived from `expiration`
+// at render/sort time (daysToExpiration()) rather than stored on the row.
+type SortKey = "ticker" | "type" | "strike" | "premium" | "contracts" | "returnPct" | "entryDate" | "expiration" | "dte";
+type SortDir = "asc" | "desc";
+
+const COLUMNS: { key: SortKey; label: string; align?: "right" }[] = [
+  { key: "ticker", label: "Ticker" },
+  { key: "type", label: "Type" },
+  { key: "strike", label: "Strike", align: "right" },
+  { key: "premium", label: "Premium", align: "right" },
+  { key: "contracts", label: "Contracts", align: "right" },
+  { key: "returnPct", label: "Return %", align: "right" },
+  { key: "entryDate", label: "Entry Date" },
+  { key: "expiration", label: "Expiration" },
+  { key: "dte", label: "DTE", align: "right" },
+];
+
+// Generic comparator: nulls/undefined always sort to the bottom regardless
+// of direction (so flipping sort direction never buries real values behind
+// a wall of "--" rows), everything else compares by type.
+function compareValues(a: unknown, b: unknown): number {
+  const aNull = a === null || a === undefined;
+  const bNull = b === null || b === undefined;
+  if (aNull && bNull) return 0;
+  if (aNull) return 1;
+  if (bNull) return -1;
+  if (typeof a === "string" && typeof b === "string") return a.localeCompare(b);
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a).localeCompare(String(b));
+}
+
+function sortValueFor(p: OpenPosition, key: SortKey): unknown {
+  switch (key) {
+    case "dte":
+      return daysToExpiration(p.expiration);
+    case "entryDate":
+    case "expiration":
+      return p[key] ? new Date(p[key] as string).getTime() : null;
+    default:
+      return p[key];
+  }
+}
+
 // Open Positions table -- read side ported from the wheel_trades
 // (status=open) + leap_positions rows rendered by rowHtml()/
 // renderPositions() in the live Webflow page's script; write side (Edit,
@@ -74,6 +118,9 @@ export default function OpenPositionsTable({
   // also passed an `onChanged` (which only needs to reload the sibling
   // PremiumSummaryCards).
   const [reloadTick, setReloadTick] = useState(0);
+  // Column sort -- null means "as loaded" (open-position insertion order).
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   useEffect(() => {
     let cancelled = false;
@@ -120,6 +167,21 @@ export default function OpenPositionsTable({
       window.removeEventListener("pageshow", onPageShow);
     };
   }, [accountType, refreshKey, reloadTick]);
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const sortedPositions = useMemo(() => {
+    if (!sortKey) return positions;
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...positions].sort((a, b) => dir * compareValues(sortValueFor(a, sortKey), sortValueFor(b, sortKey)));
+  }, [positions, sortKey, sortDir]);
 
   function afterMutation() {
     setReloadTick((t) => t + 1);
@@ -195,21 +257,32 @@ export default function OpenPositionsTable({
           <table className="w-full min-w-[960px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-white/10 text-left text-xs font-medium uppercase text-text-muted">
-                <th className="whitespace-nowrap py-2 pr-4">Ticker</th>
-                <th className="whitespace-nowrap py-2 pr-4">Type</th>
-                <th className="whitespace-nowrap py-2 pr-4 text-right">Strike</th>
-                <th className="whitespace-nowrap py-2 pr-4 text-right">Premium</th>
-                <th className="whitespace-nowrap py-2 pr-4 text-right">Contracts</th>
-                <th className="whitespace-nowrap py-2 pr-4 text-right">Return %</th>
-                <th className="whitespace-nowrap py-2 pr-4">Entry Date</th>
-                <th className="whitespace-nowrap py-2 pr-4">Expiration</th>
-                <th className="whitespace-nowrap py-2 pr-4 text-right">DTE</th>
+                {COLUMNS.map((col) => (
+                  <th
+                    key={col.key}
+                    className={`whitespace-nowrap py-2 pr-4 select-none ${col.align === "right" ? "text-right" : ""}`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSort(col.key)}
+                      className={`inline-flex items-center gap-1 uppercase text-text-muted hover:text-text-primary ${
+                        col.align === "right" ? "flex-row-reverse" : ""
+                      }`}
+                      aria-label={`Sort by ${col.label}`}
+                    >
+                      {col.label}
+                      <span className="text-[10px] leading-none" style={{ color: sortKey === col.key ? "#4f8cff" : undefined }}>
+                        {sortKey === col.key ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+                      </span>
+                    </button>
+                  </th>
+                ))}
                 <th className="whitespace-nowrap py-2 pr-4">Mark as...</th>
                 <th className="whitespace-nowrap py-2 pr-4">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
-              {positions.map((p) => {
+              {sortedPositions.map((p) => {
                 const dte = daysToExpiration(p.expiration);
                 return (
                   <tr key={`${p.source}-${p.id}`}>
