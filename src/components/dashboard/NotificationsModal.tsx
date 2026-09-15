@@ -4,18 +4,30 @@ import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { descLine, formatPrice, relTime, titleLine } from "@/lib/dashboard/investmentAlerts";
 import type { InvestmentAlert } from "@/lib/types/dashboard";
+import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
+import { fetchChallenges, respondToChallenge } from "@/lib/gameAfi/challengeQueries";
+import type { ChallengeRow } from "@/lib/gameAfi/challengeTypes";
+import { formatChallengeWhen, formatMoney } from "@/lib/gameAfi/format";
 
 const ALERT_COLUMNS = "id,title,description,ticker,action,price,message,triggered_at";
 
 // The "Notifications" popup -- shared by the Investment Alert card (Dashboard
 // profile pane) and the TopBar bell icon, so both open the exact same
 // window instead of two divergent alert UIs. Self-contained: fetches its
-// own alert list on mount (i.e. each time it's opened, since the parent
-// conditionally mounts it), independent of whatever preview data the
-// Investment Alert card is already polling for its own summary line.
-export default function NotificationsModal({ onClose }: { onClose: () => void }) {
+// own alert list AND its own pending Head to Head invites on mount (i.e.
+// each time it's opened, since the parent conditionally mounts it),
+// independent of whatever preview data the Investment Alert card is
+// already polling for its own summary line.
+//
+// onChange fires after any action here that could change the bell's badge
+// count (dismissing/deleting an alert, accepting/declining an invite) so
+// TopBar can re-fetch its counts -- this component has no way to update
+// that badge itself.
+export default function NotificationsModal({ onClose, onChange }: { onClose: () => void; onChange?: () => void }) {
   const [alerts, setAlerts] = useState<InvestmentAlert[]>([]);
+  const [invites, setInvites] = useState<ChallengeRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
   const [webhookOpen, setWebhookOpen] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
   const [webhookError, setWebhookError] = useState<string | null>(null);
@@ -36,16 +48,20 @@ export default function NotificationsModal({ onClose }: { onClose: () => void })
       }
       userIdRef.current = user.id;
 
-      const { data, error } = await supabase
-        .from("investment_alerts")
-        .select(ALERT_COLUMNS)
-        .eq("user_id", user.id)
-        .eq("dismissed", false)
-        .order("triggered_at", { ascending: false })
-        .limit(100);
+      const [alertsRes, challengeRows] = await Promise.all([
+        supabase
+          .from("investment_alerts")
+          .select(ALERT_COLUMNS)
+          .eq("user_id", user.id)
+          .eq("dismissed", false)
+          .order("triggered_at", { ascending: false })
+          .limit(100),
+        fetchChallenges(supabase),
+      ]);
 
       if (cancelled) return;
-      setAlerts(error ? [] : (data as InvestmentAlert[]) || []);
+      setAlerts(alertsRes.error ? [] : (alertsRes.data as InvestmentAlert[]) || []);
+      setInvites(challengeRows.filter((c) => c.direction === "received" && c.status === "pending"));
       setLoading(false);
     }
 
@@ -69,14 +85,31 @@ export default function NotificationsModal({ onClose }: { onClose: () => void })
       .from("investment_alerts")
       .update({ dismissed: true, dismissed_at: new Date().toISOString() })
       .eq("id", id);
-    if (!error) setAlerts((prev) => prev.filter((a) => a.id !== id));
+    if (!error) {
+      setAlerts((prev) => prev.filter((a) => a.id !== id));
+      onChange?.();
+    }
   }
 
   async function deleteAlert(id: string) {
     if (!window.confirm("Delete this alert? This cannot be undone.")) return;
     const supabase = createClient();
     const { error } = await supabase.from("investment_alerts").delete().eq("id", id);
-    if (!error) setAlerts((prev) => prev.filter((a) => a.id !== id));
+    if (!error) {
+      setAlerts((prev) => prev.filter((a) => a.id !== id));
+      onChange?.();
+    }
+  }
+
+  async function respondToInvite(id: string, accept: boolean) {
+    setRespondingId(id);
+    const supabase = createClient();
+    const { error } = await respondToChallenge(supabase, id, accept);
+    setRespondingId(null);
+    if (!error) {
+      setInvites((prev) => prev.filter((c) => c.id !== id));
+      onChange?.();
+    }
   }
 
   async function toggleWebhook() {
@@ -127,6 +160,55 @@ export default function NotificationsModal({ onClose }: { onClose: () => void })
             ✕
           </button>
         </div>
+
+        {!loading && invites.length > 0 && (
+          <div className="mb-3 border-b border-white/10 pb-3">
+            <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+              Head to Head Invites
+            </div>
+            {invites.map((c) => (
+              <div key={c.id} className="flex items-start gap-3 border-b border-white/10 py-3 last:border-b-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={c.other_avatar_url || DEFAULT_AVATAR_URL}
+                  alt={c.other_username || c.other_name || "Member"}
+                  className="h-9 w-9 shrink-0 rounded-full object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-text-primary">
+                    {c.other_username ? `@${c.other_username}` : c.other_name || "Member"} challenged you
+                  </div>
+                  <div className="mt-0.5 text-xs" style={{ color: "#4f8cff" }}>
+                    {formatMoney(c.starting_balance)} starting capital
+                    {c.expires_at && ` · Ends ${formatChallengeWhen(c.expires_at)}`}
+                  </div>
+                  {c.message && (
+                    <div className="mt-0.5 truncate text-xs text-text-muted">&ldquo;{c.message}&rdquo;</div>
+                  )}
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={respondingId === c.id}
+                      onClick={() => respondToInvite(c.id, true)}
+                      className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                      style={{ backgroundColor: "#3ddc97" }}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      disabled={respondingId === c.id}
+                      onClick={() => respondToInvite(c.id, false)}
+                      className="rounded-lg border border-card-border px-3 py-1.5 text-xs font-semibold text-text-muted disabled:opacity-60"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div id="ia-alert-list">
           {loading ? (

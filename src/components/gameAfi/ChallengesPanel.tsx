@@ -5,16 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
 import { cancelChallenge, fetchChallenges, respondToChallenge, sendChallenge } from "@/lib/gameAfi/challengeQueries";
 import type { ChallengeRow } from "@/lib/gameAfi/challengeTypes";
+import { formatChallengeWhen as formatWhen, formatMoney } from "@/lib/gameAfi/format";
 
 const DEFAULT_STARTING_BALANCE = "10000";
-
-function formatWhen(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function formatMoney(n: number): string {
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-}
 
 // today's date as a yyyy-mm-dd string, for the expiration <input type="date"> min.
 function todayIso(): string {

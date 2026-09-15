@@ -8,45 +8,70 @@ import { useProfile } from "@/lib/profile/ProfileProvider";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
 import MyProfileModal from "@/components/profile/MyProfileModal";
 import NotificationsModal from "@/components/dashboard/NotificationsModal";
+import { fetchChallenges } from "@/lib/gameAfi/challengeQueries";
 import SignOutButton from "./SignOutButton";
 
-// Global top bar: search, alerts bell (unread investment_alerts count), and
-// a profile avatar/dropdown. Lives in AppShell so it shows on every page
-// alongside the sidebar. Styled flat/borderless to match the live Webflow
-// site exactly (plain icon + placeholder text on the page background, a
-// 36px avatar, a small red count badge on the bell) -- the earlier pass's
-// green "featured" borders were reference pointers on the mockup, not a
-// literal border the live design uses.
+// Global top bar: search, notifications bell (unread investment_alerts +
+// pending Head to Head invites), and a profile avatar/dropdown. Lives in
+// AppShell so it shows on every page alongside the sidebar. Styled
+// flat/borderless to match the live Webflow site exactly (plain icon +
+// placeholder text on the page background, a 36px avatar, a small red
+// count badge on the bell) -- the earlier pass's green "featured" borders
+// were reference pointers on the mockup, not a literal border the live
+// design uses.
 export default function TopBar() {
   const router = useRouter();
   const { profile } = useProfile();
   const [query, setQuery] = useState("");
   const [alertCount, setAlertCount] = useState(0);
+  const [inviteCount, setInviteCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  async function loadNotificationCounts() {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const [{ count }, challenges] = await Promise.all([
+      supabase
+        .from("investment_alerts")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("dismissed", false),
+      fetchChallenges(supabase),
+    ]);
+
+    setAlertCount(count || 0);
+    setInviteCount(challenges.filter((c) => c.direction === "received" && c.status === "pending").length);
+  }
+
   useEffect(() => {
     let cancelled = false;
-    const supabase = createClient();
-
     async function load() {
+      const supabase = createClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { count } = await supabase
-        .from("investment_alerts")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("dismissed", false);
+      const [{ count }, challenges] = await Promise.all([
+        supabase
+          .from("investment_alerts")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("dismissed", false),
+        fetchChallenges(supabase),
+      ]);
 
       if (cancelled) return;
       setAlertCount(count || 0);
+      setInviteCount(challenges.filter((c) => c.direction === "received" && c.status === "pending").length);
     }
-
     load();
     return () => {
       cancelled = true;
@@ -93,12 +118,12 @@ export default function TopBar() {
         className="relative flex shrink-0 items-center"
       >
         <Bell size={18} className="text-text-primary" strokeWidth={1.75} />
-        {alertCount > 0 && (
+        {alertCount + inviteCount > 0 && (
           <span
             className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
             style={{ backgroundColor: "#eb5757" }}
           >
-            {alertCount > 9 ? "9+" : alertCount}
+            {alertCount + inviteCount > 9 ? "9+" : alertCount + inviteCount}
           </span>
         )}
       </button>
@@ -138,7 +163,9 @@ export default function TopBar() {
       </div>
 
       {profileModalOpen && <MyProfileModal onClose={() => setProfileModalOpen(false)} />}
-      {notificationsOpen && <NotificationsModal onClose={() => setNotificationsOpen(false)} />}
+      {notificationsOpen && (
+        <NotificationsModal onClose={() => setNotificationsOpen(false)} onChange={loadNotificationCounts} />
+      )}
     </header>
   );
 }
