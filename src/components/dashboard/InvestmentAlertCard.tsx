@@ -74,7 +74,7 @@ export default function InvestmentAlertCard() {
         className="w-full rounded-[30px] bg-[rgb(32,40,56)] p-[30px] text-left"
       >
         <div className="mb-3 flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-text-primary">Investment Alert</h3>
+          <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
           <span
             id="ia-alert-dot"
             className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
