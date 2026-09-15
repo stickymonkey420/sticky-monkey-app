@@ -137,12 +137,10 @@ export default function GameAFiOverviewPage() {
     return matchSummary ? appendCash(base, matchSummary.opponent.cashBalance) : base;
   }, [oppHoldings, matchSummary]);
 
-  const myTitle = matchSummary
-    ? `@${matchSummary.me.username ?? matchSummary.me.name ?? "Me"} Holdings`
-    : "Allocation";
+  const myTitle = matchSummary ? `@${matchSummary.me.username ?? matchSummary.me.name ?? "Me"}` : "Allocation";
 
   const opponentTitle = matchSummary
-    ? `@${matchSummary.opponent.username ?? matchSummary.opponent.name ?? "Opponent"} Holdings`
+    ? `@${matchSummary.opponent.username ?? matchSummary.opponent.name ?? "Opponent"}`
     : "Opponent Holdings";
 
   return (

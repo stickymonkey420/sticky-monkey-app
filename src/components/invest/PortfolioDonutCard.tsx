@@ -56,7 +56,7 @@ export default function PortfolioDonutCard({
 
   return (
     <div id={id} className="flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-5">
-      <h3 className="mb-4 text-sm font-semibold text-text-primary">{title}</h3>
+      <h3 className="mb-4 text-center text-sm font-semibold text-text-primary">{title}</h3>
       {/* Donut centered on top, full-width key below it -- stacked instead of
           side-by-side so the legend gets the card's whole width to itself
           and ticker names stop getting clipped in a narrow shared column. */}
@@ -85,9 +85,9 @@ export default function PortfolioDonutCard({
                       className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: s.color }}
                     />
-                    <span className="min-w-0 break-words text-sm text-text-primary">{s.name}</span>
+                    <span className="min-w-0 break-words text-base text-text-primary">{s.name}</span>
                   </div>
-                  <div className="shrink-0 text-sm text-text-muted">
+                  <div className="shrink-0 text-base text-text-muted">
                     {formatValue(s.value)} ({pct.toFixed(0)}%)
                   </div>
                 </div>

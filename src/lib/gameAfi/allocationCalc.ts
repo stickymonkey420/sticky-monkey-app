@@ -56,9 +56,11 @@ export function groupHoldingsByTicker(holdings: PaperHolding[]): DonutResult {
   return buildDonut(entries, (_name, rank) => CATEGORICAL_PALETTE[rank]);
 }
 
-// Distinct from every categorical slot AND from OTHER_COLOR -- app's own
-// accent-teal token (see globals.css), not otherwise used by these charts.
-export const CASH_COLOR = "#34c9c9";
+// "Cash green" per your call -- a vivid grass green, distinct from both
+// OTHER_COLOR (a gray) and the categorical palette's own dark green (slot 6,
+// "#008300") so a top-6 ticker in that slot never gets confused with the
+// Cash row sitting next to it in the legend.
+export const CASH_COLOR = "#22c55e";
 const CASH_LABEL = "Cash";
 
 // Appends a "Cash" row after whatever groupHoldingsByTicker already built --
