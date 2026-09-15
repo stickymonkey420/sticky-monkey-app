@@ -144,6 +144,27 @@ export async function computeHoldings(supabase: SupabaseClient, trades: PaperTra
   });
 }
 
+// Ticker -> industry lookup for the Overview page's Industry Concentration
+// donut (see lib/gameAfi/allocationCalc.ts groupHoldingsByIndustry). A
+// ticker with no row (or a null industry) is simply absent from the map --
+// the caller folds it into "Unknown" rather than dropping its value.
+export async function fetchIndustryByTicker(
+  supabase: SupabaseClient,
+  tickers: string[]
+): Promise<Map<string, string | null>> {
+  const map = new Map<string, string | null>();
+  if (tickers.length === 0) return map;
+  const { data, error } = await supabase.from("stock_universe").select("ticker,industry").in("ticker", tickers);
+  if (error) {
+    console.error("fetchIndustryByTicker failed", error);
+    return map;
+  }
+  for (const row of (data ?? []) as { ticker: string; industry: string | null }[]) {
+    map.set(row.ticker, row.industry);
+  }
+  return map;
+}
+
 export async function executeTrade(
   supabase: SupabaseClient,
   ticker: string,

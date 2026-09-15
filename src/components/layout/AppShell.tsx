@@ -97,7 +97,8 @@ const LOGO_WORDMARK_URL =
 // List/Create Invoices Webflow pages, confirmed unused template
 // boilerplate, so it's omitted rather than shipped as a dead link.
 //
-// "Game-a-Fi" (href /game-a-fi) was the live site's "Director test build"
+// "Game-O-Fi" (href /game-a-fi, group label renamed from "Game-a-Fi" per
+// your call) was the live site's "Director test build"
 // stub -- restructured per your explicit call into a fantasy-football-
 // style weekly standings board (not head-to-head matchups): every
 // member's real portfolio return % for the week sets their placement,
@@ -112,9 +113,10 @@ const LOGO_WORDMARK_URL =
 // app_director-only RLS on game_players/game_watchlist, which are left
 // untouched and unused for now. Phase 2 (components/gameAfi/PaperTrading*)
 // added a $10,000 paper-trading competition alongside it -- $ amounts are
-// fine to show there since nothing real is at risk -- and its "Holdings"
-// nav leaf (see app/(app)/monkey-monkey-holdings/page.tsx) surfaces just
-// that paper account's positions on their own page.
+// fine to show there since nothing real is at risk -- and its "Overview"
+// nav leaf (see app/(app)/game-a-fi-overview/page.tsx, merged from the old
+// standalone "Holdings" leaf per your call) surfaces that match's positions
+// plus Allocation/Industry Concentration donuts on their own page.
 //
 // Left out on purpose: "Travel" (Businesses) -- the live site's own link
 // is an unwired `#` placeholder; a second, mislabeled "Invoices" dropdown
@@ -239,12 +241,12 @@ const NAV_TREE: NavNode[] = [
     ],
   },
   {
-    label: "Game-a-Fi",
+    label: "Game-O-Fi",
     icon: Trophy,
     children: [
+      { href: "/game-a-fi-overview", label: "Overview" },
+      { href: "/stock-screener", label: "Screener" },
       { href: "/game-a-fi", label: "Standings" },
-      { href: "/stock-screener", label: "Stock Screener" },
-      { href: "/monkey-monkey-holdings", label: "Holdings" },
     ],
   },
   { href: "/investors", label: "Owners", requires: "owner", icon: Crown },

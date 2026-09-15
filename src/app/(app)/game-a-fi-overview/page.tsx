@@ -1,32 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import PaperHoldingsTable from "@/components/gameAfi/PaperHoldingsTable";
+import PortfolioDonutCard from "@/components/invest/PortfolioDonutCard";
 import { usePaperTradingAccount } from "@/lib/gameAfi/usePaperTrading";
 import { fetchChallenges } from "@/lib/gameAfi/challengeQueries";
+import { fetchIndustryByTicker } from "@/lib/gameAfi/paperQueries";
+import { groupHoldingsByIndustry, groupHoldingsByTicker } from "@/lib/gameAfi/allocationCalc";
 import { formatMoney } from "@/lib/gameAfi/format";
 import type { ChallengeRow } from "@/lib/gameAfi/challengeTypes";
 
-// Nav: Game-a-Fi > Holdings (route flattened to /monkey-monkey-holdings,
+// Nav: Game-O-Fi > Overview (route flattened to /game-a-fi-overview,
 // matching this app's convention of flat top-level paths for nav leaves --
-// e.g. /invest-accounts, /closed-positions -- rather than nested folders;
-// also sidesteps NavItem's isLeafActive() prefix matching, which would
-// otherwise also highlight the sibling "Standings" link (/game-a-fi) any
-// time this page (/game-a-fi/holdings) was active). Holdings are scoped per
-// Head to Head match (each an isolated paper account seeded with its own
-// agreed starting capital -- see the paper-account-scoping migration), same
-// as BuyPaperTradeModal's account picker. The free-standing "Monkey Monkey"
-// practice account is no longer surfaced anywhere in the UI (per the user:
-// "I don't think I need monkey monkey"), so this page no longer defaults to
-// it -- doing so always showed empty holdings once trading moved to
-// match-scoped accounts. These are simulated shares only -- never real
-// holdings (those live under Invest > Holdings, paid tier).
-export default function GameAFiHoldingsPage() {
+// e.g. /invest-accounts, /closed-positions -- rather than nested folders).
+// Replaces the old standalone "Holdings" leaf (formerly
+// app/(app)/monkey-monkey-holdings/page.tsx) per your call to merge Holdings
+// into a single Overview: the same match-scoped holdings table (Head to
+// Head paper trading -- see the paper-account-scoping migration) plus an
+// Allocation donut (per ticker, mirrors Invest's Portfolio Allocation
+// donuts) and an Industry Concentration donut (per stock_universe.industry,
+// so a member can see how much of a match's capital rides on one industry
+// regardless of how many different tickers it's split across). Both donuts
+// reuse PortfolioDonutCard/lib/palette.ts's fixed categorical order, same as
+// every other chart in this app. These are simulated shares only -- never
+// real holdings (those live under Invest > Holdings, paid tier).
+export default function GameAFiOverviewPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [matches, setMatches] = useState<ChallengeRow[]>([]);
   const [matchesLoaded, setMatchesLoaded] = useState(false);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
+  const [industryByTicker, setIndustryByTicker] = useState<Map<string, string | null>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -54,10 +58,40 @@ export default function GameAFiHoldingsPage() {
   const hasMatch = selectedChallengeId !== null;
   const { loading, holdings } = usePaperTradingAccount(hasMatch ? userId : null, selectedChallengeId);
 
+  // Industry lookup only needs to (re)run when the actual set of tickers
+  // held changes -- not on every holdings re-render (e.g. a price refresh),
+  // so it's keyed off the sorted ticker list rather than the holdings array
+  // reference.
+  const tickerKey = useMemo(() => holdings.map((h) => h.ticker).sort().join(","), [holdings]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const tickers = tickerKey ? tickerKey.split(",") : [];
+      if (tickers.length === 0) {
+        if (!cancelled) setIndustryByTicker(new Map());
+        return;
+      }
+      const supabase = createClient();
+      const map = await fetchIndustryByTicker(supabase, tickers);
+      if (!cancelled) setIndustryByTicker(map);
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [tickerKey]);
+
+  const allocation = useMemo(() => groupHoldingsByTicker(holdings), [holdings]);
+  const industryConcentration = useMemo(
+    () => groupHoldingsByIndustry(holdings, industryByTicker),
+    [holdings, industryByTicker]
+  );
+
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-text-primary">Game-a-Fi -- Holdings</h1>
+        <h1 className="text-xl font-semibold text-text-primary">Game-O-Fi -- Overview</h1>
       </div>
       <p className="mb-6 text-sm text-text-muted">
         Your Head to Head paper trading holdings -- simulated shares only, priced off the Stock Screener universe.
@@ -69,7 +103,7 @@ export default function GameAFiHoldingsPage() {
       ) : matches.length === 0 ? (
         <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">
           You need an accepted Head to Head match before you have any holdings to show. Send or accept a challenge on
-          the Head to Head tab first.
+          the Standings tab first.
         </div>
       ) : (
         <>
@@ -86,6 +120,23 @@ export default function GameAFiHoldingsPage() {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+            <PortfolioDonutCard
+              title="Allocation"
+              slices={allocation.slices}
+              total={allocation.total}
+              loading={loading}
+              emptyLabel="No open positions yet -- place your first trade to get started."
+            />
+            <PortfolioDonutCard
+              title="Industry Concentration"
+              slices={industryConcentration.slices}
+              total={industryConcentration.total}
+              loading={loading}
+              emptyLabel="No open positions yet -- place your first trade to get started."
+            />
           </div>
 
           {loading ? (
