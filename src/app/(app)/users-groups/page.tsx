@@ -6,7 +6,7 @@ import EditProfileModal from "@/components/usersGroups/EditProfileModal";
 import SurveyModal from "@/components/usersGroups/SurveyModal";
 import { createClient } from "@/lib/supabase/client";
 import {
-  deleteProfile,
+  deleteAccount,
   fetchMyRole,
   fetchProfiles,
   saveProfileDetails,
@@ -87,10 +87,9 @@ export default function UsersGroupsPage() {
   }
 
   async function handleDelete(profile: Profile) {
-    const supabase = createClient();
-    const { error } = await deleteProfile(supabase, profile.id);
+    const { error } = await deleteAccount(profile.id);
     if (error) {
-      showStatus("Could not delete this account.", true);
+      showStatus(error, true);
       return;
     }
     setProfiles((rows) => rows.filter((p) => p.id !== profile.id));

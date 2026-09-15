@@ -55,7 +55,7 @@ export default function UserRow({
   async function handleDelete() {
     if (
       !window.confirm(
-        `Permanently delete ${profile.name || profile.email || profile.id}'s profile and all of their trades, positions, and LEAPs? This cannot be undone.`
+        `Permanently delete ${profile.name || profile.email || profile.id}'s account -- profile, trades, positions, LEAPs, and their ability to sign in? This cannot be undone.`
       )
     ) {
       return;

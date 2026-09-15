@@ -91,13 +91,30 @@ export async function saveSurvey(supabase: SupabaseClient, id: string, input: Su
   return { error: error ? error.message : null };
 }
 
-// App Director only (enforced by RLS) -- deletes the profile row. The live
-// script's own confirm copy warns this also removes the account's trades/
-// positions/LEAPs, implying an ON DELETE CASCADE from those tables to
-// profiles.id, which this port relies on rather than re-implements.
-export async function deleteProfile(supabase: SupabaseClient, id: string): Promise<MutationResult> {
-  const { error } = await supabase.from("profiles").delete().eq("id", id);
-  return { error: error ? error.message : null };
+// Full account purge, via the /api/admin/delete-account route -- NOT a
+// direct `profiles` delete. Deleting only the profile row (the old
+// behavior) left the actual Supabase Auth user (auth.users) intact, so a
+// "deleted" member could still sign in with no profile -- a phantom
+// account. The API route uses the Supabase service-role key (required:
+// never available to this RLS-scoped client) to remove the real auth user,
+// which cascades to profiles, trades, positions, LEAPs, portfolio history,
+// and everything else via ON DELETE CASCADE. See that route for the
+// handful of non-cascading exceptions it handles explicitly.
+export async function deleteAccount(id: string): Promise<MutationResult> {
+  try {
+    const res = await fetch("/api/admin/delete-account", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: id }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      return { error: body.error || "Could not delete this account." };
+    }
+    return { error: null };
+  } catch {
+    return { error: "Could not delete this account." };
+  }
 }
 
 // Same Supabase Auth recovery flow as the standalone forgot-password page
