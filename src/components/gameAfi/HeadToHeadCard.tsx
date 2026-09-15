@@ -1,75 +1,84 @@
-import { Crown } from "lucide-react";
+"use client";
+
+import { useEffect, useState } from "react";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
-import { formatMoney, formatChallengeWhen } from "@/lib/gameAfi/format";
+import { formatMoney } from "@/lib/gameAfi/format";
 import type { MatchSummary } from "@/lib/gameAfi/challengeTypes";
+import type { PaperHolding } from "@/lib/gameAfi/paperTypes";
 
 // Middle card of the Overview page's row (Allocation / Head to Head /
-// Industry Concentration), spanning double width -- an animated "high
-// roller table" so the two sides of a match read as a visual, not just a
-// number: each player faces the camera with a bundled-cash stack in front
-// of them, one bundle per $20,000 of their current total value (cash +
-// holdings) -- a concrete, literal denomination rather than an arbitrary
-// relative bar, per your call after the first cut read as too cartoonish.
-// A stack over 6 bundles caps its visual height and shows a "x{count}"
-// count tag instead of rendering dozens of bricks. Winner gets a soft gold
-// glow ring + a gently breathing crown -- pure decoration layered ON TOP of
-// the real $ and % figures printed under each stack, never a replacement
-// for them (a purely visual "who's bigger" signal would fail colorblind/
-// low-vision readers). Keyframes (htohRise/htohGlow/htohBreathe) live in
-// src/app/globals.css, referenced here via Tailwind's arbitrary
-// animate-[name_duration_timing_fill] utility -- kept deliberately subtle
-// (small offsets, soft glow) rather than the bouncy/rotated first pass.
+// Industry Concentration), spanning double width -- an "Arena Jumbotron"
+// scoreboard, picked from 3 mocked-up directions (poker table w/ cash
+// stacks and this jumbotron -- see the published Scoreboard Draft
+// artifact) after the first two cuts read as too cartoonish. Black LED
+// panel, amber glow, a chasing marquee border, a blinking game-clock colon
+// counting down to the match's expiration -- all decoration layered ON TOP
+// of the real $ and % figures, never a replacement for them (a purely
+// visual "who's bigger" signal would fail colorblind/low-vision readers).
+// Keyframes (htohGlow/htohBulbChase/htohColonBlink) live in
+// src/app/globals.css; the VT323/Chakra Petch display fonts are loaded
+// once in app/layout.tsx (next/font/google, same pattern as Geist) and
+// referenced here only via their CSS variables.
+//
+// Below the scoreboard itself: a "Top Performers" strip -- your 5
+// best-returning open positions in THIS match, ranked by % unrealized
+// gain (not position size), like the stat leaders ticker a real jumbotron
+// runs under the score. Added per your call to give the card more height
+// and put it to use rather than leaving empty space.
 //
 // Reuses PortfolioDonutCard's own card chrome (rounded-2xl border
 // border-card-border bg-card-bg p-5, h-full) so it still lines up with its
 // two donut siblings, just wider (see the Overview page's grid: this card
 // spans 2 of 4 columns, the donuts 1 each).
 
-const GOLD = "#d9b56a";
-const BUNDLE_VALUE = 20000; // one cash bundle = $20K of total value
-const MAX_VISIBLE_BUNDLES = 6;
-const BUNDLE_HEIGHT = 9;
-const BUNDLE_OVERLAP = 6;
-// Layered gradient (not a solid fill) so each brick reads as paper bills
-// with a currency strap through the middle, without a second DOM element.
-const BUNDLE_GRADIENT =
-  "linear-gradient(90deg, #1c5b46 0%, #2f9d74 42%, #d9b56a 48%, #d9b56a 52%, #2f9d74 58%, #1c5b46 100%)";
+const AMBER = "#ffb648";
+const VT323 = "var(--font-vt323)";
+const CHAKRA = "var(--font-chakra-petch)";
+const MARQUEE_BULBS = 12;
+const TOP_PERFORMER_LIMIT = 5;
 
-function bundlesFor(value: number): number {
-  return Math.max(1, Math.round(value / BUNDLE_VALUE));
+type Performer = { ticker: string; pctReturn: number; dollarPl: number };
+
+// Ranked by % unrealized gain since acquired ("to date"), not by position
+// size -- a small position that's up big still outranks a large one that's
+// flat. Holdings with no live price (ticker's since dropped out of
+// stock_universe, so unrealizedPl is null) can't have a return computed
+// and are left out rather than shown as a false zero.
+function topPerformers(holdings: PaperHolding[], limit: number): Performer[] {
+  return holdings
+    .filter((h): h is PaperHolding & { unrealizedPl: number } => h.unrealizedPl !== null && h.avgCost * h.shares > 0)
+    .map((h) => ({
+      ticker: h.ticker,
+      dollarPl: h.unrealizedPl,
+      pctReturn: (h.unrealizedPl / (h.avgCost * h.shares)) * 100,
+    }))
+    .sort((a, b) => b.pctReturn - a.pctReturn)
+    .slice(0, limit);
 }
 
-function BundleStack({ value }: { value: number }) {
-  const count = bundlesFor(value);
-  const visible = Math.min(count, MAX_VISIBLE_BUNDLES);
-  const overflow = count > MAX_VISIBLE_BUNDLES;
-  const stackHeight = BUNDLE_HEIGHT + (visible - 1) * BUNDLE_OVERLAP;
-  return (
-    <div className="relative w-12 shrink-0" style={{ height: `${stackHeight + 4}px` }}>
-      {overflow && (
-        <span
-          className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border px-1.5 py-[1px] text-[9px] font-semibold"
-          style={{ borderColor: `${GOLD}80`, backgroundColor: "rgba(0,0,0,0.4)", color: GOLD }}
-        >
-          ×{count}
-        </span>
-      )}
-      {Array.from({ length: visible }).map((_, i) => (
-        <div
-          key={i}
-          className="absolute left-1/2 h-[9px] w-11 -translate-x-1/2 rounded-[2px] border animate-[htohRise_0.3s_ease-out_backwards]"
-          style={{
-            bottom: `${i * BUNDLE_OVERLAP}px`,
-            background: BUNDLE_GRADIENT,
-            borderColor: "rgba(10,40,30,0.6)",
-            boxShadow: "0 1px 1px rgba(0,0,0,0.35)",
-            animationDelay: `${i * 45}ms`,
-            zIndex: i,
-          }}
-        />
-      ))}
-    </div>
-  );
+// Live days:hours countdown to the match's expiration -- ticks on a 60s
+// interval (minute-level precision is plenty for a days:hours readout, no
+// need to re-render every second). Null expiresAt (no end date agreed) and
+// an already-elapsed one are both distinct, clearly-labeled states rather
+// than silently showing 00:00.
+function useCountdown(expiresAt: string | null): { days: number; hours: number; ended: boolean } | null {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!expiresAt) return;
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+
+  if (!expiresAt) return null;
+  const msLeft = new Date(expiresAt).getTime() - now;
+  if (msLeft <= 0) return { days: 0, hours: 0, ended: true };
+  const days = Math.floor(msLeft / 86_400_000);
+  const hours = Math.floor((msLeft % 86_400_000) / 3_600_000);
+  return { days, hours, ended: false };
+}
+
+function pad2(n: number): string {
+  return n.toString().padStart(2, "0");
 }
 
 function Player({
@@ -79,6 +88,7 @@ function Player({
   totalValue,
   startingBalance,
   winning,
+  dimmed,
 }: {
   avatarUrl: string | null;
   name: string | null;
@@ -86,23 +96,13 @@ function Player({
   totalValue: number;
   startingBalance: number;
   winning: boolean;
+  dimmed: boolean;
 }) {
   const pl = totalValue - startingBalance;
   const plPct = startingBalance > 0 ? (pl / startingBalance) * 100 : 0;
   const positive = pl >= 0;
   return (
-    <div className="flex flex-1 flex-col items-center gap-1">
-      <div className="flex h-5 items-center justify-center">
-        {winning && (
-          <Crown
-            size={16}
-            strokeWidth={1.5}
-            fill={GOLD}
-            style={{ color: GOLD }}
-            className="animate-[htohBreathe_1.6s_ease-in-out_infinite]"
-          />
-        )}
-      </div>
+    <div className="flex flex-1 flex-col items-center gap-1.5" style={{ opacity: dimmed ? 0.62 : 1 }}>
       <div
         className={`h-11 w-11 shrink-0 rounded-full ${winning ? "animate-[htohGlow_1.8s_ease-in-out_infinite]" : "ring-2 ring-white/10"}`}
       >
@@ -113,27 +113,41 @@ function Player({
           className="h-full w-full rounded-full object-cover"
         />
       </div>
-      <span className="max-w-[92px] truncate text-xs text-text-muted">{username ? `@${username}` : name || "Member"}</span>
-      <div className="mt-2">
-        <BundleStack value={totalValue} />
-      </div>
-      <span className="mt-1.5 text-sm font-bold text-text-primary">{formatMoney(totalValue)}</span>
-      <span className="text-xs font-medium" style={{ color: positive ? "#3ddc97" : "#ff5c7a" }}>
-        {positive ? "+" : ""}
-        {formatMoney(pl)} ({positive ? "+" : ""}
-        {plPct.toFixed(1)}%)
+      <span className="max-w-[110px] truncate text-[11px] tracking-wide text-[#aab2c4]" style={{ fontFamily: CHAKRA, fontWeight: 600 }}>
+        {username ? `@${username}` : name || "Member"}
+      </span>
+      <span
+        className="text-[34px] leading-none"
+        style={{ fontFamily: VT323, color: AMBER, textShadow: `0 0 10px ${AMBER}a6, 0 0 2px ${AMBER}e6` }}
+      >
+        {formatMoney(totalValue)}
+      </span>
+      <span
+        className="text-xs"
+        style={{ fontFamily: CHAKRA, fontWeight: 600, color: positive ? "#39ff8a" : "#ff4d5e" }}
+      >
+        {positive ? "▲" : "▼"} {positive ? "+" : ""}
+        {plPct.toFixed(1)}%
       </span>
     </div>
   );
 }
 
-export default function HeadToHeadCard({ loading, summary }: { loading: boolean; summary: MatchSummary | null }) {
+export default function HeadToHeadCard({
+  loading,
+  summary,
+  holdings,
+}: {
+  loading: boolean;
+  summary: MatchSummary | null;
+  holdings: PaperHolding[];
+}) {
+  const countdown = useCountdown(summary?.expiresAt ?? null);
+  const performers = summary ? topPerformers(holdings, TOP_PERFORMER_LIMIT) : [];
+
   return (
     <div className="flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-5">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-text-primary">Head to Head</h3>
-        <span className="text-[10px] text-text-muted">1 bundle = $20K</span>
-      </div>
+      <h3 className="mb-2 text-sm font-semibold text-text-primary">Head to Head</h3>
       {loading ? (
         <div className="flex flex-1 items-center justify-center text-sm text-text-muted">Loading…</div>
       ) : !summary ? (
@@ -142,52 +156,137 @@ export default function HeadToHeadCard({ loading, summary }: { loading: boolean;
         (() => {
           const meWinning = summary.me.totalValue > summary.opponent.totalValue;
           const oppWinning = summary.opponent.totalValue > summary.me.totalValue;
+          const leader = meWinning ? summary.me : oppWinning ? summary.opponent : null;
           return (
-            <div className="flex flex-1 flex-col">
-              {/* Table -- a wide ellipse (border-radius 50% on a non-square
-                  box renders an ellipse) sitting behind both players' cash
-                  stacks, with a thin gold rim rather than a literal green
-                  felt, to read as a premium finance-app widget rather than
-                  a casino graphic. */}
-              <div className="relative flex-1 min-h-[190px]">
-                <div
-                  className="absolute inset-x-2 top-14 bottom-2 rounded-[50%]"
-                  style={{
-                    background:
-                      "radial-gradient(ellipse at center, rgba(32,44,68,0.9) 0%, rgba(19,26,42,0.95) 65%, rgba(10,14,23,1) 100%)",
-                    boxShadow: `inset 0 0 0 1.5px ${GOLD}59, inset 0 0 30px rgba(0,0,0,0.55)`,
-                  }}
-                />
-                <div className="relative flex h-full items-start justify-between gap-2 px-1">
-                  <Player
-                    avatarUrl={summary.me.avatarUrl}
-                    name={summary.me.name}
-                    username={summary.me.username}
-                    totalValue={summary.me.totalValue}
-                    startingBalance={summary.startingBalance}
-                    winning={meWinning}
+            <div className="relative flex-1 overflow-hidden rounded-[10px] border border-[#1a1d24] bg-[#050608] px-4 pb-3.5 pt-3">
+              {/* Chasing marquee lights along the top edge -- an idle
+                  "screen's on" ambient loop, not tied to any real data. */}
+              <div className="mb-3.5 flex justify-between px-0.5">
+                {Array.from({ length: MARQUEE_BULBS }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="h-[5px] w-[5px] rounded-full bg-[#3a2a10] animate-[htohBulbChase_1.6s_linear_infinite]"
+                    style={{ animationDelay: `${i * 0.08}s` }}
                   />
-                  <div className="flex shrink-0 flex-col items-center pt-5">
-                    <span
-                      className="rounded-full border bg-black/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-text-muted"
-                      style={{ borderColor: `${GOLD}4d` }}
-                    >
-                      vs
-                    </span>
-                  </div>
-                  <Player
-                    avatarUrl={summary.opponent.avatarUrl}
-                    name={summary.opponent.name}
-                    username={summary.opponent.username}
-                    totalValue={summary.opponent.totalValue}
-                    startingBalance={summary.startingBalance}
-                    winning={oppWinning}
-                  />
-                </div>
+                ))}
               </div>
-              <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3 text-xs text-text-muted">
+
+              <div className="flex items-start justify-between gap-2">
+                <Player
+                  avatarUrl={summary.me.avatarUrl}
+                  name={summary.me.name}
+                  username={summary.me.username}
+                  totalValue={summary.me.totalValue}
+                  startingBalance={summary.startingBalance}
+                  winning={meWinning}
+                  dimmed={oppWinning}
+                />
+                <div className="flex shrink-0 flex-col items-center gap-2 px-1 pt-1">
+                  <span
+                    className="rounded-full border border-[#262c3a] px-2.5 py-[3px] text-[11px] tracking-[0.18em] text-[#565f74]"
+                    style={{ fontFamily: CHAKRA, fontWeight: 700 }}
+                  >
+                    VS
+                  </span>
+                  {countdown === null ? (
+                    <div className="flex flex-col items-center">
+                      <span className="text-lg" style={{ fontFamily: VT323, color: "#6b7488" }}>
+                        &mdash;
+                      </span>
+                      <span className="text-[9px] tracking-widest text-[#6b7488]" style={{ fontFamily: CHAKRA }}>
+                        NO END DATE
+                      </span>
+                    </div>
+                  ) : countdown.ended ? (
+                    <div className="flex flex-col items-center">
+                      <span className="text-lg" style={{ fontFamily: VT323, color: "#ff4d5e" }}>
+                        00:00
+                      </span>
+                      <span className="text-[9px] tracking-widest text-[#ff4d5e]" style={{ fontFamily: CHAKRA }}>
+                        MATCH ENDED
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <span
+                        className="flex items-baseline gap-[2px] text-[26px] leading-none"
+                        style={{ fontFamily: VT323, color: AMBER, textShadow: `0 0 8px ${AMBER}8c` }}
+                      >
+                        {pad2(countdown.days)}
+                        <span className="animate-[htohColonBlink_1s_steps(1)_infinite]">:</span>
+                        {pad2(countdown.hours)}
+                      </span>
+                      <span className="text-[9px] tracking-widest text-[#6b7488]" style={{ fontFamily: CHAKRA }}>
+                        DAYS LEFT
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <Player
+                  avatarUrl={summary.opponent.avatarUrl}
+                  name={summary.opponent.name}
+                  username={summary.opponent.username}
+                  totalValue={summary.opponent.totalValue}
+                  startingBalance={summary.startingBalance}
+                  winning={oppWinning}
+                  dimmed={meWinning}
+                />
+              </div>
+
+              <div
+                className="mt-3.5 flex flex-wrap items-center justify-between gap-x-3.5 gap-y-1 border-t border-[#1a1d24] pt-3 text-[10.5px] uppercase tracking-wide text-[#6b7488]"
+                style={{ fontFamily: CHAKRA }}
+              >
                 <span>Starting Capital {formatMoney(summary.startingBalance)}</span>
-                {summary.expiresAt && <span>Ends {formatChallengeWhen(summary.expiresAt)}</span>}
+                {leader && (
+                  <span style={{ color: AMBER }}>
+                    Leading: {leader.username ? `@${leader.username}` : leader.name || "Member"}
+                  </span>
+                )}
+              </div>
+
+              {/* Top Performers -- like the stat-leaders strip a real
+                  jumbotron runs under the score. Your own open positions
+                  only (the opponent's per-ticker holdings aren't exposed by
+                  game_afi_match_summary, just their totals). */}
+              <div className="mt-3 border-t border-dashed border-[#1a1d24] pt-3">
+                <div
+                  className="mb-2 text-[10px] tracking-[0.18em] text-[#6b7488]"
+                  style={{ fontFamily: CHAKRA, fontWeight: 700 }}
+                >
+                  TOP PERFORMERS TO DATE
+                </div>
+                {performers.length === 0 ? (
+                  <div className="text-xs text-[#565f74]" style={{ fontFamily: CHAKRA }}>
+                    No open positions yet.
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {performers.map((p, i) => {
+                      const positive = p.pctReturn >= 0;
+                      return (
+                        <div key={p.ticker} className="flex items-center justify-between gap-2">
+                          <span className="flex items-center gap-2 min-w-0">
+                            <span className="text-[10px] text-[#565f74]" style={{ fontFamily: CHAKRA, fontWeight: 700 }}>
+                              {i + 1}
+                            </span>
+                            <span className="truncate text-[13px] text-[#e9ecf4]" style={{ fontFamily: CHAKRA, fontWeight: 600 }}>
+                              {p.ticker}
+                            </span>
+                          </span>
+                          <span
+                            className="shrink-0 text-[13px]"
+                            style={{ fontFamily: VT323, color: positive ? "#39ff8a" : "#ff4d5e" }}
+                          >
+                            {positive ? "+" : ""}
+                            {p.pctReturn.toFixed(1)}% ({positive ? "+" : ""}
+                            {formatMoney(p.dollarPl)})
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           );

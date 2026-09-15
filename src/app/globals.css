@@ -41,46 +41,43 @@ body {
 }
 
 /*
- * Head to Head "poker table" scene (components/gameAfi/HeadToHeadCard.tsx)
+ * Head to Head "Arena Jumbotron" card (components/gameAfi/HeadToHeadCard.tsx)
  * -- referenced via Tailwind's arbitrary animate-[name_duration_timing_...]
  * utility, which just needs the keyframes to exist somewhere in the build.
- * Kept deliberately subtle (small offsets, soft glow, gentle breathing)
- * after the first pass read as too cartoonish -- these are ambient
- * polish on top of real $/% figures, not the main event.
+ * Chosen (picked from 3 mocked-up directions -- poker table and $20K cash
+ * bundles were both rejected as too cartoonish first) as a black LED
+ * scoreboard: amber glow on the leader's avatar, a chasing marquee border,
+ * a blinking clock colon.
  */
-@keyframes htohRise {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @keyframes htohGlow {
   0%,
   100% {
     box-shadow:
-      0 0 0 2px rgba(212, 175, 90, 0.5),
-      0 0 10px 1px rgba(212, 175, 90, 0.3);
+      0 0 0 3px rgba(255, 182, 72, 0.18),
+      0 0 14px 2px rgba(255, 182, 72, 0.35);
   }
   50% {
     box-shadow:
-      0 0 0 2px rgba(212, 175, 90, 0.85),
-      0 0 16px 3px rgba(212, 175, 90, 0.45);
+      0 0 0 3px rgba(255, 182, 72, 0.32),
+      0 0 20px 4px rgba(255, 182, 72, 0.55);
   }
 }
 
-@keyframes htohBreathe {
+@keyframes htohBulbChase {
   0%,
+  88%,
   100% {
-    opacity: 0.75;
-    transform: scale(1);
+    background: #3a2a10;
+    box-shadow: none;
   }
+  4% {
+    background: #ffb648;
+    box-shadow: 0 0 6px 1px rgba(255, 182, 72, 0.9);
+  }
+}
+
+@keyframes htohColonBlink {
   50% {
-    opacity: 1;
-    transform: scale(1.12);
+    opacity: 0.15;
   }
 }

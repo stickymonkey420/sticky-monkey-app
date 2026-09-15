@@ -164,7 +164,7 @@ export default function GameAFiOverviewPage() {
               />
             </div>
             <div className="md:col-span-2">
-              <HeadToHeadCard loading={summaryLoading} summary={matchSummary} />
+              <HeadToHeadCard loading={summaryLoading} summary={matchSummary} holdings={holdings} />
             </div>
             <div className="md:col-span-1">
               <PortfolioDonutCard
