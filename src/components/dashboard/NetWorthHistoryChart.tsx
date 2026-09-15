@@ -45,6 +45,12 @@ export default function NetWorthHistoryChart() {
   const [goalInput, setGoalInput] = useState("");
   const [editingGoal, setEditingGoal] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
+  // Whether the currently-selected range has any income OR net worth
+  // snapshot data -- per your call to hide zero/not-applicable Dashboard
+  // cards. Same "start false, hidden wrapper not conditional unmount"
+  // approach as IncomeHistoryChart, so the canvas ref stays stable for
+  // Chart.js.
+  const [hasData, setHasData] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +74,7 @@ export default function NetWorthHistoryChart() {
       ]);
       if (cancelled) return;
       setGoalMonthly(goal);
+      setHasData(buckets.some((b) => b.income !== 0 || (b.netWorth !== null && b.netWorth !== 0)));
       renderChart(buckets, goal);
     }
 
@@ -252,7 +259,7 @@ export default function NetWorthHistoryChart() {
   }
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card-bg p-5">
+    <div hidden={!hasData} className="rounded-2xl border border-card-border bg-card-bg p-5">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-text-primary">Net Worth History</h3>
         <select

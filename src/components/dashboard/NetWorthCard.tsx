@@ -39,6 +39,12 @@ export default function NetWorthCard() {
   const [summary, setSummary] = useState<NetWorthSummary>(EMPTY_SUMMARY);
   const [incomeRows, setIncomeRows] = useState<IncomeTableRow[]>([]);
   const [loading, setLoading] = useState(true);
+  // Whether there's anything behind this card at all -- any manual account
+  // (feeds Asset Allocation/Net Worth) or any wheel trade (feeds the Income
+  // table) -- per your call to hide zero/not-applicable Dashboard cards
+  // rather than show an all-$0 shell. null while unknown (still loading)
+  // hides the card too, same "hide until known" rule used elsewhere.
+  const [hasData, setHasData] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,7 +55,10 @@ export default function NetWorthCard() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setHasData(false);
+          setLoading(false);
+        }
         return;
       }
 
@@ -66,6 +75,7 @@ export default function NetWorthCard() {
       setSummary(summarizeNetWorth(accounts));
       const trades: IncomeTableTrade[] = tradeErr ? [] : tradeData || [];
       setIncomeRows(computeIncomeTable(trades));
+      setHasData(accounts.length > 0 || trades.length > 0);
       setLoading(false);
     }
 
@@ -74,6 +84,8 @@ export default function NetWorthCard() {
       cancelled = true;
     };
   }, []);
+
+  if (hasData === false) return null;
 
   const { categories, totalAssets, totalLiabilities, netWorth } = summary;
 

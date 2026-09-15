@@ -53,6 +53,14 @@ export default function ExpenseCategoriesCard() {
   }, []);
 
   const visibleSlots = slots.filter((s): s is NonNullable<ExpenseCategorySlot> => s !== null);
+  // rankExpenseCategories always pads out to SLOT_COUNT with known
+  // categories at 0% (the live site's "5-slot patch" behavior) rather than
+  // returning fewer slots, so visibleSlots.length===0 never actually
+  // happens once loaded -- the real "nothing to show" signal is every slot
+  // sitting at $0, which is what actually hides the card per your call.
+  const hasRealSpend = visibleSlots.some((s) => s.total > 0);
+
+  if (!loading && !hasRealSpend) return null;
 
   return (
     <div id="expense-categories-card" className="rounded-[30px] p-[30px]" style={{ backgroundColor: "#151b28" }}>

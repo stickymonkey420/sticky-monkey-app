@@ -76,6 +76,11 @@ export default function LastTransactionsCard() {
     setTransactions((prev) => prev.map((t) => (t.id === txId ? { ...t, category_bucket: catKey } : t)));
   }
 
+  // Hidden once loaded with nothing to show, per your call to drop
+  // zero/not-applicable Dashboard cards instead of a static "No
+  // transactions yet." shell.
+  if (!loading && transactions.length === 0) return null;
+
   return (
     <div className="rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-4 text-sm font-semibold text-text-primary">Last Transactions</h3>

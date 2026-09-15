@@ -168,6 +168,15 @@ type NavNode = {
   // card on the Portfolio page) -- role only gates the "Investments" group
   // as a whole, not which account types inside it are visible.
   accountTypeAny?: string[];
+  // Hides this node until AppShell confirms there's real DATA behind it --
+  // distinct from `requires` (role) and `accountTypeAny` (a profile
+  // checkbox): "wallet" hides "My Wallet" until manual_accounts (any
+  // category) or plaid_transactions has at least one row for this member;
+  // "bank" hides "Banking" until manual_accounts has a "bank_account" row
+  // specifically, per your call that a bank account being connected is
+  // what should surface that nav item. null (not yet loaded) hides the
+  // node, same "hide until known" rule role/accountTypes already use.
+  dataGate?: "wallet" | "bank";
   icon?: LucideIcon;
 };
 
@@ -183,6 +192,7 @@ const NAV_TREE: NavNode[] = [
   {
     label: "My Wallet",
     icon: Wallet,
+    dataGate: "wallet",
     children: [
       { href: "/wallet", label: "Overview" },
       { href: "/card-center", label: "Card Center" },
@@ -229,8 +239,7 @@ const NAV_TREE: NavNode[] = [
       },
     ],
   },
-  { href: "/accounts", label: "Banking", icon: User },
-  { href: "/smu", label: "SMU", icon: FileText },
+  { href: "/accounts", label: "Banking", icon: User, dataGate: "bank" },
   {
     label: "Businesses",
     icon: Briefcase,
@@ -249,6 +258,8 @@ const NAV_TREE: NavNode[] = [
       { href: "/game-a-fi", label: "Standings" },
     ],
   },
+  // Stacked directly under Game-O-Fi and above Settings per your call.
+  { href: "/smu", label: "SMU", icon: FileText },
   { href: "/investors", label: "Owners", requires: "owner", icon: Crown },
   {
     label: "Settings",
@@ -289,12 +300,34 @@ function passesAccountTypeGate(accountTypeAny: string[] | undefined, accountType
   return !!accountTypes && accountTypeAny.some((t) => accountTypes.includes(t));
 }
 
-function filterNode(node: NavNode, role: Role | null, accountTypes: string[] | null): NavNode | null {
+// hasWalletData/hasBankAccount are null until AppShell's fetch resolves --
+// same "hide until known" treatment as role/accountTypes above, so these
+// two nodes never flash visible then disappear once the real answer comes
+// back.
+function passesDataGate(
+  dataGate: NavNode["dataGate"],
+  hasWalletData: boolean | null,
+  hasBankAccount: boolean | null
+): boolean {
+  if (!dataGate) return true;
+  if (dataGate === "wallet") return hasWalletData === true;
+  if (dataGate === "bank") return hasBankAccount === true;
+  return true;
+}
+
+function filterNode(
+  node: NavNode,
+  role: Role | null,
+  accountTypes: string[] | null,
+  hasWalletData: boolean | null,
+  hasBankAccount: boolean | null
+): NavNode | null {
   if (!passesGate(node.requires, role, accountTypes)) return null;
   if (!passesAccountTypeGate(node.accountTypeAny, accountTypes)) return null;
+  if (!passesDataGate(node.dataGate, hasWalletData, hasBankAccount)) return null;
   if (node.children) {
     const children = node.children
-      .map((c) => filterNode(c, role, accountTypes))
+      .map((c) => filterNode(c, role, accountTypes, hasWalletData, hasBankAccount))
       .filter((c): c is NavNode => c !== null);
     if (children.length === 0 && !node.href) return null;
     return { ...node, children };
@@ -406,14 +439,18 @@ function NavTree({
   pathname,
   role,
   accountTypes,
+  hasWalletData,
+  hasBankAccount,
   onNavigate,
 }: {
   pathname: string;
   role: Role | null;
   accountTypes: string[] | null;
+  hasWalletData: boolean | null;
+  hasBankAccount: boolean | null;
   onNavigate?: () => void;
 }) {
-  const visible = NAV_TREE.map((node) => filterNode(node, role, accountTypes)).filter(
+  const visible = NAV_TREE.map((node) => filterNode(node, role, accountTypes, hasWalletData, hasBankAccount)).filter(
     (n): n is NavNode => n !== null
   );
   return (
@@ -439,6 +476,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // passesGate hides Investments until we actually know, not just while
   // this fetch is in flight.
   const [accountTypes, setAccountTypes] = useState<string[] | null>(null);
+  // Backs the "My Wallet"/"Banking" dataGate nodes above -- null until this
+  // fetch resolves (hides both), then real answers: hasWalletData is true
+  // once manual_accounts (any category) or plaid_transactions has a row;
+  // hasBankAccount specifically needs a manual_accounts row categorized
+  // "bank_account".
+  const [hasWalletData, setHasWalletData] = useState<boolean | null>(null);
+  const [hasBankAccount, setHasBankAccount] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -449,13 +493,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from("profiles").select("role,account_types").eq("id", user.id).maybeSingle();
+      const [{ data }, { data: accountRows }, { count: txCount }] = await Promise.all([
+        supabase.from("profiles").select("role,account_types").eq("id", user.id).maybeSingle(),
+        supabase.from("manual_accounts").select("category").eq("user_id", user.id),
+        supabase.from("plaid_transactions").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      ]);
       if (cancelled) return;
       if (data) {
         const row = data as { role: Role; account_types: string[] | null };
         setRole(row.role);
         setAccountTypes(row.account_types ?? []);
       }
+      const accounts = (accountRows ?? []) as { category: string }[];
+      setHasBankAccount(accounts.some((a) => a.category === "bank_account"));
+      setHasWalletData(accounts.length > 0 || (txCount ?? 0) > 0);
     }
 
     load();
@@ -508,6 +559,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 pathname={pathname}
                 role={role}
                 accountTypes={accountTypes}
+                hasWalletData={hasWalletData}
+                hasBankAccount={hasBankAccount}
                 onNavigate={() => setMobileOpen(false)}
               />
             </nav>
@@ -544,7 +597,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           style={{ backgroundColor: "#151b28" }}
         >
           <nav className="flex flex-1 flex-col gap-1 px-1">
-            <NavTree pathname={pathname} role={role} accountTypes={accountTypes} />
+            <NavTree
+              pathname={pathname}
+              role={role}
+              accountTypes={accountTypes}
+              hasWalletData={hasWalletData}
+              hasBankAccount={hasBankAccount}
+            />
           </nav>
 
           <div className="flex flex-col gap-1 px-1">

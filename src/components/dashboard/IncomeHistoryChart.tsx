@@ -45,6 +45,13 @@ export default function IncomeHistoryChart() {
   const [goalInput, setGoalInput] = useState("");
   const [editingGoal, setEditingGoal] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
+  // Whether the currently-selected range has any income at all -- per your
+  // call to hide zero/not-applicable Dashboard cards. Starts false so the
+  // card stays hidden until the first fetch actually confirms real data,
+  // rather than flashing an all-zero chart first. The canvas ref stays
+  // mounted either way (see the wrapper's `hidden` below, not a conditional
+  // unmount) so Chart.js always has a stable element to draw into.
+  const [hasData, setHasData] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +74,7 @@ export default function IncomeHistoryChart() {
       ]);
       if (cancelled) return;
       setGoalMonthly(goal);
+      setHasData(buckets.some((b) => b.income !== 0));
       renderChart(buckets, goal);
     }
 
@@ -245,7 +253,7 @@ export default function IncomeHistoryChart() {
   }
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card-bg p-5">
+    <div hidden={!hasData} className="rounded-2xl border border-card-border bg-card-bg p-5">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-text-primary">Income History</h3>
         <select
