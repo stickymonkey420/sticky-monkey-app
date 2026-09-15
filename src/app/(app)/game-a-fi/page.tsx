@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import LeaderboardTable from "@/components/gameAfi/LeaderboardTable";
 import PaperTradingPanel from "@/components/gameAfi/PaperTradingPanel";
+import ChallengesPanel from "@/components/gameAfi/ChallengesPanel";
 import MyProfileModal from "@/components/profile/MyProfileModal";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAvailableWeeks, fetchSeasonLeaderboard, fetchWeeklyLeaderboard } from "@/lib/gameAfi/queries";
@@ -29,7 +30,7 @@ function formatWeekLabel(weekStartIso: string): string {
 }
 
 export default function GameAFiPage() {
-  const [game, setGame] = useState<"live" | "paper">("live");
+  const [game, setGame] = useState<"live" | "paper" | "headtohead">("live");
   const [tab, setTab] = useState<"weekly" | "season">("weekly");
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -142,9 +143,19 @@ export default function GameAFiPage() {
           >
             Paper Trading
           </button>
+          <button
+            onClick={() => setGame("headtohead")}
+            className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+              game === "headtohead" ? "bg-white/10 text-text-primary" : "bg-white/5 text-text-muted hover:bg-white/10"
+            }`}
+          >
+            Head to Head
+          </button>
         </div>
 
-        {game === "paper" ? (
+        {game === "headtohead" ? (
+          <ChallengesPanel />
+        ) : game === "paper" ? (
           <PaperTradingPanel userId={userId} />
         ) : (
           <div className="flex flex-col gap-6">
