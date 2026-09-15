@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import LeaderboardTable from "@/components/gameAfi/LeaderboardTable";
 import PaperTradingPanel from "@/components/gameAfi/PaperTradingPanel";
+import MyProfileModal from "@/components/profile/MyProfileModal";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAvailableWeeks, fetchSeasonLeaderboard, fetchWeeklyLeaderboard } from "@/lib/gameAfi/queries";
 import type { LeaderboardRow } from "@/lib/gameAfi/types";
@@ -32,6 +33,13 @@ export default function GameAFiPage() {
   const [tab, setTab] = useState<"weekly" | "season">("weekly");
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  // Whether the signed-in member has a Game-a-Fi handle set yet. Starts
+  // `true` (rather than `false`) so the "set your handle" banner never
+  // flashes on screen for the common case while the profile is still
+  // loading -- it only appears once we've actually confirmed one is
+  // missing.
+  const [hasHandle, setHasHandle] = useState(true);
+  const [handleModalOpen, setHandleModalOpen] = useState(false);
 
   const [weeks, setWeeks] = useState<string[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
@@ -53,12 +61,14 @@ export default function GameAFiPage() {
       }
       if (!cancelled) setUserId(user.id);
 
-      const [availableWeeks, weekly, season] = await Promise.all([
+      const [availableWeeks, weekly, season, profileRes] = await Promise.all([
         fetchAvailableWeeks(supabase),
         fetchWeeklyLeaderboard(supabase),
         fetchSeasonLeaderboard(supabase),
+        supabase.from("profiles").select("username").eq("id", user.id).maybeSingle(),
       ]);
       if (cancelled) return;
+      setHasHandle(!!profileRes.data?.username);
       setWeeks(availableWeeks);
       setSelectedWeek(weekly.weekStart);
       setWeeklyRows(weekly.rows);
@@ -79,6 +89,14 @@ export default function GameAFiPage() {
     setWeeklyRows(weekly.rows);
   }
 
+  async function handleHandleModalClose() {
+    setHandleModalOpen(false);
+    if (!userId) return;
+    const supabase = createClient();
+    const { data } = await supabase.from("profiles").select("username").eq("id", userId).maybeSingle();
+    setHasHandle(!!data?.username);
+  }
+
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -89,6 +107,23 @@ export default function GameAFiPage() {
           A weekly standings board, not head-to-head matchups -- every member&apos;s weekly performance shapes their
           placement.
         </p>
+
+        {!loading && !hasHandle && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-card-border bg-card-bg p-4">
+            <p className="text-sm text-text-muted">
+              Set a handle to show up on leaderboards -- it&apos;s also how leagues, head-to-head, and tournaments
+              will identify you once those launch.
+            </p>
+            <button
+              type="button"
+              onClick={() => setHandleModalOpen(true)}
+              className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-white"
+              style={{ backgroundColor: "#4f8cff" }}
+            >
+              Set Handle
+            </button>
+          </div>
+        )}
 
         <div className="flex gap-2">
           <button
@@ -189,6 +224,8 @@ export default function GameAFiPage() {
           </div>
         )}
       </div>
+
+      {handleModalOpen && <MyProfileModal onClose={handleHandleModalClose} />}
     </>
   );
 }

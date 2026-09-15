@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/profile/ProfileProvider";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
+import { HANDLE_HINT, isHandleTakenError, validateHandle } from "@/lib/profile/handle";
 import { ACCOUNT_TYPE_DEFS } from "@/lib/usersGroups/types";
 import { saveProfileDetails, updateAvatarUrl, type ProfileDetailsInput } from "@/lib/usersGroups/queries";
 import type { OnboardingAnswers } from "@/lib/dashboard/onboarding";
@@ -115,14 +116,20 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
 
   async function handleSave() {
     if (!userId) return;
-    setSaving(true);
     setError(null);
     setSavedMessage(null);
 
+    const handleError = validateHandle(username);
+    if (handleError) {
+      setError(handleError);
+      return;
+    }
+
+    setSaving(true);
     const supabase = createClient();
     const input: ProfileDetailsInput = {
       name,
-      username: username || null,
+      username: username.trim() || null,
       email,
       date_of_birth: dob || null,
       present_address: presentAddress || null,
@@ -134,7 +141,7 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
     const { error: err } = await saveProfileDetails(supabase, userId, input);
     setSaving(false);
     if (err) {
-      setError("Could not save. Try again.");
+      setError(isHandleTakenError(err) ? "That handle is already taken." : "Could not save. Try again.");
       return;
     }
     setSavedMessage("Saved.");
@@ -307,13 +314,18 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={FIELD_CLASS} />
             </div>
             <div className="mb-3">
-              <label className="mb-1.5 block text-xs text-text-muted">Username</label>
+              <label className="mb-1.5 block text-xs text-text-muted">Handle</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                placeholder="e.g. sandmonkey15"
                 className={FIELD_CLASS}
               />
+              <p className="mt-1 text-[11px] text-text-muted">
+                {HANDLE_HINT} Used to identify you on Game-a-Fi leaderboards, leagues, and tournaments instead of
+                your name.
+              </p>
             </div>
             <div className="mb-3">
               <label className="mb-1.5 block text-xs text-text-muted">Email</label>

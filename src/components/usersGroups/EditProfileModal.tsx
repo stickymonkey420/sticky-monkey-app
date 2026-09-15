@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { ACCOUNT_TYPE_DEFS, type Profile } from "@/lib/usersGroups/types";
 import type { ProfileDetailsInput } from "@/lib/usersGroups/queries";
+import { HANDLE_HINT, isHandleTakenError, validateHandle } from "@/lib/profile/handle";
 
 const FIELD_CLASS =
   "w-full rounded-md border border-card-border bg-[#0d0f17] px-2.5 py-2 text-sm text-text-primary outline-none";
 
 // Ported from the live script's openEditModal(): covers every profiles
-// column the inline row doesn't (username, DOB, addresses, postal code,
+// column the inline row doesn't (handle, DOB, addresses, postal code,
 // avatar URL, account types) so an admin can fully manage a profile's
 // record in one place.
 export default function EditProfileModal({
@@ -37,11 +38,18 @@ export default function EditProfileModal({
   }
 
   async function handleSave() {
-    setSaving(true);
     setError(null);
+
+    const handleError = validateHandle(username);
+    if (handleError) {
+      setError(handleError);
+      return;
+    }
+
+    setSaving(true);
     const { error: err } = await onSave(profile.id, {
       name,
-      username: username || null,
+      username: username.trim() || null,
       email,
       date_of_birth: dob || null,
       present_address: presentAddress || null,
@@ -52,7 +60,7 @@ export default function EditProfileModal({
     });
     setSaving(false);
     if (err) {
-      setError("Could not save. Try again.");
+      setError(isHandleTakenError(err) ? "That handle is already taken." : "Could not save. Try again.");
       return;
     }
     onClose();
@@ -75,8 +83,11 @@ export default function EditProfileModal({
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={FIELD_CLASS} />
         </div>
         <div className="mb-3">
-          <label className="mb-1.5 block text-xs text-text-muted">Username</label>
+          <label className="mb-1.5 block text-xs text-text-muted">Handle</label>
           <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className={FIELD_CLASS} />
+          <p className="mt-1 text-[11px] text-text-muted">
+            {HANDLE_HINT} Identifies this member on Game-a-Fi leaderboards, leagues, and tournaments.
+          </p>
         </div>
         <div className="mb-3">
           <label className="mb-1.5 block text-xs text-text-muted">Email</label>
