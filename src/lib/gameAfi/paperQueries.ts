@@ -10,9 +10,16 @@ import type {
 } from "./paperTypes";
 
 // Idempotently provisions (first call) and returns the caller's paper
-// account. Safe to call on every page load.
-export async function ensurePaperAccount(supabase: SupabaseClient): Promise<PaperAccount | null> {
-  const { data, error } = await supabase.rpc("game_afi_paper_ensure_account");
+// account. Safe to call on every page load. challengeId null (default) is
+// the free-standing "Monkey Monkey" practice account; a specific challenge
+// id provisions (or returns) the account scoped to that ACCEPTED Head to
+// Head match, seeded with the match's agreed starting capital -- see
+// game_afi_paper_ensure_account.
+export async function ensurePaperAccount(
+  supabase: SupabaseClient,
+  challengeId: string | null = null
+): Promise<PaperAccount | null> {
+  const { data, error } = await supabase.rpc("game_afi_paper_ensure_account", { p_challenge_id: challengeId });
   if (error || !data || data.length === 0) {
     console.error("ensurePaperAccount failed", error);
     return null;
@@ -21,12 +28,20 @@ export async function ensurePaperAccount(supabase: SupabaseClient): Promise<Pape
   return { startingBalance: Number(row.starting_balance), cashBalance: Number(row.cash_balance) };
 }
 
-export async function fetchPaperTrades(supabase: SupabaseClient, userId: string): Promise<PaperTrade[]> {
-  const { data, error } = await supabase
+// challengeId null selects the practice account's trades; a challenge id
+// selects that match's trades only -- the two never mix (see paper_trades.challenge_id).
+export async function fetchPaperTrades(
+  supabase: SupabaseClient,
+  userId: string,
+  challengeId: string | null = null
+): Promise<PaperTrade[]> {
+  let query = supabase
     .from("paper_trades")
     .select("id,ticker,side,shares,price,trade_date")
     .eq("user_id", userId)
     .order("trade_date", { ascending: false });
+  query = challengeId === null ? query.is("challenge_id", null) : query.eq("challenge_id", challengeId);
+  const { data, error } = await query;
   if (error) {
     console.error("fetchPaperTrades failed", error);
     return [];
@@ -40,14 +55,17 @@ export async function fetchPaperTrades(supabase: SupabaseClient, userId: string)
 export async function fetchPaperTradesForTicker(
   supabase: SupabaseClient,
   userId: string,
-  ticker: string
+  ticker: string,
+  challengeId: string | null = null
 ): Promise<PaperTrade[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("paper_trades")
     .select("id,ticker,side,shares,price,trade_date")
     .eq("user_id", userId)
     .eq("ticker", ticker)
     .order("trade_date", { ascending: false });
+  query = challengeId === null ? query.is("challenge_id", null) : query.eq("challenge_id", challengeId);
+  const { data, error } = await query;
   if (error) {
     console.error("fetchPaperTradesForTicker failed", error);
     return [];
@@ -130,12 +148,14 @@ export async function executeTrade(
   supabase: SupabaseClient,
   ticker: string,
   side: "buy" | "sell",
-  shares: number
+  shares: number,
+  challengeId: string | null = null
 ): Promise<ExecuteTradeResult> {
   const { data, error } = await supabase.rpc("game_afi_paper_execute_trade", {
     p_ticker: ticker,
     p_side: side,
     p_shares: shares,
+    p_challenge_id: challengeId,
   });
   if (error || !data || data.length === 0) {
     console.error("executeTrade failed", error);
