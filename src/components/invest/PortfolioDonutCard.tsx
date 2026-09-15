@@ -12,6 +12,12 @@ type PortfolioDonutCardProps = {
   // feature (see components/chat/AbuChatWidget.tsx). Every other bucket
   // renders without one.
   id?: string;
+  // Defaults to the shared `money()` helper (always 2 decimals, matches
+  // every Invest page donut). Game-a-Fi's Overview page passes
+  // gameAfi/format's formatMoney instead, which rounds to whole dollars --
+  // per your call that "$619,633.00" reads noisier than "$619,633" on a
+  // portfolio-sized number.
+  formatValue?: (n: number) => string;
 };
 
 // One reusable donut card, parameterized by title/slices/total so it
@@ -25,7 +31,15 @@ type PortfolioDonutCardProps = {
 // (src/components/dashboard/NetWorthCard.tsx): a plain CSS conic-gradient
 // circle with an absolutely-centered total, not a canvas/SVG chart library,
 // so this page's donuts look identical to the Dashboard's.
-export default function PortfolioDonutCard({ title, slices, total, loading, emptyLabel, id }: PortfolioDonutCardProps) {
+export default function PortfolioDonutCard({
+  title,
+  slices,
+  total,
+  loading,
+  emptyLabel,
+  id,
+  formatValue = money,
+}: PortfolioDonutCardProps) {
   let gradient = "none";
   if (slices.length && total > 0) {
     const parts: string[] = [];
@@ -53,7 +67,7 @@ export default function PortfolioDonutCard({ title, slices, total, loading, empt
             className="absolute left-1/2 top-1/2 flex h-[76px] w-[76px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full p-1.5 text-center text-xs font-medium text-text-primary"
             style={{ backgroundColor: "hsla(221.05, 31.15%, 11.96%, 0.92)" }}
           >
-            {loading ? "…" : money(total)}
+            {loading ? "…" : formatValue(total)}
           </div>
         </div>
         <div className="w-full min-w-0">
@@ -74,7 +88,7 @@ export default function PortfolioDonutCard({ title, slices, total, loading, empt
                     <span className="min-w-0 break-words text-sm text-text-primary">{s.name}</span>
                   </div>
                   <div className="shrink-0 text-sm text-text-muted">
-                    {money(s.value)} ({pct.toFixed(0)}%)
+                    {formatValue(s.value)} ({pct.toFixed(0)}%)
                   </div>
                 </div>
               );

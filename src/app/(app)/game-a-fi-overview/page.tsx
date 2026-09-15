@@ -161,6 +161,7 @@ export default function GameAFiOverviewPage() {
                 total={allocation.total}
                 loading={loading}
                 emptyLabel="No open positions yet -- place your first trade to get started."
+                formatValue={formatMoney}
               />
             </div>
             <div className="md:col-span-2">
@@ -173,6 +174,7 @@ export default function GameAFiOverviewPage() {
                 total={industryConcentration.total}
                 loading={loading}
                 emptyLabel="No open positions yet -- place your first trade to get started."
+                formatValue={formatMoney}
               />
             </div>
           </div>
