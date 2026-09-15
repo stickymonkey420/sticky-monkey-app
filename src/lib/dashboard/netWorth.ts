@@ -8,12 +8,16 @@ import type {
 // Allocation widget (head-code script, "nw-*" elements). Same bucket names,
 // same account-name -> bucket mapping, same fallback-by-category rules.
 
+// Exact hex values sampled (getComputedStyle) from the live Webflow
+// Dashboard's Asset Allocation donut + legend dots -- these must match the
+// live site pixel-for-pixel, not just be "close" colors from the app's own
+// palette.
 export const CATEGORY_COLORS: Record<NetWorthBucketName, string> = {
-  Equities: "#4f8cff",
+  Equities: "#219653",
   "Personal Vault": "#f2c14e",
-  "IRA Traditional": "#a78bfa",
-  "IRA Roth": "#ff8a65",
-  "Self-Directed IRA": "#64d8cb",
+  "IRA Traditional": "#2d9cdb",
+  "IRA Roth": "#e67e22",
+  "Self-Directed IRA": "#eb5757",
   Crypto: "#f472b6",
   "Cash & Bank": "#3ddc97",
 };

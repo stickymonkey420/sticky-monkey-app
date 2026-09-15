@@ -128,15 +128,15 @@ export default function InvestmentAlertCard() {
         type="button"
         id="ia-alert-card"
         onClick={() => setModalOpen(true)}
-        className="w-full rounded-2xl border border-card-border bg-[rgb(32,40,56)] p-5 text-left"
+        className="w-full rounded-[30px] bg-[rgb(32,40,56)] p-[30px] text-left"
       >
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-text-primary">Investment Alert</h3>
           <span
             id="ia-alert-dot"
-            className="inline-block h-2.5 w-2.5 rounded-full"
+            className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
             style={{ backgroundColor: dotColor }}
           />
-          <h3 className="text-sm font-semibold text-text-primary">Investment Alerts</h3>
         </div>
         <div id="ia-alert-summary" className="text-sm font-medium text-text-primary">
           {loading ? "Loading…" : summaryText}
@@ -150,6 +150,9 @@ export default function InvestmentAlertCard() {
           <div id="ia-alert-meta" className="mt-2 text-xs text-text-muted">
             {metaText}
           </div>
+        )}
+        {alerts.length > 0 && (
+          <div className="mt-2 text-xs text-text-muted/70">Click to view recent alerts</div>
         )}
       </button>
 

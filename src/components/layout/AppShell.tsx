@@ -323,9 +323,12 @@ function NavItem({
       // link, so this never shows up as a stray attribute elsewhere.
       id={node.href === "/income" ? "income-nav-link" : undefined}
       className={`flex items-center gap-2.5 rounded-md py-2 pr-3 text-sm font-medium text-text-primary ${
-        active ? "bg-white/5" : ""
+        active ? "bg-white/5" : "border-l-2 border-transparent"
       }`}
-      style={{ paddingLeft: `${indent}px` }}
+      style={{
+        paddingLeft: `${indent}px`,
+        borderLeft: active ? "2px solid #4f8cff" : undefined,
+      }}
     >
       {Icon && <Icon size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />}
       <span>{node.label}</span>
@@ -422,10 +425,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <aside className="hidden w-64 shrink-0 flex-col gap-4 border-r border-card-border bg-card-bg px-3 py-4 md:flex">
-        {/* Logo card -- real head icon + wordmark images, "featured" green
-            border per the reference mockup. */}
-        <div className="featured-border flex flex-col items-center gap-1.5 rounded-2xl bg-[#0f131c] px-4 py-5">
+      {/* Sidebar matches the live Webflow site exactly: no card box, no
+          border -- it's the same flat background as the page, just a
+          plain logo + nav list. The earlier pass's green-bordered "logo
+          card"/"nav card" boxes weren't part of the live design; those
+          highlights were reference pointers, not a literal border to add. */}
+      <aside className="hidden w-64 shrink-0 flex-col gap-4 px-3 py-6 md:flex">
+        <div className="flex flex-col items-center gap-1.5 px-2 pb-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={LOGO_HEAD_URL} alt="" className="h-12 w-12" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -433,11 +439,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <span className="text-[10px] font-semibold tracking-[0.25em] text-text-muted">FINANCE</span>
         </div>
 
-        <nav className="featured-border flex flex-1 flex-col gap-1 overflow-y-auto rounded-2xl bg-[#0f131c] px-3 py-3">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-1">
           <NavTree pathname={pathname} role={role} />
         </nav>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 px-1">
           <SignOutButton />
         </div>
       </aside>

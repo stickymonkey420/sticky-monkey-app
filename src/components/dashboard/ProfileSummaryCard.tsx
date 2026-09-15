@@ -1,20 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/dashboard/netWorth";
-import { descLine, relTime, titleLine } from "@/lib/dashboard/investmentAlerts";
 import { fetchManualAccounts, fetchPlaidTransactions } from "@/lib/wallet/queries";
 import { computeWalletOverview, type WalletOverview } from "@/lib/wallet/calc";
-import type { InvestmentAlert } from "@/lib/types/dashboard";
+import InvestmentAlertCard from "./InvestmentAlertCard";
+import QuickAccessCard from "./QuickAccessCard";
 
-// Fallback avatar -- same asset TopBar falls back to when profiles.avatar_url
-// is unset.
+// Fallback avatar -- Webflow-hosted `abu-avatar.jpg`, shown when
+// profiles.avatar_url is unset (the live site's real account has its own
+// photo, but the app's default state has none).
 const DEFAULT_AVATAR_URL =
   "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/6a973826f57d905329bc6275_abu-avatar-p-500.jpg";
-
-const ALERT_COLUMNS = "id,title,description,ticker,action,price,message,triggered_at";
 
 const EMPTY_OVERVIEW: WalletOverview = {
   balance: 0,
@@ -25,20 +24,16 @@ const EMPTY_OVERVIEW: WalletOverview = {
   monthExpense: 0,
 };
 
-type ProfileLite = { name: string | null; email: string | null; avatar_url: string | null; role: string | null };
+type ProfileLite = { name: string | null; email: string | null; avatar_url: string | null };
 
-// Right-side "profile summary" panel for the Dashboard, per the reference
-// mockup: avatar/name/email, Current Balance, this-month Income/Expense,
-// the latest Investment Alert, and a Quick Access section. New component --
-// nothing like this existed in the app before this pass. Follows the same
-// self-contained per-component data-fetching convention as the other
-// dashboard cards rather than lifting state to the page.
+// Right-side profile panel for the Dashboard -- ported to match the live
+// Webflow site's actual chrome (solid rgb(21,27,40) outer card, 30px
+// radius, no border; a darker rgb(32,40,56) nested "Current Balance" box;
+// Investment Alert and Quick Access nested inside the same panel) rather
+// than the earlier pass's invented green-border treatment.
 export default function ProfileSummaryCard() {
-  const router = useRouter();
   const [profile, setProfile] = useState<ProfileLite | null>(null);
   const [overview, setOverview] = useState<WalletOverview>(EMPTY_OVERVIEW);
-  const [latestAlert, setLatestAlert] = useState<InvestmentAlert | null>(null);
-  const [alertCount, setAlertCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,25 +49,15 @@ export default function ProfileSummaryCard() {
         return;
       }
 
-      const [{ data: profileData }, accounts, txs, { data: alerts }] = await Promise.all([
-        supabase.from("profiles").select("name,email,avatar_url,role").eq("id", user.id).maybeSingle(),
+      const [{ data: profileData }, accounts, txs] = await Promise.all([
+        supabase.from("profiles").select("name,email,avatar_url").eq("id", user.id).maybeSingle(),
         fetchManualAccounts(supabase, user.id),
         fetchPlaidTransactions(supabase, user.id),
-        supabase
-          .from("investment_alerts")
-          .select(ALERT_COLUMNS)
-          .eq("user_id", user.id)
-          .eq("dismissed", false)
-          .order("triggered_at", { ascending: false })
-          .limit(20),
       ]);
 
       if (cancelled) return;
       if (profileData) setProfile(profileData as ProfileLite);
       setOverview(computeWalletOverview(accounts, txs));
-      const alertRows = (alerts as InvestmentAlert[]) || [];
-      setLatestAlert(alertRows[0] || null);
-      setAlertCount(alertRows.length);
       setLoading(false);
     }
 
@@ -84,85 +69,51 @@ export default function ProfileSummaryCard() {
 
   const displayName = profile?.name || "Account";
   const avatarUrl = profile?.avatar_url || DEFAULT_AVATAR_URL;
-  const showAddTrade = profile?.role !== "free";
 
   return (
-    <div className="featured-border flex w-full flex-col gap-5 rounded-2xl bg-card-bg p-5 md:w-80 md:shrink-0">
+    <div className="flex w-full flex-col gap-6 rounded-[30px] p-[30px] md:w-80 md:shrink-0" style={{ backgroundColor: "#151b28" }}>
       {/* Avatar / name / email */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col items-center text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={avatarUrl} alt={displayName} className="h-14 w-14 rounded-full object-cover" />
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-text-primary">{displayName}</div>
-          {profile?.email && <div className="truncate text-xs text-text-muted">{profile.email}</div>}
-        </div>
+        <img src={avatarUrl} alt={displayName} className="h-24 w-24 rounded-full object-cover" />
+        <div className="mt-4 text-base font-semibold text-text-primary">{displayName}</div>
+        {profile?.email && (
+          <a href={`mailto:${profile.email}`} className="mt-1 text-sm" style={{ color: "#4f8cff" }}>
+            {profile.email}
+          </a>
+        )}
       </div>
 
       {/* Current Balance */}
-      <div className="border-t border-card-border pt-4">
-        <div className="text-xs font-medium uppercase tracking-wide text-text-muted">Current Balance</div>
-        <div className="mt-1 text-2xl font-semibold text-text-primary">{loading ? "…" : money(overview.balance)}</div>
-        <div className="mt-3 flex items-center justify-between text-sm">
-          <div>
-            <div className="text-text-muted">Income</div>
-            <div className="font-medium" style={{ color: "#3ddc97" }}>
+      <div className="rounded-[30px] px-6 py-[30px] text-center" style={{ backgroundColor: "rgb(32,40,56)" }}>
+        <div className="text-sm text-text-muted">Current Balance</div>
+        <div className="mt-1 text-2xl font-bold text-text-primary">{loading ? "…" : money(overview.balance)}</div>
+        <div className="mt-4 flex items-center justify-center gap-10 border-t border-white/[0.06] pt-4 text-sm">
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-text-muted">Income</span>
+            <span className="flex items-center gap-1.5 font-medium text-text-primary">
+              <ArrowUpCircle size={16} style={{ color: "#4f8cff" }} />
               {loading ? "…" : money(overview.monthIncome)}
-            </div>
+            </span>
           </div>
-          <div className="text-right">
-            <div className="text-text-muted">Expense</div>
-            <div className="font-medium" style={{ color: "#ff5c7a" }}>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-text-muted">Expense</span>
+            <span className="flex items-center gap-1.5 font-medium text-text-primary">
+              <ArrowDownCircle size={16} style={{ color: "#4f8cff" }} />
               {loading ? "…" : money(overview.monthExpense)}
-            </div>
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Investment Alert summary */}
-      <button
-        type="button"
-        onClick={() => router.push("/dashboard#ia-alert-card")}
-        className="rounded-xl border border-card-border bg-white/[0.03] p-3 text-left"
-      >
-        <div className="mb-1 flex items-center gap-2">
-          <span
-            className="inline-block h-2 w-2 rounded-full"
-            style={{ backgroundColor: latestAlert ? "#3ddc97" : "hsla(224.62, 17.97%, 42.55%, 0.35)" }}
-          />
-          <span className="text-xs font-semibold text-text-primary">Investment Alert</span>
-        </div>
-        {loading ? (
-          <div className="text-sm text-text-muted">Loading…</div>
-        ) : latestAlert ? (
-          <>
-            <div className="text-sm font-medium text-text-primary">{titleLine(latestAlert)}</div>
-            {descLine(latestAlert) && (
-              <div className="mt-0.5 truncate text-xs text-text-muted">{descLine(latestAlert)}</div>
-            )}
-            <div className="mt-1 text-[11px] text-text-muted">
-              {relTime(latestAlert.triggered_at)}
-              {alertCount > 1 ? `  ·  +${alertCount - 1} more` : ""}
-            </div>
-          </>
-        ) : (
-          <div className="text-sm text-text-muted">No alerts yet.</div>
-        )}
-      </button>
+      {/* Investment Alert -- same component used elsewhere, restyled as a
+          nested panel box rather than a full-width standalone card. */}
+      <InvestmentAlertCard />
 
       {/* Quick Access */}
-      <div className="border-t border-card-border pt-4">
-        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">Quick Access</h4>
-        <div className="flex flex-wrap gap-2">
-          {showAddTrade && (
-            <button
-              type="button"
-              onClick={() => router.push("/options?openTrade=1")}
-              className="rounded-xl bg-white/5 px-4 py-2.5 text-sm font-medium text-text-primary hover:bg-white/10"
-            >
-              + Add Option Trade
-            </button>
-          )}
-        </div>
+      <div>
+        <h4 className="mb-3 text-sm font-semibold text-text-primary">Quick Access</h4>
+        <QuickAccessCard />
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Search } from "lucide-react";
+import { Bell, ChevronDown, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import SignOutButton from "./SignOutButton";
 
@@ -14,9 +14,12 @@ const DEFAULT_AVATAR_URL =
 type ProfileLite = { name: string | null; email: string | null; avatar_url: string | null };
 
 // Global top bar: search, alerts bell (unread investment_alerts count), and
-// a profile avatar/name dropdown. Lives in AppShell so it shows on every
-// page alongside the sidebar. Per the reference mockup, the search field,
-// alerts icon, and profile icon/menu all carry the "featured" green border.
+// a profile avatar/dropdown. Lives in AppShell so it shows on every page
+// alongside the sidebar. Styled flat/borderless to match the live Webflow
+// site exactly (plain icon + placeholder text on the page background, a
+// 36px avatar, a small red count badge on the bell) -- the earlier pass's
+// green "featured" borders were reference pointers on the mockup, not a
+// literal border the live design uses.
 export default function TopBar() {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -73,32 +76,27 @@ export default function TopBar() {
   const avatarUrl = profile?.avatar_url || DEFAULT_AVATAR_URL;
 
   return (
-    <header className="flex items-center gap-4 border-b border-card-border bg-card-bg px-4 py-3 md:px-8">
-      <form onSubmit={handleSearchSubmit} className="min-w-0 flex-1">
-        <div className="featured-border flex max-w-md items-center gap-2 rounded-full bg-[#0f131c] px-4 py-2">
+    <header className="flex items-center justify-end gap-6 px-4 py-6 md:px-8">
+      <form onSubmit={handleSearchSubmit} className="mr-auto min-w-0 max-w-xs flex-1">
+        <div className="flex items-center gap-2.5">
           <Search size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search"
+            placeholder="Search here ..."
             aria-label="Search"
-            className="w-full min-w-0 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
+            className="w-full min-w-0 bg-transparent text-sm text-text-muted outline-none placeholder:text-text-muted"
           />
         </div>
       </form>
 
-      <button
-        type="button"
-        aria-label="Alerts"
-        onClick={() => router.push("/dashboard")}
-        className="featured-border relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0f131c]"
-      >
+      <button type="button" aria-label="Alerts" onClick={() => router.push("/dashboard")} className="relative flex shrink-0 items-center">
         <Bell size={18} className="text-text-primary" strokeWidth={1.75} />
         {alertCount > 0 && (
           <span
-            className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
-            style={{ backgroundColor: "#ff5c7a" }}
+            className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
+            style={{ backgroundColor: "#eb5757" }}
           >
             {alertCount > 9 ? "9+" : alertCount}
           </span>
@@ -106,20 +104,10 @@ export default function TopBar() {
       </button>
 
       <div ref={menuRef} className="relative shrink-0">
-        <button
-          type="button"
-          onClick={() => setMenuOpen((o) => !o)}
-          className="featured-border flex items-center gap-2 rounded-full bg-[#0f131c] py-1 pl-1 pr-3"
-        >
+        <button type="button" onClick={() => setMenuOpen((o) => !o)} className="flex items-center gap-1.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={avatarUrl}
-            alt={displayName}
-            className="h-8 w-8 rounded-full object-cover"
-          />
-          <span className="hidden max-w-[9rem] truncate text-sm font-medium text-text-primary sm:inline">
-            {displayName}
-          </span>
+          <img src={avatarUrl} alt={displayName} className="h-9 w-9 rounded-full object-cover" />
+          <ChevronDown size={14} className="text-text-muted" />
         </button>
 
         {menuOpen && (

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Repeat } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 // Ported from the live Webflow Dashboard's "Add Option Trade" and "Connect
@@ -141,29 +142,27 @@ export default function QuickAccessCard() {
   }
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-      <h3 className="mb-4 text-sm font-semibold text-text-primary">Quick Access</h3>
-      <div className="flex flex-wrap gap-3">
-        {showAddTrade && (
-          <button
-            type="button"
-            data-quick-action="add-option-trade-modal"
-            onClick={handleAddTrade}
-            className="rounded-xl bg-white/5 px-4 py-3 text-sm font-medium text-text-primary hover:bg-white/10"
-          >
-            + Add Option Trade
-          </button>
-        )}
+    <div className="flex flex-col gap-3">
+      {showAddTrade && (
         <button
           type="button"
-          data-quick-action="connect-finance"
-          onClick={handleConnectFinance}
-          className="rounded-xl px-4 py-3 text-sm font-medium text-white"
-          style={{ backgroundColor: "#4f8cff" }}
+          data-quick-action="add-option-trade-modal"
+          onClick={handleAddTrade}
+          className="flex items-center gap-3 rounded-[10px] bg-[rgb(32,40,56)] px-5 py-[18px] text-left text-sm font-medium text-text-primary hover:bg-white/[0.06]"
         >
-          <span className="quick-access-text-block">{connectLabel}</span>
+          <Repeat size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
+          Add Option Trade
         </button>
-      </div>
+      )}
+      <button
+        type="button"
+        data-quick-action="connect-finance"
+        onClick={handleConnectFinance}
+        className="flex items-center gap-3 rounded-[10px] bg-[rgb(32,40,56)] px-5 py-[18px] text-left text-sm font-medium text-text-primary hover:bg-white/[0.06]"
+      >
+        <Repeat size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
+        <span className="quick-access-text-block">{connectLabel}</span>
+      </button>
     </div>
   );
 }

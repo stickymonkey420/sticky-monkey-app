@@ -1,24 +1,23 @@
 import AppShell from "@/components/layout/AppShell";
 import NetWorthCard from "@/components/dashboard/NetWorthCard";
-import InvestmentAlertCard from "@/components/dashboard/InvestmentAlertCard";
-import IncomeCard from "@/components/dashboard/IncomeCard";
 import ExpenseCategoriesCard from "@/components/dashboard/ExpenseCategoriesCard";
 import IncomeHistoryChart from "@/components/dashboard/IncomeHistoryChart";
 import NetWorthHistoryChart from "@/components/dashboard/NetWorthHistoryChart";
-import QuickAccessCard from "@/components/dashboard/QuickAccessCard";
 import LastTransactionsCard from "@/components/dashboard/LastTransactionsCard";
 import OnboardingModal from "@/components/dashboard/OnboardingModal";
 import ProfileSummaryCard from "@/components/dashboard/ProfileSummaryCard";
 
-// Top row matches the reference mockup: Asset Allocation + Net Worth
-// (already a paired flex-row inside NetWorthCard) alongside the new
-// profile summary panel, with Expense Categories full-width below (left
-// unbordered per the mockup, which doesn't highlight that card). The
-// profile panel's Quick Access only surfaces "Add Option Trade" (matching
-// the mockup); the original QuickAccessCard (which also has "Connect
-// Finance") and the full InvestmentAlertCard (dismiss/delete + webhook
-// setup) stay further down the page rather than being replaced, so none of
-// that functionality is lost.
+// Layout matches the live Webflow Dashboard page exactly: Asset Allocation
+// + Net Worth (Net Worth now also embeds the Income week/month/YTD/
+// collateral table, same as the live site) alongside the profile panel,
+// then Expense Categories full-width below. Investment Alert and Quick
+// Access are no longer separate full-width cards -- the live site only
+// shows them nested inside the profile panel, so InvestmentAlertCard/
+// QuickAccessCard now render there (see ProfileSummaryCard) instead of
+// here. The old standalone "Options Income" total/realized card
+// (IncomeCard) doesn't exist on the live site either -- dropped so the
+// page matches; that data is still visible via the new Income table's
+// Month/YTD columns.
 export default function DashboardPage() {
   return (
     <AppShell>
@@ -32,9 +31,6 @@ export default function DashboardPage() {
           <ProfileSummaryCard />
         </div>
         <ExpenseCategoriesCard />
-        <QuickAccessCard />
-        <InvestmentAlertCard />
-        <IncomeCard />
         <IncomeHistoryChart />
         <NetWorthHistoryChart />
         <LastTransactionsCard />
