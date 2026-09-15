@@ -71,7 +71,13 @@ export default function ProfileSummaryCard() {
   const avatarUrl = profile?.avatar_url || DEFAULT_AVATAR_URL;
 
   return (
-    <div className="flex w-full flex-col gap-6 rounded-[30px] p-[30px] md:w-80 md:shrink-0" style={{ backgroundColor: "#151b28" }}>
+    // Sticky + h-[calc(100vh-2rem)] mirrors the left sidebar (AppShell's
+    // <aside>) exactly, so the two side panels always match height instead
+    // of the profile card's height following its own (shorter) content.
+    <div
+      className="sticky top-4 flex w-full flex-col gap-6 overflow-y-auto rounded-[30px] p-[30px] md:h-[calc(100vh-2rem)] md:w-80 md:shrink-0"
+      style={{ backgroundColor: "#151b28" }}
+    >
       {/* Avatar / name / email */}
       <div className="flex flex-col items-center text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}

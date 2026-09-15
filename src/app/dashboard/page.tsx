@@ -23,35 +23,22 @@ export default function DashboardPage() {
     <AppShell>
       <OnboardingModal />
       <h1 className="mb-6 text-xl font-semibold text-text-primary">Dashboard</h1>
-      <div className="flex flex-col gap-6">
-        {/* items-start is the fix here: without it, flexbox's default
-            align-items:stretch makes the shorter NetWorthCard column
-            stretch to match ProfileSummaryCard's taller height, leaving a
-            dead empty gap below its actual card content before
-            ExpenseCategoriesCard begins. items-start lets each column be
-            only as tall as its own content. */}
-        <div className="flex flex-col items-start gap-6 lg:flex-row">
-          <div className="min-w-0 w-full flex-1">
-            <NetWorthCard />
-          </div>
-          <ProfileSummaryCard />
+      {/* Single row, two columns: the left/center column stacks NetWorthCard
+          (Asset Allocation + Net Worth) directly above Expense Categories
+          and the charts below it, all in one flex-col with one gap -- so
+          those lower cards start immediately after Net Worth/Asset
+          Allocation with no dead space, regardless of how tall
+          ProfileSummaryCard's column ends up being. items-start keeps
+          either column from stretching to match the other's height. */}
+      <div className="flex flex-col items-start gap-6 lg:flex-row">
+        <div className="flex min-w-0 w-full flex-1 flex-col gap-6">
+          <NetWorthCard />
+          <ExpenseCategoriesCard />
+          <IncomeHistoryChart />
+          <NetWorthHistoryChart />
+          <LastTransactionsCard />
         </div>
-        {/* The center column below must stop at the same right edge as
-            NetWorthCard above -- it must not spill into the width reserved
-            for ProfileSummaryCard's column. Re-declaring the same two-column
-            row (content + an invisible md:w-80 spacer matching
-            ProfileSummaryCard's width) keeps that right-hand gutter reserved
-            all the way down the page, even though ProfileSummaryCard itself
-            only renders once, in the row above. */}
-        <div className="flex w-full flex-col items-start gap-6 lg:flex-row">
-          <div className="flex min-w-0 w-full flex-1 flex-col gap-6">
-            <ExpenseCategoriesCard />
-            <IncomeHistoryChart />
-            <NetWorthHistoryChart />
-            <LastTransactionsCard />
-          </div>
-          <div aria-hidden="true" className="hidden md:block md:w-80 md:shrink-0" />
-        </div>
+        <ProfileSummaryCard />
       </div>
     </AppShell>
   );
