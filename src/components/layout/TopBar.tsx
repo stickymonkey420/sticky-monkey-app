@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bell, ChevronDown, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/profile/ProfileProvider";
+import MyProfileModal from "@/components/profile/MyProfileModal";
 import SignOutButton from "./SignOutButton";
 
 // Fallback avatar -- same Webflow-hosted asset used as the default
@@ -25,6 +26,7 @@ export default function TopBar() {
   const [query, setQuery] = useState("");
   const [alertCount, setAlertCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -112,10 +114,23 @@ export default function TopBar() {
               {profile?.email && <div className="truncate text-xs text-text-muted">{profile.email}</div>}
             </div>
             <div className="my-1 border-t border-card-border" />
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                setProfileModalOpen(true);
+              }}
+              className="block w-full rounded-lg px-3 py-2 text-left text-sm text-text-primary hover:bg-white/5"
+            >
+              Edit Profile
+            </button>
+            <div className="my-1 border-t border-card-border" />
             <SignOutButton />
           </div>
         )}
       </div>
+
+      {profileModalOpen && <MyProfileModal onClose={() => setProfileModalOpen(false)} />}
     </header>
   );
 }

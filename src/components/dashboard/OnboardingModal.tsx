@@ -9,14 +9,49 @@ const PILL_BASE =
 const PILL_ACTIVE = "border-[#4f8cff] bg-[#4f8cff] text-white";
 const PILL_INACTIVE = "border-[rgba(148,158,189,0.5)]";
 
-export default function OnboardingModal() {
-  const [visible, setVisible] = useState(false);
+// Turns a profiles.use_cases array back into the checkbox-state shape this
+// modal edits internally. Only recognized USE_CASES keys are seeded --
+// "investment_income" can also appear because buildUseCasesArray() auto-adds
+// it, which round-trips fine since it's a real USE_CASES key too.
+function toSelectedMap(useCases: string[] | null | undefined): Record<string, boolean> {
+  const selected: Record<string, boolean> = {};
+  const validKeys = new Set(USE_CASES.map((u) => u.key));
+  (useCases ?? []).forEach((key) => {
+    if (validKeys.has(key)) selected[key] = true;
+  });
+  return selected;
+}
+
+// forceOpen/initialUseCases/initialAnswers/onClose let this exact same
+// survey be reused as a "Retake Survey" flow from MyProfileModal (self-
+// service profile editing) instead of only ever auto-triggering once at
+// signup. With no props (the Dashboard's existing usage) this behaves
+// exactly as before: it checks onboarding_completed_at itself and decides
+// whether to show. When forceOpen is passed, that self-check is skipped
+// entirely and the caller owns when this mounts/unmounts (conditional
+// render + unmount, matching this app's established remount-instead-of-
+// effect-reset pattern) -- so lazy useState initializers below are all
+// that's needed to seed a retake with the user's current answers.
+export default function OnboardingModal({
+  forceOpen,
+  initialUseCases,
+  initialAnswers,
+  onClose,
+}: {
+  forceOpen?: boolean;
+  initialUseCases?: string[] | null;
+  initialAnswers?: OnboardingAnswers | null;
+  onClose?: () => void;
+} = {}) {
+  const [visible, setVisible] = useState(() => forceOpen ?? false);
   const [step, setStep] = useState<1 | 2>(1);
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [answers, setAnswers] = useState<OnboardingAnswers>({});
+  const [selected, setSelected] = useState<Record<string, boolean>>(() => toSelectedMap(initialUseCases));
+  const [answers, setAnswers] = useState<OnboardingAnswers>(() => initialAnswers ?? {});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (forceOpen !== undefined) return; // controlled/retake mode -- caller decides visibility, not this check
+
     let cancelled = false;
     const supabase = createClient();
 
@@ -38,7 +73,7 @@ export default function OnboardingModal() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [forceOpen]);
 
   function toggleUseCase(key: string) {
     setSelected((prev) => {
@@ -69,6 +104,7 @@ export default function OnboardingModal() {
     if (!user) {
       setSaving(false);
       setVisible(false);
+      onClose?.();
       return;
     }
 
@@ -82,6 +118,7 @@ export default function OnboardingModal() {
     await supabase.from("profiles").update(payload).eq("id", user.id);
     setSaving(false);
     setVisible(false);
+    onClose?.();
   }
 
   if (!visible) return null;

@@ -43,7 +43,10 @@ export default function PortfolioDonutCard({ title, slices, total, loading, empt
   return (
     <div id={id} className="flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-4 text-sm font-semibold text-text-primary">{title}</h3>
-      <div className="flex flex-1 items-center gap-6">
+      {/* Donut centered on top, full-width key below it -- stacked instead of
+          side-by-side so the legend gets the card's whole width to itself
+          and ticker names stop getting clipped in a narrow shared column. */}
+      <div className="flex flex-1 flex-col items-center gap-5">
         <div className="relative h-24 w-24 shrink-0">
           <div className="h-24 w-24 rounded-full" style={{ backgroundImage: gradient }} />
           <div
@@ -53,7 +56,7 @@ export default function PortfolioDonutCard({ title, slices, total, loading, empt
             {loading ? "…" : money(total)}
           </div>
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="w-full min-w-0">
           {loading ? (
             <div className="text-sm text-text-muted">Loading…</div>
           ) : slices.length === 0 ? (
@@ -68,7 +71,7 @@ export default function PortfolioDonutCard({ title, slices, total, loading, empt
                       className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: s.color }}
                     />
-                    <span className="truncate text-sm text-text-primary">{s.name}</span>
+                    <span className="min-w-0 break-words text-sm text-text-primary">{s.name}</span>
                   </div>
                   <div className="shrink-0 text-sm text-text-muted">
                     {money(s.value)} ({pct.toFixed(0)}%)

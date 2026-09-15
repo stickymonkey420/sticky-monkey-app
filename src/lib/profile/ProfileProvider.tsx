@@ -60,9 +60,18 @@ function readLastCachedProfile(): ProfileLite | null {
 type ProfileContextValue = {
   profile: ProfileLite | null;
   loading: boolean;
+  // Re-fetches name/email/avatar_url for the signed-in user and updates both
+  // this context and the localStorage cache. Called by MyProfileModal after
+  // a self-service save so TopBar's avatar/name update immediately instead
+  // of waiting for the next navigation or hard refresh.
+  refresh: () => Promise<void>;
 };
 
-const ProfileContext = createContext<ProfileContextValue>({ profile: null, loading: true });
+const ProfileContext = createContext<ProfileContextValue>({
+  profile: null,
+  loading: true,
+  refresh: async () => {},
+});
 
 // Single source of truth for the signed-in user's name/email/avatar_url,
 // fetched ONCE per browser session (this provider lives in the (app) route
@@ -144,7 +153,25 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  return <ProfileContext.Provider value={{ profile, loading }}>{children}</ProfileContext.Provider>;
+  async function refresh() {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+    const { data } = await supabase.from("profiles").select("name,email,avatar_url").eq("id", user.id).maybeSingle();
+    if (data) {
+      const fresh = data as ProfileLite;
+      setProfile(fresh);
+      writeCache(user.id, fresh);
+    }
+  }
+
+  return <ProfileContext.Provider value={{ profile, loading, refresh }}>{children}</ProfileContext.Provider>;
 }
 
 export function useProfile() {
