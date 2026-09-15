@@ -1,37 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import LeaderboardTable from "@/components/gameAfi/LeaderboardTable";
-import PaperTradingPanel from "@/components/gameAfi/PaperTradingPanel";
 import ChallengesPanel from "@/components/gameAfi/ChallengesPanel";
+import LeaguePanel from "@/components/gameAfi/LeaguePanel";
 import MyProfileModal from "@/components/profile/MyProfileModal";
 import { createClient } from "@/lib/supabase/client";
-import { fetchAvailableWeeks, fetchSeasonLeaderboard, fetchWeeklyLeaderboard } from "@/lib/gameAfi/queries";
-import type { LeaderboardRow } from "@/lib/gameAfi/types";
 
-// Game-a-Fi: a fantasy-football-style weekly standings board (not
-// head-to-head matchups). Two separate games, switched at the top of this
-// page:
-//   - "Live Portfolio" (Phase 1): ranks members by real portfolio return
-//     %. Dollar amounts stay private -- only rank and % are shown (see
-//     lib/gameAfi/queries.ts + the game_afi_* SQL functions).
-//   - "Paper Trading" (Phase 2): a simulated $10,000 account members trade
-//     with, priced off the real stock_universe table. $ amounts are shown
-//     here since nothing real is at risk (see
-//     components/gameAfi/PaperTradingPanel.tsx + lib/gameAfi/paperQueries.ts
-//     + the game_afi_paper_* SQL functions).
-// Both are free tier.
-function formatWeekLabel(weekStartIso: string): string {
-  const start = new Date(`${weekStartIso}T00:00:00`);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6);
-  const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  return `Week of ${fmt(start)} – ${fmt(end)}, ${end.getFullYear()}`;
-}
-
+// Game-a-Fi: head-to-head member challenges, with league play coming next.
+// The weekly-standings "Live Portfolio" leaderboard and "Paper Trading"
+// sandbox are shelved for now (their code -- lib/gameAfi/queries.ts,
+// lib/gameAfi/paperQueries.ts, components/gameAfi/LeaderboardTable.tsx,
+// components/gameAfi/PaperTradingPanel.tsx, and the game_afi_*leaderboard*/
+// game_afi_paper_* SQL functions -- is untouched, just not linked from this
+// page) in favor of Head to Head and League.
 export default function GameAFiPage() {
-  const [game, setGame] = useState<"live" | "paper" | "headtohead">("live");
-  const [tab, setTab] = useState<"weekly" | "season">("weekly");
+  const [tab, setTab] = useState<"headtohead" | "league">("headtohead");
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   // Whether the signed-in member has a Game-a-Fi handle set yet. Starts
@@ -41,13 +24,6 @@ export default function GameAFiPage() {
   // missing.
   const [hasHandle, setHasHandle] = useState(true);
   const [handleModalOpen, setHandleModalOpen] = useState(false);
-
-  const [weeks, setWeeks] = useState<string[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
-  const [weeklyRows, setWeeklyRows] = useState<LeaderboardRow[]>([]);
-
-  const [seasonStart, setSeasonStart] = useState<string | null>(null);
-  const [seasonRows, setSeasonRows] = useState<LeaderboardRow[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,19 +38,9 @@ export default function GameAFiPage() {
       }
       if (!cancelled) setUserId(user.id);
 
-      const [availableWeeks, weekly, season, profileRes] = await Promise.all([
-        fetchAvailableWeeks(supabase),
-        fetchWeeklyLeaderboard(supabase),
-        fetchSeasonLeaderboard(supabase),
-        supabase.from("profiles").select("username").eq("id", user.id).maybeSingle(),
-      ]);
+      const { data } = await supabase.from("profiles").select("username").eq("id", user.id).maybeSingle();
       if (cancelled) return;
-      setHasHandle(!!profileRes.data?.username);
-      setWeeks(availableWeeks);
-      setSelectedWeek(weekly.weekStart);
-      setWeeklyRows(weekly.rows);
-      setSeasonStart(season.seasonStart);
-      setSeasonRows(season.rows);
+      setHasHandle(!!data?.username);
       setLoading(false);
     }
     load();
@@ -82,13 +48,6 @@ export default function GameAFiPage() {
       cancelled = true;
     };
   }, []);
-
-  async function handleWeekChange(weekStart: string) {
-    setSelectedWeek(weekStart);
-    const supabase = createClient();
-    const weekly = await fetchWeeklyLeaderboard(supabase, weekStart);
-    setWeeklyRows(weekly.rows);
-  }
 
   async function handleHandleModalClose() {
     setHandleModalOpen(false);
@@ -105,15 +64,13 @@ export default function GameAFiPage() {
       </div>
       <div className="flex flex-col gap-6">
         <p className="text-sm text-text-muted">
-          A weekly standings board, not head-to-head matchups -- every member&apos;s weekly performance shapes their
-          placement.
+          Challenge another member head-to-head, or join a league once your Head to Head is configured.
         </p>
 
         {!loading && !hasHandle && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-card-border bg-card-bg p-4">
             <p className="text-sm text-text-muted">
-              Set a handle to show up on leaderboards -- it&apos;s also how leagues, head-to-head, and tournaments
-              will identify you once those launch.
+              Set a handle to challenge or be challenged -- it&apos;s how Head to Head and League identify you.
             </p>
             <button
               type="button"
@@ -128,112 +85,24 @@ export default function GameAFiPage() {
 
         <div className="flex gap-2">
           <button
-            onClick={() => setGame("live")}
+            onClick={() => setTab("headtohead")}
             className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-              game === "live" ? "bg-white/10 text-text-primary" : "bg-white/5 text-text-muted hover:bg-white/10"
-            }`}
-          >
-            Live Portfolio
-          </button>
-          <button
-            onClick={() => setGame("paper")}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-              game === "paper" ? "bg-white/10 text-text-primary" : "bg-white/5 text-text-muted hover:bg-white/10"
-            }`}
-          >
-            Paper Trading
-          </button>
-          <button
-            onClick={() => setGame("headtohead")}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-              game === "headtohead" ? "bg-white/10 text-text-primary" : "bg-white/5 text-text-muted hover:bg-white/10"
+              tab === "headtohead" ? "bg-white/10 text-text-primary" : "bg-white/5 text-text-muted hover:bg-white/10"
             }`}
           >
             Head to Head
           </button>
+          <button
+            onClick={() => setTab("league")}
+            className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+              tab === "league" ? "bg-white/10 text-text-primary" : "bg-white/5 text-text-muted hover:bg-white/10"
+            }`}
+          >
+            League
+          </button>
         </div>
 
-        {game === "headtohead" ? (
-          <ChallengesPanel />
-        ) : game === "paper" ? (
-          <PaperTradingPanel userId={userId} />
-        ) : (
-          <div className="flex flex-col gap-6">
-            <p className="text-sm text-text-muted">
-              Every member&apos;s real portfolio return % for the week shapes their placement. Dollar amounts stay
-              private; only rank and % are shown.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setTab("weekly")}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-                  tab === "weekly" ? "bg-[#4f8cff] text-white" : "bg-white/5 text-text-muted hover:bg-white/10"
-                }`}
-              >
-                This Week
-              </button>
-              <button
-                onClick={() => setTab("season")}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-                  tab === "season" ? "bg-[#4f8cff] text-white" : "bg-white/5 text-text-muted hover:bg-white/10"
-                }`}
-              >
-                Season Standings
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">
-                Loading leaderboard…
-              </div>
-            ) : tab === "weekly" ? (
-              <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-text-primary">Weekly Placement</h3>
-                  {weeks.length > 0 && (
-                    <select
-                      value={selectedWeek ?? ""}
-                      onChange={(e) => handleWeekChange(e.target.value)}
-                      className="rounded-md border border-card-border bg-[#0f131c] px-3 py-1.5 text-sm text-text-primary outline-none"
-                    >
-                      {weeks.map((w) => (
-                        <option key={w} value={w}>
-                          {formatWeekLabel(w)}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-                <LeaderboardTable
-                  rows={weeklyRows}
-                  currentUserId={userId}
-                  emptyLabel="No weekly results yet -- come back once two weeks of portfolio data have been tracked."
-                />
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-text-primary">Season Standings</h3>
-                  {seasonStart && (
-                    <span className="text-xs text-text-muted">
-                      Since{" "}
-                      {new Date(`${seasonStart}T00:00:00`).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
-                  )}
-                </div>
-                <LeaderboardTable
-                  rows={seasonRows}
-                  currentUserId={userId}
-                  emptyLabel="No season standings yet -- come back once a few weeks of portfolio data have been tracked."
-                />
-              </div>
-            )}
-          </div>
-        )}
+        {tab === "league" ? <LeaguePanel /> : <ChallengesPanel />}
       </div>
 
       {handleModalOpen && <MyProfileModal onClose={handleHandleModalClose} />}

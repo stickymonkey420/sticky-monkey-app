@@ -31,11 +31,15 @@ export async function findHandle(
 export async function sendChallenge(
   supabase: SupabaseClient,
   handle: string,
-  message?: string
+  message: string | undefined,
+  startingBalance: number,
+  expiresAt: string | null
 ): Promise<SendChallengeResult> {
   const { data, error } = await supabase.rpc("game_afi_send_challenge", {
     p_handle: handle,
     p_message: message?.trim() || null,
+    p_starting_balance: startingBalance,
+    p_expires_at: expiresAt,
   });
   if (error) return { id: null, error: readableError(error) };
   return { id: data as string, error: null };

@@ -19,4 +19,11 @@ export type ChallengeRow = {
   other_name: string | null;
   other_username: string | null;
   other_avatar_url: string | null;
+  // Agreed starting paper capital, set by the challenger when sending the
+  // invite and accepted as-is (no counter-offer, for now) when the
+  // opponent accepts. Holdings during the match must be bought with this
+  // capital -- not enforced yet; this is just the agreed number for now.
+  starting_balance: number;
+  // Optional match end date, set by the challenger when sending the invite.
+  expires_at: string | null;
 };
