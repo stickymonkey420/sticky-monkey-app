@@ -122,9 +122,17 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { error } = await supabase.auth.verifyOtp({ type: type as EmailOtpType, token_hash });
     if (!error) {
-      return NextResponse.redirect(new URL(next, request.url));
+      // 303, not the default 307: NextResponse.redirect() defaults to a
+      // redirect status that preserves the original request method, and
+      // this handler is itself a POST (the interstitial's "Continue" button
+      // submits a form). A 307/308 here makes the browser re-issue the
+      // redirect to `next` as a POST too, which every destination page
+      // (e.g. /update-password) only serves via GET -- producing a
+      // confusing 405 right after a successful verification. 303 forces
+      // the follow-up request to be a GET regardless of the original method.
+      return NextResponse.redirect(new URL(next, request.url), 303);
     }
   }
 
-  return NextResponse.redirect(new URL("/auth/auth-code-error", request.url));
+  return NextResponse.redirect(new URL("/auth/auth-code-error", request.url), 303);
 }
