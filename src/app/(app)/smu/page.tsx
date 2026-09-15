@@ -15,6 +15,11 @@ const VIDEO_URL =
   "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/6a96aefe185e5f18cc9542d3_AbuIntro.mp4";
 const ABU_AVATAR_URL =
   "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/6a97f76bdc2bb83ea21e174f_abu-eyes-open-clean.png";
+// Shown as the video's placeholder frame before it's played, per your call
+// to swap in the SMU crest there instead of Abu's avatar. Served from this
+// app's own public/ folder (not S3, unlike the two URLs above) since it's a
+// new asset with nowhere else hosted yet.
+const SMU_CREST_URL = "/images/smu-crest.png";
 
 export default function SmuPage() {
   return (
@@ -45,7 +50,7 @@ export default function SmuPage() {
           <video
             controls
             preload="metadata"
-            poster={ABU_AVATAR_URL}
+            poster={SMU_CREST_URL}
             className="w-full max-w-2xl rounded-xl border border-card-border"
           >
             <source src={VIDEO_URL} type="video/mp4" />
