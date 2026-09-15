@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { changeColored, MARKET_STATE_LABELS, money, scoreBand } from "@/lib/screener/calc";
 import {
@@ -14,8 +14,9 @@ import {
 } from "@/lib/screener/gauge";
 import { fetchTickerQuote } from "@/lib/screener/queries";
 import type { TickerQuoteResult } from "@/lib/screener/types";
+import type { Role } from "@/lib/usersGroups/types";
 import Gauge from "./Gauge";
-import TickerCostAndActions from "./TickerCostAndActions";
+import { AverageCostOwnedCard, BuyButton } from "./TickerCostAndActions";
 
 // Port of the live script's ticker-search widget: a single input + button
 // hitting the `ticker-quote-lookup` edge function, rendering a price card
@@ -25,6 +26,34 @@ export default function TickerLookup() {
   const [symbol, setSymbol] = useState("");
   const [status, setStatus] = useState("");
   const [result, setResult] = useState<TickerQuoteResult | null>(null);
+
+  // Signed-in user id + tier, fetched once and shared by both
+  // AverageCostOwnedCard and BuyButton below instead of each fetching its
+  // own copy.
+  const [userId, setUserId] = useState<string | null>(null);
+  const [role, setRole] = useState<Role | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    async function loadUser() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (!user) {
+        setUserId(null);
+        return;
+      }
+      setUserId(user.id);
+      const { data } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+      if (!cancelled && data) setRole((data as { role: Role }).role);
+    }
+    loadUser();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function doSearch() {
     const sym = symbol.trim().toUpperCase();
@@ -93,7 +122,7 @@ export default function TickerLookup() {
       {result && (
         <div className="flex flex-col gap-4">
           <div className="rounded-[14px] border border-white/[0.12] bg-white/[0.03] p-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="text-lg font-bold text-text-primary">{result.symbol}</div>
                 {result.companyName && <div className="mt-0.5 text-base text-text-muted">{result.companyName}</div>}
@@ -115,11 +144,21 @@ export default function TickerLookup() {
                   </div>
                 )}
 
-                {/* Average Cost Owned + Buy: left-justified under the quote
-                    time, same column as the price info above it. */}
-                <div className="mt-4">
-                  <TickerCostAndActions ticker={result.symbol} />
-                </div>
+                {/* Average Cost Owned: left-justified under the quote time,
+                    same column as the price info above it. */}
+                {userId && (
+                  <div className="mt-4">
+                    <AverageCostOwnedCard key={result.symbol} ticker={result.symbol} userId={userId} role={role} />
+                  </div>
+                )}
+              </div>
+
+              {/* Buy: its own column between Average Cost Owned and the
+                  reserved/Score boxes, pinned to the bottom of the row
+                  (lg:items-stretch above makes every column here match the
+                  tallest one's height). */}
+              <div className="flex shrink-0 flex-col justify-end">
+                {userId && <BuyButton ticker={result.symbol} userId={userId} />}
               </div>
 
               <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row lg:flex-row">
