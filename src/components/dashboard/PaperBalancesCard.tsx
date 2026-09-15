@@ -5,14 +5,13 @@ import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/dashboard/netWorth";
 import { fetchChallenges } from "@/lib/gameAfi/challengeQueries";
 
-const PRACTICE_STARTING_BALANCE = 10000;
-
 type BalanceRow = { key: string; label: string; cashBalance: number };
 
-// "Funny Money" -- Game-a-Fi paper cash across every account this member
-// has: the free-standing Monkey Monkey practice account, plus one row per
-// accepted Head to Head match (each its own isolated cash balance -- see
-// the paper-account-scoping migration). Read-only: reads paper_accounts
+// "Funny Money" -- Game-a-Fi paper cash across every accepted Head to Head
+// match this member is in (each its own isolated cash balance -- see the
+// paper-account-scoping migration). The free-standing "Monkey Monkey"
+// practice account is intentionally NOT shown here (per the user: "I
+// don't think I need monkey monkey"). Read-only: reads paper_accounts
 // directly rather than provisioning missing rows via ensurePaperAccount,
 // since an accepted match with no trades yet simply hasn't been
 // provisioned -- its balance is just its agreed starting capital, shown
@@ -40,24 +39,19 @@ export default function PaperBalancesCard() {
       ]);
       if (cancelled) return;
 
-      const cashByChallenge = new Map<string | null, number>();
+      const cashByChallenge = new Map<string, number>();
       for (const a of (accounts ?? []) as { challenge_id: string | null; cash_balance: number }[]) {
-        cashByChallenge.set(a.challenge_id, Number(a.cash_balance));
+        if (a.challenge_id) cashByChallenge.set(a.challenge_id, Number(a.cash_balance));
       }
 
       const accepted = challenges.filter((c) => c.status === "accepted");
-      setRows([
-        {
-          key: "practice",
-          label: "Monkey Monkey",
-          cashBalance: cashByChallenge.get(null) ?? PRACTICE_STARTING_BALANCE,
-        },
-        ...accepted.map((c) => ({
+      setRows(
+        accepted.map((c) => ({
           key: c.id,
           label: c.other_username ? `@${c.other_username}` : c.other_name || "Member",
           cashBalance: cashByChallenge.get(c.id) ?? c.starting_balance,
-        })),
-      ]);
+        }))
+      );
       setLoading(false);
     }
 
@@ -74,6 +68,8 @@ export default function PaperBalancesCard() {
       <h3 className="mb-3 text-sm font-semibold text-text-primary">Funny Money</h3>
       {loading ? (
         <div className="text-sm text-text-muted">Loading…</div>
+      ) : rows.length === 0 ? (
+        <div className="text-sm text-text-muted">No active Head to Head matches yet.</div>
       ) : (
         <table className="w-full border-collapse text-sm">
           <tbody className="divide-y divide-white/10">
