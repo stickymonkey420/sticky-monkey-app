@@ -36,10 +36,22 @@ export default function DashboardPage() {
           </div>
           <ProfileSummaryCard />
         </div>
-        <ExpenseCategoriesCard />
-        <IncomeHistoryChart />
-        <NetWorthHistoryChart />
-        <LastTransactionsCard />
+        {/* The center column below must stop at the same right edge as
+            NetWorthCard above -- it must not spill into the width reserved
+            for ProfileSummaryCard's column. Re-declaring the same two-column
+            row (content + an invisible md:w-80 spacer matching
+            ProfileSummaryCard's width) keeps that right-hand gutter reserved
+            all the way down the page, even though ProfileSummaryCard itself
+            only renders once, in the row above. */}
+        <div className="flex w-full flex-col items-start gap-6 lg:flex-row">
+          <div className="flex min-w-0 w-full flex-1 flex-col gap-6">
+            <ExpenseCategoriesCard />
+            <IncomeHistoryChart />
+            <NetWorthHistoryChart />
+            <LastTransactionsCard />
+          </div>
+          <div aria-hidden="true" className="hidden md:block md:w-80 md:shrink-0" />
+        </div>
       </div>
     </AppShell>
   );
