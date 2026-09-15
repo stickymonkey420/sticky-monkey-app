@@ -68,13 +68,19 @@ const LOGO_WORDMARK_URL =
 // distinct from Banking's own /accounts) -- manages the account-level
 // record (institution/name/balance) for brokerage, retirement, and
 // precious-metal manual accounts, not the positions/vault items inside
-// them. It has no separate in-page role check, same as Portfolio/Taxable/
-// Retirement/Vault -- the whole group's "investOptIn" gate is what keeps
-// it from a free-tier user who hasn't opted into any Account Type yet.
-// The Portfolio page (/invest) additionally only renders a donut card for
-// an account type the user has actually ticked (see invest/page.tsx) --
-// so a free user who ticks "Crypto" sees the Investments nav item plus
-// just the Crypto card, not the full paid card set.
+// them. It has no separate in-page role check. The group's "investOptIn"
+// gate on `requires` decides whether "Investments" shows AT ALL (paid
+// tier always; free tier only once any Account Type box is ticked), but
+// which specific leaves show underneath is a second, separate gate --
+// `accountTypeAny` on Taxable's Brokerage/Crypto, Retirement's
+// Traditional/Roth, and Vault -- that checks profiles.account_types
+// directly and is NEVER bypassed by role. So a paid user who's only
+// ticked Brokerage and Crypto sees Portfolio/Accounts/Taxable but not
+// Retirement or Vault, exactly like a free user in the same state would;
+// paid tier only buys entry into the group, not every leaf inside it.
+// The Portfolio page (/invest) mirrors this: it only renders a donut card
+// for an account type the user has actually ticked (see invest/page.tsx),
+// same account_types-is-the-source-of-truth rule, independent of role.
 //
 // "Businesses" is a group: "Find a Gig" (Webflow's nav label was "Search",
 // slug side-gigs) is a searchable directory over gig_categories (50 rows,
@@ -151,6 +157,15 @@ type NavNode = {
   // still passes it once they've explicitly ticked at least one box under
   // Profile > Account Types (profiles.account_types) -- see passesGate.
   requires?: "paid" | "admin" | "owner" | "investOptIn";
+  // Independent of `requires` and NOT bypassed by paid tier: this leaf (or
+  // group) only shows once profiles.account_types includes at least one of
+  // these keys -- e.g. the "Brokerage" leaf under Investments > Taxable
+  // only shows once the user has actually ticked "Brokerage (Taxable)" in
+  // their profile, whether they're free or paid. Ticking a box is what
+  // surfaces that specific account type everywhere (nav leaf here, donut
+  // card on the Portfolio page) -- role only gates the "Investments" group
+  // as a whole, not which account types inside it are visible.
+  accountTypeAny?: string[];
   icon?: LucideIcon;
 };
 
@@ -182,18 +197,18 @@ const NAV_TREE: NavNode[] = [
       {
         label: "Taxable",
         children: [
-          { href: "/holdings?account=brokerage", label: "Brokerage" },
-          { href: "/holdings?account=crypto", label: "Crypto" },
+          { href: "/holdings?account=brokerage", label: "Brokerage", accountTypeAny: ["brokerage"] },
+          { href: "/holdings?account=crypto", label: "Crypto", accountTypeAny: ["crypto"] },
         ],
       },
       {
         label: "Retirement",
         children: [
-          { href: "/holdings?account=traditional", label: "Traditional IRA" },
-          { href: "/holdings?account=roth", label: "Roth IRA" },
+          { href: "/holdings?account=traditional", label: "Traditional IRA", accountTypeAny: ["traditional"] },
+          { href: "/holdings?account=roth", label: "Roth IRA", accountTypeAny: ["roth"] },
         ],
       },
-      { href: "/invest#vault-section", label: "Vault" },
+      { href: "/invest#vault-section", label: "Vault", accountTypeAny: ["metals", "sdira"] },
     ],
   },
   {
@@ -264,8 +279,17 @@ function passesGate(requires: NavNode["requires"], role: Role | null, accountTyp
 // Recursive: a group with `requires` is dropped whole (no need to also
 // check children); an ungated group is kept only if at least one child
 // survives filtering.
+// accountTypeAny is a hard requirement, never bypassed by role -- unlike
+// `requires`, paid tier does not skip it. Only "not yet loaded" (null)
+// counts as unknown/hidden; an empty [] (loaded, nothing ticked) fails it.
+function passesAccountTypeGate(accountTypeAny: string[] | undefined, accountTypes: string[] | null): boolean {
+  if (!accountTypeAny) return true;
+  return !!accountTypes && accountTypeAny.some((t) => accountTypes.includes(t));
+}
+
 function filterNode(node: NavNode, role: Role | null, accountTypes: string[] | null): NavNode | null {
   if (!passesGate(node.requires, role, accountTypes)) return null;
+  if (!passesAccountTypeGate(node.accountTypeAny, accountTypes)) return null;
   if (node.children) {
     const children = node.children
       .map((c) => filterNode(c, role, accountTypes))
