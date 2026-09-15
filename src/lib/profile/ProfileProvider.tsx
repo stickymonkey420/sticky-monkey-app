@@ -6,6 +6,10 @@ import { createClient } from "@/lib/supabase/client";
 export type ProfileLite = { name: string | null; email: string | null; avatar_url: string | null };
 
 const CACHE_KEY_PREFIX = "sm_profile_cache_";
+// Points at whichever user's cache entry above was written most recently,
+// so a fresh page load can find the right cache key WITHOUT first waiting
+// on an async supabase.auth call -- see readLastCachedProfile below.
+const LAST_USER_KEY = "sm_profile_last_user_id";
 
 function readCache(userId: string): ProfileLite | null {
   if (typeof window === "undefined") return null;
@@ -20,6 +24,7 @@ function readCache(userId: string): ProfileLite | null {
 function writeCache(userId: string, profile: ProfileLite) {
   try {
     window.localStorage.setItem(CACHE_KEY_PREFIX + userId, JSON.stringify(profile));
+    window.localStorage.setItem(LAST_USER_KEY, userId);
   } catch {
     // same as above -- ignore, a fresh fetch still works fine without the cache
   }
@@ -28,8 +33,27 @@ function writeCache(userId: string, profile: ProfileLite) {
 function clearCache(userId: string) {
   try {
     window.localStorage.removeItem(CACHE_KEY_PREFIX + userId);
+    if (window.localStorage.getItem(LAST_USER_KEY) === userId) {
+      window.localStorage.removeItem(LAST_USER_KEY);
+    }
   } catch {
     // ignore
+  }
+}
+
+// Reads the last signed-in user's cached profile with NO async call at
+// all. Used only as a lazy useState initializer (see ProfileProvider)
+// so a hard refresh -- which has no previous React tree to inherit state
+// from, unlike client-side navigation -- can still paint the correct
+// avatar/name on the very first render instead of null-then-placeholder
+// while `supabase.auth.getUser()` (a network round-trip) is in flight.
+function readLastCachedProfile(): ProfileLite | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const lastUserId = window.localStorage.getItem(LAST_USER_KEY);
+    return lastUserId ? readCache(lastUserId) : null;
+  } catch {
+    return null;
   }
 }
 
@@ -58,8 +82,13 @@ const ProfileContext = createContext<ProfileContextValue>({ profile: null, loadi
 // on sign-out so a shared browser never flashes one account's cached
 // avatar for a different account signing in afterward.
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
-  const [profile, setProfile] = useState<ProfileLite | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Lazy initializers run synchronously on the first render only -- this is
+  // what actually fixes the hard-refresh flash: the component's very first
+  // paint already has the cached avatar/name, instead of starting at null
+  // and waiting for the effect below (which can't run until after that
+  // first paint, and then still has to await a network call) to fill it in.
+  const [profile, setProfile] = useState<ProfileLite | null>(() => readLastCachedProfile());
+  const [loading, setLoading] = useState(() => readLastCachedProfile() === null);
 
   useEffect(() => {
     let cancelled = false;
