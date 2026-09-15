@@ -67,15 +67,16 @@ const LOGO_WORDMARK_URL =
 // Retirement/Vault -- the whole Invest group being paid-gated is what
 // keeps it from free tier.
 //
-// "Businesses" is a new group: "Find a Gig" (Webflow's nav label was
-// "Search", slug side-gigs) is a searchable directory over gig_categories
-// (50 rows, 10 groups) that creates a user_businesses row when you pick
-// one; "My Business" (slug my-business) manages that business's Clients,
-// a Jobs board (Lead/Scheduled/In Progress/Completed/Cancelled), and a
-// Scheduler. Both were confirmed as real, actively-used features (live
-// data already in all four tables), not template boilerplate -- and
-// unlike almost everything else in this app, none of their RLS policies
-// have a paid/app_director check, so this whole group is free-tier.
+// "Businesses" is a group: "Find a Gig" (Webflow's nav label was "Search",
+// slug side-gigs) is a searchable directory over gig_categories (50 rows,
+// 10 groups) that creates a user_businesses row when you pick one; "My
+// Business" (slug my-business) manages that business's Clients, a Jobs
+// board (Lead/Scheduled/In Progress/Completed/Cancelled), and a Scheduler.
+// Both were confirmed as real, actively-used features (live data already
+// in all four tables), not template boilerplate. None of their RLS
+// policies have a paid/app_director check (unlike most of this app), but
+// the group is nav-gated to paid per your explicit call to pull it from
+// free tier -- same view-gated-above-RLS pattern Invest already uses.
 // My Business's own "Invoices" sub-section (bill clients via "the
 // existing invoicing tools") is left out -- it points at the Invoice
 // List/Create Invoices Webflow pages, confirmed unused template
@@ -86,17 +87,19 @@ const LOGO_WORDMARK_URL =
 // style weekly standings board (not head-to-head matchups): every
 // member's real portfolio return % for the week sets their placement,
 // plus a season-long cumulative standings tab. Shipped free-tier, same as
-// Stock Screener/Businesses. It reads from the existing net_worth_snapshots
-// table (already populated by the daily snapshot-net-worth cron) via new
+// Stock Screener. It reads from the existing net_worth_snapshots table
+// (already populated by the daily snapshot-net-worth cron) via new
 // SECURITY DEFINER SQL functions (game_afi_weekly_leaderboard /
 // game_afi_season_leaderboard / game_afi_available_weeks, migration
 // game_afi_leaderboard_phase1) that return only {user_id, display_name,
 // pct_return, rank} -- no member's raw dollar balance is ever exposed to
 // anyone else, so this replaces (rather than reuses) the old
 // app_director-only RLS on game_players/game_watchlist, which are left
-// untouched and unused for now. A later Phase 2 (a separate paper-trading
-// competition, where $ amounts are fine to show since it's not real
-// money) is a bigger, not-yet-built follow-up.
+// untouched and unused for now. Phase 2 (components/gameAfi/PaperTrading*)
+// added a $10,000 paper-trading competition alongside it -- $ amounts are
+// fine to show there since nothing real is at risk -- and its "Holdings"
+// nav leaf (see app/(app)/monkey-monkey-holdings/page.tsx) surfaces just
+// that paper account's positions on their own page.
 //
 // Left out on purpose: "Travel" (Businesses) -- the live site's own link
 // is an unwired `#` placeholder; a second, mislabeled "Invoices" dropdown
@@ -198,6 +201,7 @@ const NAV_TREE: NavNode[] = [
   {
     label: "Businesses",
     icon: Briefcase,
+    requires: "paid",
     children: [
       { href: "/side-gigs", label: "Find a Gig" },
       { href: "/my-business", label: "My Business" },
@@ -209,6 +213,7 @@ const NAV_TREE: NavNode[] = [
     children: [
       { href: "/game-a-fi", label: "Standings" },
       { href: "/stock-screener", label: "Stock Screener" },
+      { href: "/monkey-monkey-holdings", label: "Holdings" },
     ],
   },
   { href: "/investors", label: "Owners", requires: "owner", icon: Crown },
