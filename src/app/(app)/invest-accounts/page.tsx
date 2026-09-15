@@ -320,7 +320,7 @@ export default function InvestAccountsPage() {
         <div className="rounded-2xl border border-card-border bg-card-bg p-5">
           <p className="mb-4 text-xs text-text-muted">
             No card, account, or routing numbers are stored -- this tracks the account itself (institution, name,
-            balance), not what&apos;s held inside it. Manage positions on the Invest page.
+            balance), not what&apos;s held inside it. Manage positions on the Investments page.
           </p>
 
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

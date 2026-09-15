@@ -32,11 +32,16 @@ const LOGO_WORDMARK_URL =
   "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/665f61d2c30be1663c636369_white%20StickyMonkey-p-500.png";
 
 // Nested sidebar nav. The live Webflow site nests Stock Screener inside
-// Invest, but here Invest is a fully paid-gated group (Portfolio/Taxable/
-// Retirement/Vault) and Stock Screener is meant to stay visible to free
-// accounts too -- so it lives under the (also free-tier) Game-a-Fi group
-// instead of inside Invest, since nesting it there would hide it whenever
-// the whole group is gated. Everything else follows the live site's real
+// Invest, but here "Investments" (Portfolio/Taxable/Retirement/Vault) is
+// gated by "investOptIn" (see passesGate) -- paid tier always passes it,
+// and free tier passes it only once the user has explicitly ticked at
+// least one box under Profile > Account Types, per your call to open
+// Investments up to free tier on an opt-in basis rather than keep it
+// fully paid-gated -- and Stock Screener is meant to stay visible to free
+// accounts unconditionally -- so it lives under the (also free-tier)
+// Game-a-Fi group instead of inside Investments, since nesting it there
+// would hide it whenever that group's gate fails. Everything else follows
+// the live site's real
 // nesting (confirmed off its accessibility tree, not a screenshot), except
 // where reorganized per your explicit calls (Transactions folded into My
 // Wallet, Utilities renamed Settings, Stock Screener moved under Game-a-Fi):
@@ -59,13 +64,17 @@ const LOGO_WORDMARK_URL =
 // SELECT has no role check, same as Banking), only add/edit/delete
 // requires paid, shown inline on that page rather than hidden here.
 //
-// "Invest" now also has an "Accounts" child (href /invest-accounts,
+// "Investments" now also has an "Accounts" child (href /invest-accounts,
 // distinct from Banking's own /accounts) -- manages the account-level
 // record (institution/name/balance) for brokerage, retirement, and
 // precious-metal manual accounts, not the positions/vault items inside
 // them. It has no separate in-page role check, same as Portfolio/Taxable/
-// Retirement/Vault -- the whole Invest group being paid-gated is what
-// keeps it from free tier.
+// Retirement/Vault -- the whole group's "investOptIn" gate is what keeps
+// it from a free-tier user who hasn't opted into any Account Type yet.
+// The Portfolio page (/invest) additionally only renders a donut card for
+// an account type the user has actually ticked (see invest/page.tsx) --
+// so a free user who ticks "Crypto" sees the Investments nav item plus
+// just the Crypto card, not the full paid card set.
 //
 // "Businesses" is a group: "Find a Gig" (Webflow's nav label was "Search",
 // slug side-gigs) is a searchable directory over gig_categories (50 rows,
@@ -113,12 +122,16 @@ const LOGO_WORDMARK_URL =
 // have zero role restriction (free), `stock_universe` is explicitly
 // readable by any authenticated user (free). `wheel_trades`, `positions`,
 // `metal_holdings`, and `recurring_investments` all require role IN
-// ('paid','app_director') to write, and the Invest group treats those as
-// fully paid-gated (view included, not just write) per your explicit
-// call. `manual_accounts` has the same write restriction but is used more
-// broadly (Banking, Card Center) where viewing is meant to stay free --
-// those pages gate add/edit/delete inline instead of hiding the whole
-// nav entry. "admin" means app_director/support/developer -- staff roles that are not
+// ('paid','app_director') to WRITE, but their SELECT policies have no role
+// check at all (just auth.uid() = user_id) -- confirmed via
+// pg_policies -- which is what makes the "investOptIn" gate on Investments
+// safe: a free user who opts in can actually read their own (likely still
+// empty) positions/metal_holdings rows, they just can't write to them yet,
+// same as every other free-tier page here. `manual_accounts` has the same
+// write restriction and is used more broadly (Banking, Card Center) where
+// viewing is meant to stay free -- those pages gate add/edit/delete
+// inline instead of hiding the whole nav entry. "admin" means
+// app_director/support/developer -- staff roles that are not
 // automatically 'paid' under RLS, so they see the base (free-tier) feature
 // set plus the admin tools, not the paid trading features, unless their
 // role is separately app_director. "owner" is narrower still: only
@@ -134,7 +147,10 @@ type NavNode = {
   label: string;
   href?: string;
   children?: NavNode[];
-  requires?: "paid" | "admin" | "owner";
+  // "investOptIn" is like "paid" but with an escape hatch: a free-tier user
+  // still passes it once they've explicitly ticked at least one box under
+  // Profile > Account Types (profiles.account_types) -- see passesGate.
+  requires?: "paid" | "admin" | "owner" | "investOptIn";
   icon?: LucideIcon;
 };
 
@@ -157,9 +173,9 @@ const NAV_TREE: NavNode[] = [
     ],
   },
   {
-    label: "Invest",
+    label: "Investments",
     icon: TrendingUp,
-    requires: "paid",
+    requires: "investOptIn",
     children: [
       { href: "/invest", label: "Portfolio" },
       { href: "/invest-accounts", label: "Accounts" },
@@ -228,8 +244,16 @@ const NAV_TREE: NavNode[] = [
   { href: "/users-groups", label: "Users & Groups", requires: "admin", icon: ShieldCheck },
 ];
 
-function passesGate(requires: NavNode["requires"], role: Role | null): boolean {
+function passesGate(requires: NavNode["requires"], role: Role | null, accountTypes: string[] | null): boolean {
   if (!requires) return true;
+  if (requires === "investOptIn") {
+    if (role === "paid" || role === "app_director") return true;
+    // Free tier: only once the user has explicitly ticked at least one
+    // Account Type in their profile -- see MyProfileModal's "Account
+    // Types" section. Hidden (not shown-then-yanked) until accountTypes
+    // has actually loaded, same "hide until known" rule as role below.
+    return !!accountTypes && accountTypes.length > 0;
+  }
   if (!role) return false; // role not loaded yet -- hide gated items until known, never flash them
   if (requires === "owner") return role === "app_director"; // company ownership, not staff/support access
   if (requires === "admin") return role === "app_director" || role === "support" || role === "developer";
@@ -240,10 +264,12 @@ function passesGate(requires: NavNode["requires"], role: Role | null): boolean {
 // Recursive: a group with `requires` is dropped whole (no need to also
 // check children); an ungated group is kept only if at least one child
 // survives filtering.
-function filterNode(node: NavNode, role: Role | null): NavNode | null {
-  if (!passesGate(node.requires, role)) return null;
+function filterNode(node: NavNode, role: Role | null, accountTypes: string[] | null): NavNode | null {
+  if (!passesGate(node.requires, role, accountTypes)) return null;
   if (node.children) {
-    const children = node.children.map((c) => filterNode(c, role)).filter((c): c is NavNode => c !== null);
+    const children = node.children
+      .map((c) => filterNode(c, role, accountTypes))
+      .filter((c): c is NavNode => c !== null);
     if (children.length === 0 && !node.href) return null;
     return { ...node, children };
   }
@@ -350,8 +376,20 @@ function NavItem({
   );
 }
 
-function NavTree({ pathname, role, onNavigate }: { pathname: string; role: Role | null; onNavigate?: () => void }) {
-  const visible = NAV_TREE.map((node) => filterNode(node, role)).filter((n): n is NavNode => n !== null);
+function NavTree({
+  pathname,
+  role,
+  accountTypes,
+  onNavigate,
+}: {
+  pathname: string;
+  role: Role | null;
+  accountTypes: string[] | null;
+  onNavigate?: () => void;
+}) {
+  const visible = NAV_TREE.map((node) => filterNode(node, role, accountTypes)).filter(
+    (n): n is NavNode => n !== null
+  );
   return (
     <>
       {visible.map((node) => (
@@ -370,6 +408,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Investors/Users & Groups). Starts null so gated items stay hidden
   // rather than flashing before the role is known.
   const [role, setRole] = useState<Role | null>(null);
+  // account_types drives the "investOptIn" nav gate above -- null (not yet
+  // loaded) is deliberately distinct from [] (loaded, nothing ticked) so
+  // passesGate hides Investments until we actually know, not just while
+  // this fetch is in flight.
+  const [accountTypes, setAccountTypes] = useState<string[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -380,9 +423,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+      const { data } = await supabase.from("profiles").select("role,account_types").eq("id", user.id).maybeSingle();
       if (cancelled) return;
-      if (data) setRole((data as { role: Role }).role);
+      if (data) {
+        const row = data as { role: Role; account_types: string[] | null };
+        setRole(row.role);
+        setAccountTypes(row.account_types ?? []);
+      }
     }
 
     load();
@@ -431,7 +478,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <nav className="flex flex-1 flex-col gap-1 px-3">
-              <NavTree pathname={pathname} role={role} onNavigate={() => setMobileOpen(false)} />
+              <NavTree
+                pathname={pathname}
+                role={role}
+                accountTypes={accountTypes}
+                onNavigate={() => setMobileOpen(false)}
+              />
             </nav>
             <div className="flex flex-col gap-1 px-3 pb-6">
               <SignOutButton />
@@ -466,7 +518,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           style={{ backgroundColor: "#151b28" }}
         >
           <nav className="flex flex-1 flex-col gap-1 px-1">
-            <NavTree pathname={pathname} role={role} />
+            <NavTree pathname={pathname} role={role} accountTypes={accountTypes} />
           </nav>
 
           <div className="flex flex-col gap-1 px-1">
