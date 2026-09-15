@@ -67,7 +67,7 @@ export default function NetWorthCard() {
       {/* Asset Allocation card */}
       <div
         id="nw-pie-card"
-        className="flex-1 rounded-2xl border border-card-border bg-card-bg p-5"
+        className="featured-border flex-1 rounded-2xl bg-card-bg p-5"
       >
         <h3 className="mb-4 text-sm font-semibold text-text-primary">Asset Allocation</h3>
         <div className="flex items-center gap-6">
@@ -117,7 +117,7 @@ export default function NetWorthCard() {
       {/* Net Worth card */}
       <div
         id="nw-card"
-        className="flex-1 rounded-2xl border border-card-border bg-card-bg p-5"
+        className="featured-border flex-1 rounded-2xl bg-card-bg p-5"
       >
         <h3 className="mb-4 text-sm font-semibold text-text-primary">Net Worth</h3>
         <div id="nw-net-worth-value" className="mb-4 text-3xl font-semibold text-text-primary">

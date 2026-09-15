@@ -21,6 +21,15 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import SignOutButton from "./SignOutButton";
+import TopBar from "./TopBar";
+
+// Real Webflow-hosted logo assets (head icon + white script wordmark) --
+// hotlinked directly from Webflow's permanent S3 CDN rather than
+// downloaded/re-hosted, same pattern used for the Abu chatbot's avatar.
+const LOGO_HEAD_URL =
+  "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/665f61495d5be52dd1a1e71b_StickyMonkeyHead256.png";
+const LOGO_WORDMARK_URL =
+  "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/665f61d2c30be1663c636369_white%20StickyMonkey-p-500.png";
 
 // Nested sidebar nav. The live Webflow site nests Stock Screener inside
 // Invest, but here Invest is a fully paid-gated group (Portfolio/Taxable/
@@ -413,16 +422,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <aside className="hidden w-64 shrink-0 border-r border-card-border bg-card-bg md:flex md:flex-col">
-        <div className="px-5 py-6 text-lg font-semibold text-text-primary">Sticky Monkey</div>
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-4">
+      <aside className="hidden w-64 shrink-0 flex-col gap-4 border-r border-card-border bg-card-bg px-3 py-4 md:flex">
+        {/* Logo card -- real head icon + wordmark images, "featured" green
+            border per the reference mockup. */}
+        <div className="featured-border flex flex-col items-center gap-1.5 rounded-2xl bg-[#0f131c] px-4 py-5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={LOGO_HEAD_URL} alt="" className="h-12 w-12" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={LOGO_WORDMARK_URL} alt="Sticky Monkey" className="h-6 w-auto" />
+          <span className="text-[10px] font-semibold tracking-[0.25em] text-text-muted">FINANCE</span>
+        </div>
+
+        <nav className="featured-border flex flex-1 flex-col gap-1 overflow-y-auto rounded-2xl bg-[#0f131c] px-3 py-3">
           <NavTree pathname={pathname} role={role} />
         </nav>
-        <div className="flex flex-col gap-1 px-3 pb-4">
+
+        <div className="flex flex-col gap-1">
           <SignOutButton />
         </div>
       </aside>
-      <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="hidden md:block">
+          <TopBar />
+        </div>
+        <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
+      </div>
     </div>
   );
 }

@@ -21,6 +21,14 @@
   --accent-orange: #ffb648;
   --accent-red: #ff5c7a;
   --accent-teal: #34c9c9;
+
+  /* Sampled from the reference Dashboard mockup's hand-drawn highlight
+     borders (dominant pixel color, ~22k occurrences vs ~8.7k runner-up).
+     Used to mark the "featured" cards called out in that mockup: the
+     sidebar logo card + nav rail, Asset Allocation, Net Worth, the top
+     bar's search/alerts/profile controls, and the Dashboard profile
+     summary panel. */
+  --featured-green: #6bb339;
 }
 
 @theme inline {
@@ -38,4 +46,12 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Shared "featured" treatment -- see --featured-green above. */
+.featured-border {
+  border: 1.5px solid var(--featured-green);
+  box-shadow:
+    0 0 0 1px rgba(107, 179, 57, 0.12),
+    0 0 22px -6px rgba(107, 179, 57, 0.45);
 }

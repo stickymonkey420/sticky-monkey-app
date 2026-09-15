@@ -18,6 +18,8 @@ export type WalletOverview = {
   totalIncome: number; // all-time sum of negative plaid_transactions.amount (negated)
   totalExpense: number; // all-time sum of positive plaid_transactions.amount
   netThisMonth: number; // this calendar month's income - expense (can be negative)
+  monthIncome: number; // this calendar month's income only (was computed internally but not exposed)
+  monthExpense: number; // this calendar month's expense only
 };
 
 export function computeWalletOverview(
@@ -46,7 +48,7 @@ export function computeWalletOverview(
     }
   });
 
-  return { balance, totalIncome, totalExpense, netThisMonth: monthIncome - monthExpense };
+  return { balance, totalIncome, totalExpense, netThisMonth: monthIncome - monthExpense, monthIncome, monthExpense };
 }
 
 // ---- Top Spending by Account donut ----
