@@ -161,14 +161,16 @@ export default function TickerLookup() {
                 {userId && <BuyButton ticker={result.symbol} userId={userId} />}
               </div>
 
-              <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row lg:flex-row">
+              <div className="flex w-full flex-col items-stretch gap-4 sm:w-auto sm:flex-row lg:flex-row">
                 {result.stickyMonkeyScore !== null && result.stickyMonkeyScore !== undefined && (
                   <StickyMonkeyScoreCard result={result} />
                 )}
 
                 {/* Reserved for a future feature -- same neutral card style
-                    as Sticky Monkey Score, just larger. */}
-                <div className="min-h-[180px] w-full shrink-0 rounded-2xl border border-white/[0.12] bg-white/[0.04] p-4 sm:w-[220px]" />
+                    as Sticky Monkey Score, just larger. h-full so it
+                    stretches to match the row's full height instead of
+                    stopping at its own min-height. */}
+                <div className="h-full min-h-[180px] w-full shrink-0 rounded-2xl border border-white/[0.12] bg-white/[0.04] p-4 sm:w-[220px]" />
               </div>
             </div>
           </div>
@@ -218,7 +220,7 @@ function StickyMonkeyScoreCard({ result }: { result: TickerQuoteResult }) {
   const delta = hasIndustryAvg ? score - (industry!.industryAvgScore as number) : null;
 
   return (
-    <div className="w-full shrink-0 rounded-2xl border border-white/[0.12] bg-white/[0.04] p-4 sm:w-[260px]">
+    <div className="h-full w-full shrink-0 rounded-2xl border border-white/[0.12] bg-white/[0.04] p-4 sm:w-[260px]">
       <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Sticky Monkey Score</div>
       <div className="mt-1.5 flex items-baseline gap-2">
         <span className="text-3xl font-bold" style={{ color: band.color }}>

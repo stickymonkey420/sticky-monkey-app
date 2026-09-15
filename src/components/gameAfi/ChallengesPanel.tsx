@@ -8,6 +8,8 @@ import type { ChallengeRow } from "@/lib/gameAfi/challengeTypes";
 import { formatChallengeWhen as formatWhen, formatMoney } from "@/lib/gameAfi/format";
 
 const DEFAULT_STARTING_BALANCE = "10000";
+const MIN_STARTING_BALANCE = 10000;
+const MAX_STARTING_BALANCE = 1000000;
 
 // today's date as a yyyy-mm-dd string, for the expiration <input type="date"> min.
 function todayIso(): string {
@@ -109,8 +111,10 @@ export default function ChallengesPanel() {
     if (!trimmedHandle) return;
 
     const balance = Number(startingBalance);
-    if (!Number.isFinite(balance) || balance <= 0) {
-      setSendError("Enter a starting capital greater than 0.");
+    if (!Number.isFinite(balance) || balance < MIN_STARTING_BALANCE || balance > MAX_STARTING_BALANCE) {
+      setSendError(
+        `Enter a starting capital between ${formatMoney(MIN_STARTING_BALANCE)} and ${formatMoney(MAX_STARTING_BALANCE)}.`
+      );
       return;
     }
 
@@ -182,8 +186,9 @@ export default function ChallengesPanel() {
                 <span className="text-sm text-text-muted">$</span>
                 <input
                   type="number"
-                  min={1}
-                  step={100}
+                  min={MIN_STARTING_BALANCE}
+                  max={MAX_STARTING_BALANCE}
+                  step={1000}
                   value={startingBalance}
                   onChange={(e) => setStartingBalance(e.target.value)}
                   placeholder="10000"
