@@ -426,15 +426,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* Sidebar is its own floating card -- same rgb(21,27,40)/30px-radius
-          treatment as the Dashboard's right-side profile panel, sticky so
-          it stays put (and visibly bounds the content column) at every
-          scroll depth instead of scrolling away with the page. */}
-      <aside
-        className="sticky top-4 hidden h-[calc(100vh-2rem)] w-64 shrink-0 flex-col gap-4 overflow-y-auto rounded-[30px] p-4 md:flex"
-        style={{ backgroundColor: "#151b28" }}
-      >
-        <div className="flex flex-col items-center gap-1.5 px-2 pb-2">
+      {/* Matches the live Webflow sidebar: the logo sits directly on the
+          page background (no card behind it), and the dark rgb(21,27,40)/
+          30px-radius card starts below it, containing only the nav +
+          sign-out. The outer wrapper keeps the same sticky/full-height
+          footprint the card alone used to have, so overall sidebar height
+          (and its match with the profile panel) is unchanged. */}
+      <div className="sticky top-4 hidden h-[calc(100vh-2rem)] w-64 shrink-0 flex-col gap-4 md:flex">
+        <div className="flex shrink-0 flex-col items-center gap-1.5 px-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={LOGO_HEAD_URL} alt="" className="h-12 w-12" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -442,14 +441,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <span className="text-[10px] font-semibold tracking-[0.25em] text-text-muted">FINANCE</span>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 px-1">
-          <NavTree pathname={pathname} role={role} />
-        </nav>
+        <aside
+          className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto rounded-[30px] p-4"
+          style={{ backgroundColor: "#151b28" }}
+        >
+          <nav className="flex flex-1 flex-col gap-1 px-1">
+            <NavTree pathname={pathname} role={role} />
+          </nav>
 
-        <div className="flex flex-col gap-1 px-1">
-          <SignOutButton />
-        </div>
-      </aside>
+          <div className="flex flex-col gap-1 px-1">
+            <SignOutButton />
+          </div>
+        </aside>
+      </div>
       <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
         <div className="hidden md:block">
           <TopBar />
