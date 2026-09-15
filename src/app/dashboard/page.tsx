@@ -24,8 +24,14 @@ export default function DashboardPage() {
       <OnboardingModal />
       <h1 className="mb-6 text-xl font-semibold text-text-primary">Dashboard</h1>
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-6 lg:flex-row">
-          <div className="min-w-0 flex-1">
+        {/* items-start is the fix here: without it, flexbox's default
+            align-items:stretch makes the shorter NetWorthCard column
+            stretch to match ProfileSummaryCard's taller height, leaving a
+            dead empty gap below its actual card content before
+            ExpenseCategoriesCard begins. items-start lets each column be
+            only as tall as its own content. */}
+        <div className="flex flex-col items-start gap-6 lg:flex-row">
+          <div className="min-w-0 w-full flex-1">
             <NetWorthCard />
           </div>
           <ProfileSummaryCard />
