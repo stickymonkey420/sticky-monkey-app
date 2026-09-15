@@ -48,5 +48,28 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // A signed-in user landing on Sign In/Sign Up/Forgot Password is almost
+  // always a stale-session mixup -- a previous account left logged in on
+  // this browser, then someone types a *different* account's credentials
+  // expecting a fresh login. If that new attempt fails, the old session
+  // was never cleared, so they land back on their own already-logged-in
+  // dashboard and can easily mistake it for "the wrong password let me
+  // in" (it's really just the account they were already signed into).
+  // Bouncing straight to the dashboard instead makes an active session
+  // impossible to miss, so switching accounts always starts with an
+  // explicit Sign Out. /update-password and /auth/confirm are exempt --
+  // the password-reset and email-confirmation links intentionally sign
+  // the user in (often as themselves) in order to land here.
+  const isSwitchableAuthPage =
+    request.nextUrl.pathname.startsWith("/sign-in") ||
+    request.nextUrl.pathname.startsWith("/sign-up") ||
+    request.nextUrl.pathname.startsWith("/forgot-password");
+
+  if (user && isSwitchableAuthPage) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
   return supabaseResponse;
 }

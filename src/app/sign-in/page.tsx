@@ -21,6 +21,14 @@ export default function SignInPage() {
     setError(null);
     setLoading(true);
     const supabase = createClient();
+    // Clear any existing session before attempting the new one. Without
+    // this, someone already signed in as account A who mistypes account
+    // B's password stays fully signed in as A after the "failed" attempt
+    // -- easy to mistake for the wrong credentials having worked. Signing
+    // out first guarantees a failed attempt actually leaves no one signed
+    // in, matching the error shown on screen. (Signing in with account A's
+    // own correct credentials afterward is a normal no-op re-login.)
+    await supabase.auth.signOut();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
