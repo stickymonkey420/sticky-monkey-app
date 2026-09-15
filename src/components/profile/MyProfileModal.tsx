@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/profile/ProfileProvider";
+import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
 import { ACCOUNT_TYPE_DEFS } from "@/lib/usersGroups/types";
-import { saveProfileDetails, type ProfileDetailsInput } from "@/lib/usersGroups/queries";
+import { saveProfileDetails, updateAvatarUrl, type ProfileDetailsInput } from "@/lib/usersGroups/queries";
 import type { OnboardingAnswers } from "@/lib/dashboard/onboarding";
 import OnboardingModal from "@/components/dashboard/OnboardingModal";
+
+// Max upload size for a profile photo. The `avatars` storage bucket itself
+// has no size limit configured, so this is enforced client-side only --
+// generous enough for a phone photo, small enough to keep the public
+// bucket from filling up with anything huge.
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 const FIELD_CLASS =
   "w-full rounded-md border border-card-border bg-[#0d0f17] px-2.5 py-2 text-sm text-text-primary outline-none";
@@ -59,6 +66,10 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [retakeOpen, setRetakeOpen] = useState(false);
+
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,6 +141,92 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
     await refresh(); // updates TopBar's avatar/name/email immediately
   }
 
+  // Uploads a new photo to the `avatars` storage bucket (public read;
+  // write restricted by RLS to `{auth.uid()}/...` paths -- see the bucket's
+  // storage policies) and saves the resulting public URL immediately,
+  // rather than waiting for the surrounding form's "Save Changes". This
+  // matches how TopBar/ProfileSummaryCard expect to see the update: via
+  // useProfile().refresh(), which both already subscribe to.
+  async function uploadAvatarFile(file: File) {
+    if (!userId) return;
+    if (!file.type.startsWith("image/")) {
+      setAvatarError("Please choose an image file.");
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setAvatarError("Image must be 5MB or smaller.");
+      return;
+    }
+
+    setAvatarError(null);
+    setAvatarUploading(true);
+    const supabase = createClient();
+
+    // Always store under a fixed "avatar.<ext>" name (upsert) so repeated
+    // uploads don't pile up. Extension can still change between uploads
+    // (png -> jpg, say), so clear out whatever's already in this user's
+    // folder first -- otherwise the old file would just sit there orphaned
+    // under its old extension forever.
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const path = `${userId}/avatar.${ext}`;
+
+    const { data: existing } = await supabase.storage.from("avatars").list(userId);
+    if (existing && existing.length) {
+      await supabase.storage.from("avatars").remove(existing.map((f) => `${userId}/${f.name}`));
+    }
+
+    const { error: uploadErr } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (uploadErr) {
+      setAvatarUploading(false);
+      setAvatarError("Upload failed. Try again.");
+      return;
+    }
+
+    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+    // Cache-bust: the path (and so the base URL) is the same on every
+    // upload because of the upsert above, so without this the browser
+    // would keep showing the previous cached image after a new one saves.
+    const freshUrl = `${pub.publicUrl}?v=${Date.now()}`;
+
+    const { error: saveErr } = await updateAvatarUrl(supabase, userId, freshUrl);
+    setAvatarUploading(false);
+    if (saveErr) {
+      setAvatarError("Uploaded, but couldn't save to your profile. Try again.");
+      return;
+    }
+    setAvatarUrl(freshUrl);
+    await refresh(); // updates TopBar's avatar immediately
+  }
+
+  function onAvatarFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file again later
+    if (file) uploadAvatarFile(file);
+  }
+
+  async function removeAvatar() {
+    if (!userId) return;
+    setAvatarError(null);
+    setAvatarUploading(true);
+    const supabase = createClient();
+
+    const { data: existing } = await supabase.storage.from("avatars").list(userId);
+    if (existing && existing.length) {
+      await supabase.storage.from("avatars").remove(existing.map((f) => `${userId}/${f.name}`));
+    }
+
+    const { error: saveErr } = await updateAvatarUrl(supabase, userId, null);
+    setAvatarUploading(false);
+    if (saveErr) {
+      setAvatarError("Couldn't remove photo. Try again.");
+      return;
+    }
+    setAvatarUrl("");
+    await refresh();
+  }
+
   async function reloadAfterRetake() {
     setRetakeOpen(false);
     if (!userId) return;
@@ -154,6 +251,56 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
           <div className="py-6 text-sm text-text-muted">Loading…</div>
         ) : (
           <>
+            <div className="mb-5 flex items-center gap-4">
+              <div className="relative h-16 w-16 shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={avatarUrl || DEFAULT_AVATAR_URL}
+                  alt=""
+                  className="h-16 w-16 rounded-full object-cover"
+                />
+                {avatarUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 text-[10px] font-semibold text-white">
+                    …
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={avatarUploading}
+                    className="rounded-lg border border-card-border px-3 py-1.5 text-xs font-semibold text-text-primary disabled:opacity-60"
+                  >
+                    {avatarUploading ? "Uploading…" : "Change Photo"}
+                  </button>
+                  {avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={removeAvatar}
+                      disabled={avatarUploading}
+                      className="rounded-lg px-3 py-1.5 text-xs font-semibold text-text-muted disabled:opacity-60"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={onAvatarFileSelected}
+                  className="hidden"
+                />
+                {avatarError ? (
+                  <div className="text-[11px] text-[#e05656]">{avatarError}</div>
+                ) : (
+                  <div className="text-[11px] text-text-muted">JPG or PNG, up to 5MB.</div>
+                )}
+              </div>
+            </div>
+
             <h3 className="mb-2.5 mt-5 text-xs font-bold uppercase tracking-wide text-text-muted">Account</h3>
             <div className="mb-3">
               <label className="mb-1.5 block text-xs text-text-muted">Name</label>
@@ -205,11 +352,6 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
                 className={FIELD_CLASS}
               />
             </div>
-            {/* Avatar URL is intentionally not shown here -- it's a raw
-                storage/database URL and the user asked not to display those.
-                The value is still loaded and saved back unchanged (via
-                avatarUrl state below) so this form never wipes it out. */}
-
             <h3 className="mb-2.5 mt-5 text-xs font-bold uppercase tracking-wide text-text-muted">Account Types</h3>
             <div className="mb-2 flex flex-col gap-1">
               {ACCOUNT_TYPE_DEFS.map((t) => (

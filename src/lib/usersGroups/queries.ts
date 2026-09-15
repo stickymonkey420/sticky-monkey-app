@@ -62,6 +62,19 @@ export async function saveProfileDetails(
   return { error: error ? error.message : null };
 }
 
+// Narrow update used by the avatar upload flow in MyProfileModal -- saves
+// immediately after a successful storage upload (or removal) rather than
+// waiting for the surrounding form's "Save Changes", and never touches any
+// other column.
+export async function updateAvatarUrl(
+  supabase: SupabaseClient,
+  id: string,
+  avatarUrl: string | null
+): Promise<MutationResult> {
+  const { error } = await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", id);
+  return { error: error ? error.message : null };
+}
+
 export type SurveyInput = {
   use_cases: string[] | null;
   onboarding_survey: Record<string, unknown>;

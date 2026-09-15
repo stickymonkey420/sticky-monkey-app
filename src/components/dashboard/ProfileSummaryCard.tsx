@@ -7,14 +7,9 @@ import { money } from "@/lib/dashboard/netWorth";
 import { fetchManualAccounts, fetchPlaidTransactions } from "@/lib/wallet/queries";
 import { computeWalletOverview, type WalletOverview } from "@/lib/wallet/calc";
 import { useProfile } from "@/lib/profile/ProfileProvider";
+import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
 import InvestmentAlertCard from "./InvestmentAlertCard";
 import QuickAccessCard from "./QuickAccessCard";
-
-// Fallback avatar -- Webflow-hosted `abu-avatar.jpg`, shown when
-// profiles.avatar_url is unset (the live site's real account has its own
-// photo, but the app's default state has none).
-const DEFAULT_AVATAR_URL =
-  "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/6a973826f57d905329bc6275_abu-avatar-p-500.jpg";
 
 const EMPTY_OVERVIEW: WalletOverview = {
   balance: 0,

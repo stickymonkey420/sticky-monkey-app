@@ -5,13 +5,9 @@ import { useRouter } from "next/navigation";
 import { Bell, ChevronDown, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/profile/ProfileProvider";
+import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
 import MyProfileModal from "@/components/profile/MyProfileModal";
 import SignOutButton from "./SignOutButton";
-
-// Fallback avatar -- same Webflow-hosted asset used as the default
-// `abu-avatar.jpg` everywhere else a user hasn't set profiles.avatar_url.
-const DEFAULT_AVATAR_URL =
-  "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/6a973826f57d905329bc6275_abu-avatar-p-500.jpg";
 
 // Global top bar: search, alerts bell (unread investment_alerts count), and
 // a profile avatar/dropdown. Lives in AppShell so it shows on every page
