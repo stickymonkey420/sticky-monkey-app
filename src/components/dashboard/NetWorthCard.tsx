@@ -89,9 +89,16 @@ export default function NetWorthCard() {
       {/* Asset Allocation card */}
       <div id="nw-pie-card" className={CARD_CLASS} style={{ backgroundColor: CARD_BG }}>
         <h3 className="mb-4 text-sm font-semibold text-text-primary">Asset Allocation</h3>
-        <div className="flex items-center gap-6">
-          <div className="relative h-24 w-24 shrink-0">
-            <div className="h-24 w-24 rounded-full" style={{ backgroundImage: gradient }} />
+        {/* Webflow's own #nw-pie-card stacks the donut on top of the legend
+            list (donut centered, legend rows full-width below) -- it does
+            NOT put them side by side. Confirmed via getComputedStyle on the
+            live site: #nw-pie-legend renders below #nw-pie-chart-wrap
+            (y=381 vs donut bottom at y=351), and the donut itself is a
+            160px ring around a 76px hole, not the smaller 96px/76px ring
+            this card used before. */}
+        <div className="flex flex-col items-center gap-6">
+          <div className="relative h-40 w-40 shrink-0">
+            <div className="h-40 w-40 rounded-full" style={{ backgroundImage: gradient }} />
             <div
               className="absolute left-1/2 top-1/2 flex h-[76px] w-[76px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full p-1.5 text-center text-xs font-medium text-text-primary"
               style={{
@@ -102,7 +109,7 @@ export default function NetWorthCard() {
               {loading ? "…" : money(totalAssets)}
             </div>
           </div>
-          <div className="flex-1">
+          <div className="w-full">
             {loading ? (
               <div className="text-sm text-text-muted">Loading…</div>
             ) : categories.length === 0 ? (
