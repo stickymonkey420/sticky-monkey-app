@@ -18,6 +18,12 @@ type PortfolioDonutCardProps = {
   // per your call that "$619,633.00" reads noisier than "$619,633" on a
   // portfolio-sized number.
   formatValue?: (n: number) => string;
+  // When set, each legend swatch becomes clickable, opening the browser's
+  // native color picker (a plain <input type="color">, no extra library)
+  // for that row; called with the row's name and the chosen hex color.
+  // Undefined leaves every swatch a static, non-interactive dot -- the
+  // Invest page's donuts don't pass this and are unaffected.
+  onColorChange?: (name: string, color: string) => void;
 };
 
 // One reusable donut card, parameterized by title/slices/total so it
@@ -39,6 +45,7 @@ export default function PortfolioDonutCard({
   emptyLabel,
   id,
   formatValue = money,
+  onColorChange,
 }: PortfolioDonutCardProps) {
   let gradient = "none";
   if (slices.length && total > 0) {
@@ -81,10 +88,26 @@ export default function PortfolioDonutCard({
               return (
                 <div key={s.name} className="flex items-center justify-between gap-3 py-1.5">
                   <div className="flex min-w-0 items-center gap-2">
-                    <span
-                      className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: s.color }}
-                    />
+                    {onColorChange ? (
+                      <label
+                        className="relative inline-block h-2.5 w-2.5 shrink-0 cursor-pointer rounded-full ring-offset-2 ring-offset-card-bg hover:ring-2 hover:ring-white/40"
+                        style={{ backgroundColor: s.color }}
+                        title={`Change ${s.name} color`}
+                      >
+                        <input
+                          type="color"
+                          value={s.color}
+                          onChange={(e) => onColorChange(s.name, e.target.value)}
+                          aria-label={`Change ${s.name} color`}
+                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                        />
+                      </label>
+                    ) : (
+                      <span
+                        className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: s.color }}
+                      />
+                    )}
                     <span className="min-w-0 break-words text-base text-text-primary">{s.name}</span>
                   </div>
                   <div className="shrink-0 text-base text-text-muted">

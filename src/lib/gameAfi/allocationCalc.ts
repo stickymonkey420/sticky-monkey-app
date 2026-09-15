@@ -77,6 +77,22 @@ export function appendCash(result: DonutResult, cashBalance: number): DonutResul
   };
 }
 
+// Applies a member's own per-name color overrides (see tickerColors.ts /
+// the game_afi_ticker_colors table) on top of whatever buildDonut/appendCash
+// already assigned -- a plain post-process step rather than threading the
+// override map through colorFor, so it works identically for ticker slices,
+// Cash, and "Other" without buildDonut needing to know overrides exist.
+// Personal to the viewing member: the same override is applied whether the
+// name shows up on their own donut or their opponent's (see the Overview
+// page), so a ticker keeps one consistent color across the whole page.
+export function applyColorOverrides(result: DonutResult, overrides: Map<string, string>): DonutResult {
+  if (overrides.size === 0) return result;
+  return {
+    ...result,
+    slices: result.slices.map((s) => (overrides.has(s.name) ? { ...s, color: overrides.get(s.name)! } : s)),
+  };
+}
+
 // Industry concentration -- same holdings, grouped by stock_universe.industry
 // instead of ticker, so a member can see how much of a match's capital rides
 // on one industry regardless of how many different tickers it's split

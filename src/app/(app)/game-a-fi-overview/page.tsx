@@ -8,8 +8,9 @@ import HeadToHeadCard from "@/components/gameAfi/HeadToHeadCard";
 import { usePaperTradingAccount } from "@/lib/gameAfi/usePaperTrading";
 import { fetchChallenges, fetchMatchSummary } from "@/lib/gameAfi/challengeQueries";
 import { computeHoldings, fetchOpponentTrades } from "@/lib/gameAfi/paperQueries";
-import { appendCash, groupHoldingsByTicker } from "@/lib/gameAfi/allocationCalc";
+import { appendCash, applyColorOverrides, groupHoldingsByTicker } from "@/lib/gameAfi/allocationCalc";
 import { formatMoney } from "@/lib/gameAfi/format";
+import { fetchTickerColorOverrides, setTickerColorOverride } from "@/lib/gameAfi/tickerColors";
 import type { ChallengeRow, MatchSummary } from "@/lib/gameAfi/challengeTypes";
 import type { PaperHolding } from "@/lib/gameAfi/paperTypes";
 
@@ -31,7 +32,11 @@ import type { PaperHolding } from "@/lib/gameAfi/paperTypes";
 // positions (not just their totals) is fine here, scoped to just this one
 // match. Both donuts append a "Cash" row at the bottom (see allocationCalc's
 // appendCash) so the breakdown covers the whole account, not just the
-// invested portion.
+// invested portion. Every legend swatch (on both donuts) is clickable --
+// see PortfolioDonutCard's onColorChange -- opening the browser's native
+// color picker to recolor that name; the choice is personal to the viewing
+// member (game_afi_ticker_colors, tickerColors.ts) and applies to both
+// donuts, so a ticker keeps one consistent color across the whole page.
 // These are simulated shares only -- never real holdings (those live under
 // Invest > Holdings, paid tier).
 export default function GameAFiOverviewPage() {
@@ -43,6 +48,7 @@ export default function GameAFiOverviewPage() {
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [oppHoldings, setOppHoldings] = useState<PaperHolding[]>([]);
   const [oppHoldingsLoading, setOppHoldingsLoading] = useState(true);
+  const [colorOverrides, setColorOverrides] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -127,15 +133,51 @@ export default function GameAFiOverviewPage() {
     };
   }, [selectedChallengeId]);
 
+  // This member's own per-name color overrides for the donut legends below
+  // (see tickerColors.ts) -- loaded once userId is known, independent of
+  // which match is selected, since a recolored ticker should stay that
+  // color across every match, not just the one it was set on.
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!userId) return;
+      const supabase = createClient();
+      const overrides = await fetchTickerColorOverrides(supabase, userId);
+      if (!cancelled) setColorOverrides(overrides);
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  // Applied to a swatch click on EITHER donut -- updates local state
+  // immediately (so both donuts recolor together, since the same ticker can
+  // appear on both sides) and persists in the background; a failed save
+  // just means the override doesn't survive a reload, not a broken click.
+  function handleColorChange(name: string, color: string) {
+    setColorOverrides((prev) => {
+      const next = new Map(prev);
+      next.set(name, color);
+      return next;
+    });
+    if (userId) {
+      const supabase = createClient();
+      void setTickerColorOverride(supabase, userId, name, color);
+    }
+  }
+
   const allocation = useMemo(() => {
     const base = groupHoldingsByTicker(holdings);
-    return matchSummary ? appendCash(base, matchSummary.me.cashBalance) : base;
-  }, [holdings, matchSummary]);
+    const withCash = matchSummary ? appendCash(base, matchSummary.me.cashBalance) : base;
+    return applyColorOverrides(withCash, colorOverrides);
+  }, [holdings, matchSummary, colorOverrides]);
 
   const opponentAllocation = useMemo(() => {
     const base = groupHoldingsByTicker(oppHoldings);
-    return matchSummary ? appendCash(base, matchSummary.opponent.cashBalance) : base;
-  }, [oppHoldings, matchSummary]);
+    const withCash = matchSummary ? appendCash(base, matchSummary.opponent.cashBalance) : base;
+    return applyColorOverrides(withCash, colorOverrides);
+  }, [oppHoldings, matchSummary, colorOverrides]);
 
   const myTitle = matchSummary ? `@${matchSummary.me.username ?? matchSummary.me.name ?? "Me"}` : "Allocation";
 
@@ -186,6 +228,7 @@ export default function GameAFiOverviewPage() {
                 loading={loading}
                 emptyLabel="No open positions yet -- place your first trade to get started."
                 formatValue={formatMoney}
+                onColorChange={handleColorChange}
               />
             </div>
             <div className="md:col-span-2">
@@ -199,6 +242,7 @@ export default function GameAFiOverviewPage() {
                 loading={oppHoldingsLoading}
                 emptyLabel="No open positions yet."
                 formatValue={formatMoney}
+                onColorChange={handleColorChange}
               />
             </div>
           </div>
