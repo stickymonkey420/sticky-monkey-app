@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import PaperHoldingsTable from "@/components/gameAfi/PaperHoldingsTable";
 import PortfolioDonutCard from "@/components/invest/PortfolioDonutCard";
+import HeadToHeadCard from "@/components/gameAfi/HeadToHeadCard";
 import { usePaperTradingAccount } from "@/lib/gameAfi/usePaperTrading";
-import { fetchChallenges } from "@/lib/gameAfi/challengeQueries";
+import { fetchChallenges, fetchMatchSummary } from "@/lib/gameAfi/challengeQueries";
 import { fetchIndustryByTicker } from "@/lib/gameAfi/paperQueries";
 import { groupHoldingsByIndustry, groupHoldingsByTicker } from "@/lib/gameAfi/allocationCalc";
 import { formatMoney } from "@/lib/gameAfi/format";
-import type { ChallengeRow } from "@/lib/gameAfi/challengeTypes";
+import type { ChallengeRow, MatchSummary } from "@/lib/gameAfi/challengeTypes";
 
 // Nav: Game-O-Fi > Overview (route flattened to /game-a-fi-overview,
 // matching this app's convention of flat top-level paths for nav leaves --
@@ -31,6 +32,8 @@ export default function GameAFiOverviewPage() {
   const [matchesLoaded, setMatchesLoaded] = useState(false);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
   const [industryByTicker, setIndustryByTicker] = useState<Map<string, string | null>>(new Map());
+  const [matchSummary, setMatchSummary] = useState<MatchSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,6 +85,34 @@ export default function GameAFiOverviewPage() {
     };
   }, [tickerKey]);
 
+  // Head to Head card -- both sides' totals for the currently-selected
+  // match (see game_afi_match_summary). Independent of usePaperTradingAccount
+  // since it also needs the OPPONENT's cash/holdings, which that hook never
+  // fetches (it only ever reads the signed-in user's own account).
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!selectedChallengeId) {
+        if (!cancelled) {
+          setMatchSummary(null);
+          setSummaryLoading(false);
+        }
+        return;
+      }
+      setSummaryLoading(true);
+      const supabase = createClient();
+      const summary = await fetchMatchSummary(supabase, selectedChallengeId);
+      if (!cancelled) {
+        setMatchSummary(summary);
+        setSummaryLoading(false);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedChallengeId]);
+
   const allocation = useMemo(() => groupHoldingsByTicker(holdings), [holdings]);
   const industryConcentration = useMemo(
     () => groupHoldingsByIndustry(holdings, industryByTicker),
@@ -122,7 +153,7 @@ export default function GameAFiOverviewPage() {
             </select>
           </div>
 
-          <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-3">
             <PortfolioDonutCard
               title="Allocation"
               slices={allocation.slices}
@@ -130,6 +161,7 @@ export default function GameAFiOverviewPage() {
               loading={loading}
               emptyLabel="No open positions yet -- place your first trade to get started."
             />
+            <HeadToHeadCard loading={summaryLoading} summary={matchSummary} />
             <PortfolioDonutCard
               title="Industry Concentration"
               slices={industryConcentration.slices}

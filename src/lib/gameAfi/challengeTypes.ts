@@ -27,3 +27,34 @@ export type ChallengeRow = {
   // Optional match end date, set by the challenger when sending the invite.
   expires_at: string | null;
 };
+
+// Both sides of one accepted head-to-head match -- see
+// game_afi_match_summary. Unlike ChallengeRow (which only ever carries the
+// OTHER party's name/handle so a member can never see anyone's dollar
+// figures but their own -- see game_afi_list_challenges), this DOES expose
+// the opponent's cash/holdings/total, since a head-to-head match is an
+// explicit 1:1 agreement both sides accepted, scoped to just that one match.
+export type MatchSummary = {
+  challengeId: string;
+  status: ChallengeStatus;
+  startingBalance: number;
+  expiresAt: string | null;
+  me: {
+    id: string;
+    name: string | null;
+    username: string | null;
+    avatarUrl: string | null;
+    cashBalance: number;
+    holdingsValue: number;
+    totalValue: number;
+  };
+  opponent: {
+    id: string;
+    name: string | null;
+    username: string | null;
+    avatarUrl: string | null;
+    cashBalance: number;
+    holdingsValue: number;
+    totalValue: number;
+  };
+};

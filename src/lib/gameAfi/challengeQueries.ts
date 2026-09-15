@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ChallengeRow } from "./challengeTypes";
+import type { ChallengeRow, ChallengeStatus, MatchSummary } from "./challengeTypes";
 
 // Every call here hits a SECURITY DEFINER Postgres function, never a raw
 // table select/insert/update -- see the `add_game_afi_challenges`
@@ -69,4 +69,65 @@ export async function fetchChallenges(supabase: SupabaseClient): Promise<Challen
     return [];
   }
   return (data ?? []) as ChallengeRow[];
+}
+
+// Both sides of one accepted head-to-head match, for the Overview page's
+// "Head to Head" card -- see game_afi_match_summary. Returns null if the
+// challenge isn't accepted or the caller isn't a participant (the RPC
+// returns zero rows in that case rather than erroring).
+export async function fetchMatchSummary(
+  supabase: SupabaseClient,
+  challengeId: string
+): Promise<MatchSummary | null> {
+  const { data, error } = await supabase
+    .rpc("game_afi_match_summary", { p_challenge_id: challengeId })
+    .maybeSingle();
+  if (error || !data) {
+    if (error) console.error("fetchMatchSummary failed", error);
+    return null;
+  }
+  const row = data as {
+    challenge_id: string;
+    status: ChallengeStatus;
+    starting_balance: number;
+    expires_at: string | null;
+    me_id: string;
+    me_name: string | null;
+    me_username: string | null;
+    me_avatar_url: string | null;
+    me_cash_balance: number;
+    me_holdings_value: number;
+    me_total_value: number;
+    opponent_id: string;
+    opponent_name: string | null;
+    opponent_username: string | null;
+    opponent_avatar_url: string | null;
+    opponent_cash_balance: number;
+    opponent_holdings_value: number;
+    opponent_total_value: number;
+  };
+  return {
+    challengeId: row.challenge_id,
+    status: row.status,
+    startingBalance: Number(row.starting_balance),
+    expiresAt: row.expires_at,
+    me: {
+      id: row.me_id,
+      name: row.me_name,
+      username: row.me_username,
+      avatarUrl: row.me_avatar_url,
+      cashBalance: Number(row.me_cash_balance),
+      holdingsValue: Number(row.me_holdings_value),
+      totalValue: Number(row.me_total_value),
+    },
+    opponent: {
+      id: row.opponent_id,
+      name: row.opponent_name,
+      username: row.opponent_username,
+      avatarUrl: row.opponent_avatar_url,
+      cashBalance: Number(row.opponent_cash_balance),
+      holdingsValue: Number(row.opponent_holdings_value),
+      totalValue: Number(row.opponent_total_value),
+    },
+  };
 }
