@@ -12,17 +12,16 @@ function isPaidTier(role: Role | null): boolean {
   return role === "paid" || role === "app_director";
 }
 
-// The three boxes on a Ticker Lookup result card, next to the price info
-// and the Sticky Monkey Score card:
-//   - purple: average cost owned, for both the free Monkey Monkey paper
-//     account (always) and the user's actual tracked holdings (paid tier
-//     only -- free tier has no real positions tracked in the app at all,
-//     so there's nothing there to show rather than an empty/misleading row).
-//   - green: action buttons. Buy (opens the same paper-trading widget
-//     Game-a-Fi's own page uses, in a modal, pre-filled with this ticker)
-//     is the only one so far, anchored at the bottom of the box so future
-//     buttons stack above it.
-//   - yellow: reserved for a future feature -- intentionally empty for now.
+// The "Average Cost Owned" card + Buy button rendered under the quote-time
+// line on a Ticker Lookup result card. Average Cost Owned shows both the
+// free Monkey Monkey paper account's avg cost (always) and the user's
+// actual tracked holdings avg cost (paid tier only -- free tier has no
+// real positions tracked in the app at all, so there's nothing there to
+// show rather than an empty/misleading row). The Buy button sits to its
+// right, bottom-aligned with the card, and opens the same paper-trading
+// widget Game-a-Fi's own page uses, in a modal, pre-filled with this
+// ticker. Styled the same neutral card look as Sticky Monkey Score
+// (border-white/[0.12], bg-white/[0.04]) rather than a colored card.
 //
 // Split into an outer/inner pair so the user id + tier (stable for the
 // component's whole lifetime) are fetched exactly once, while the per-
@@ -101,8 +100,8 @@ function TickerCostAndActionsForTicker({
   }, [userId, role, ticker]);
 
   return (
-    <div className="flex w-full flex-wrap gap-3 sm:w-auto sm:flex-nowrap">
-      <div className="w-full shrink-0 rounded-2xl border border-[#a855f7]/40 bg-[#a855f7]/[0.07] p-4 sm:w-[190px]">
+    <div className="flex flex-wrap items-end gap-3">
+      <div className="w-full min-w-[220px] shrink-0 rounded-2xl border border-white/[0.12] bg-white/[0.04] p-4 sm:w-auto">
         <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Average Cost Owned</div>
         {loadingCosts ? (
           <div className="mt-2 text-sm text-text-muted">Loading…</div>
@@ -134,20 +133,13 @@ function TickerCostAndActionsForTicker({
         )}
       </div>
 
-      <div className="flex w-full shrink-0 flex-col justify-end gap-2 rounded-2xl border border-[#3ddc97]/40 bg-[#3ddc97]/[0.07] p-4 sm:w-[130px]">
-        <button
-          type="button"
-          onClick={() => setBuyOpen(true)}
-          className="rounded-md bg-[#3ddc97] px-3 py-2 text-sm font-semibold text-[#0f131c]"
-        >
-          Buy
-        </button>
-      </div>
-
-      <div
-        className="w-full shrink-0 rounded-2xl border border-[#eab308]/40 bg-[#eab308]/[0.07] p-4 sm:w-[130px]"
-        aria-hidden="true"
-      />
+      <button
+        type="button"
+        onClick={() => setBuyOpen(true)}
+        className="shrink-0 rounded-md bg-[#3ddc97] px-4 py-2 text-sm font-semibold text-[#0f131c]"
+      >
+        Buy
+      </button>
 
       {buyOpen && <BuyPaperTradeModal userId={userId} ticker={ticker} onClose={() => setBuyOpen(false)} />}
     </div>
