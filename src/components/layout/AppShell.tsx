@@ -20,6 +20,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import ProfileSummaryCard from "@/components/dashboard/ProfileSummaryCard";
 import SignOutButton from "./SignOutButton";
 import TopBar from "./TopBar";
 
@@ -454,6 +455,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <TopBar />
         </div>
         <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
+      </div>
+
+      {/* Profile panel now lives in the shared shell (like the sidebar)
+          instead of being a per-page dashboard card -- so it's present,
+          sticky, and height-matched to the sidebar on every page. Only the
+          `children` in between changes as you navigate. */}
+      <div className="hidden shrink-0 px-4 pb-4 md:block md:px-0 md:pb-0">
+        <ProfileSummaryCard />
       </div>
     </div>
   );
