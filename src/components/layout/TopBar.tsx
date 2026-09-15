@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/profile/ProfileProvider";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
 import MyProfileModal from "@/components/profile/MyProfileModal";
+import NotificationsModal from "@/components/dashboard/NotificationsModal";
 import SignOutButton from "./SignOutButton";
 
 // Global top bar: search, alerts bell (unread investment_alerts count), and
@@ -23,6 +24,7 @@ export default function TopBar() {
   const [alertCount, setAlertCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -84,7 +86,12 @@ export default function TopBar() {
         </div>
       </form>
 
-      <button type="button" aria-label="Alerts" onClick={() => router.push("/dashboard")} className="relative flex shrink-0 items-center">
+      <button
+        type="button"
+        aria-label="Notifications"
+        onClick={() => setNotificationsOpen(true)}
+        className="relative flex shrink-0 items-center"
+      >
         <Bell size={18} className="text-text-primary" strokeWidth={1.75} />
         {alertCount > 0 && (
           <span
@@ -131,6 +138,7 @@ export default function TopBar() {
       </div>
 
       {profileModalOpen && <MyProfileModal onClose={() => setProfileModalOpen(false)} />}
+      {notificationsOpen && <NotificationsModal onClose={() => setNotificationsOpen(false)} />}
     </header>
   );
 }
