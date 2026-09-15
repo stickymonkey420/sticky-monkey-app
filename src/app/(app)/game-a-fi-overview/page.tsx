@@ -5,13 +5,13 @@ import { createClient } from "@/lib/supabase/client";
 import PaperHoldingsTable from "@/components/gameAfi/PaperHoldingsTable";
 import PortfolioDonutCard from "@/components/invest/PortfolioDonutCard";
 import HeadToHeadCard from "@/components/gameAfi/HeadToHeadCard";
-import IndustryBarChart from "@/components/gameAfi/IndustryBarChart";
 import { usePaperTradingAccount } from "@/lib/gameAfi/usePaperTrading";
 import { fetchChallenges, fetchMatchSummary } from "@/lib/gameAfi/challengeQueries";
-import { fetchIndustryByTicker } from "@/lib/gameAfi/paperQueries";
-import { groupHoldingsByIndustry, groupHoldingsByTicker } from "@/lib/gameAfi/allocationCalc";
+import { computeHoldings, fetchOpponentTrades } from "@/lib/gameAfi/paperQueries";
+import { appendCash, groupHoldingsByTicker } from "@/lib/gameAfi/allocationCalc";
 import { formatMoney } from "@/lib/gameAfi/format";
 import type { ChallengeRow, MatchSummary } from "@/lib/gameAfi/challengeTypes";
+import type { PaperHolding } from "@/lib/gameAfi/paperTypes";
 
 // Nav: Game-O-Fi > Overview (route flattened to /game-a-fi-overview,
 // matching this app's convention of flat top-level paths for nav leaves --
@@ -21,13 +21,15 @@ import type { ChallengeRow, MatchSummary } from "@/lib/gameAfi/challengeTypes";
 // into a single Overview: the same match-scoped holdings table (Head to
 // Head paper trading -- see the paper-account-scoping migration) plus an
 // Allocation donut (per ticker, mirrors Invest's Portfolio Allocation
-// donuts) and an Industry Concentration horizontal bar chart (per
-// stock_universe.industry, full descriptive name above each bar -- switched
-// from a donut per your call, since the shortened legend names it needed
-// read worse than the space they saved) so a member can see how much of a
-// match's capital rides on one industry regardless of how many different
-// tickers it's split across. Both charts pull from the same fixed
-// categorical order in lib/palette.ts as every other chart in this app.
+// donuts) and, on the right, the OPPONENT's own holdings donut -- swapped in
+// per your call to replace Industry Concentration (still available as
+// IndustryBarChart/groupHoldingsByIndustry, just not surfaced here). Backed
+// by the same game_afi_match_opponent_trades RPC pattern as
+// game_afi_match_summary: a head-to-head match is a 1:1 agreement both
+// sides accepted, so exposing the opponent's per-ticker positions (not just
+// their totals) is fine here, scoped to just this one match. Both donuts
+// append a "Cash" row at the bottom (see allocationCalc's appendCash) so
+// the breakdown covers the whole account, not just the invested portion.
 // These are simulated shares only -- never real holdings (those live under
 // Invest > Holdings, paid tier).
 export default function GameAFiOverviewPage() {
@@ -35,9 +37,10 @@ export default function GameAFiOverviewPage() {
   const [matches, setMatches] = useState<ChallengeRow[]>([]);
   const [matchesLoaded, setMatchesLoaded] = useState(false);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
-  const [industryByTicker, setIndustryByTicker] = useState<Map<string, string | null>>(new Map());
   const [matchSummary, setMatchSummary] = useState<MatchSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [oppHoldings, setOppHoldings] = useState<PaperHolding[]>([]);
+  const [oppHoldingsLoading, setOppHoldingsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,29 +68,34 @@ export default function GameAFiOverviewPage() {
   const hasMatch = selectedChallengeId !== null;
   const { loading, holdings } = usePaperTradingAccount(hasMatch ? userId : null, selectedChallengeId);
 
-  // Industry lookup only needs to (re)run when the actual set of tickers
-  // held changes -- not on every holdings re-render (e.g. a price refresh),
-  // so it's keyed off the sorted ticker list rather than the holdings array
-  // reference.
-  const tickerKey = useMemo(() => holdings.map((h) => h.ticker).sort().join(","), [holdings]);
-
+  // Opponent's holdings for the currently-selected match -- fetches their
+  // raw trades via game_afi_match_opponent_trades, then reuses the exact
+  // same computeHoldings() pipeline usePaperTradingAccount uses for the
+  // caller's own trades, so both sides' donuts are built identically.
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const tickers = tickerKey ? tickerKey.split(",") : [];
-      if (tickers.length === 0) {
-        if (!cancelled) setIndustryByTicker(new Map());
+      if (!selectedChallengeId) {
+        if (!cancelled) {
+          setOppHoldings([]);
+          setOppHoldingsLoading(false);
+        }
         return;
       }
+      setOppHoldingsLoading(true);
       const supabase = createClient();
-      const map = await fetchIndustryByTicker(supabase, tickers);
-      if (!cancelled) setIndustryByTicker(map);
+      const trades = await fetchOpponentTrades(supabase, selectedChallengeId);
+      const computed = await computeHoldings(supabase, trades);
+      if (!cancelled) {
+        setOppHoldings(computed);
+        setOppHoldingsLoading(false);
+      }
     }
     load();
     return () => {
       cancelled = true;
     };
-  }, [tickerKey]);
+  }, [selectedChallengeId]);
 
   // Head to Head card -- both sides' totals for the currently-selected
   // match (see game_afi_match_summary). Independent of usePaperTradingAccount
@@ -117,11 +125,19 @@ export default function GameAFiOverviewPage() {
     };
   }, [selectedChallengeId]);
 
-  const allocation = useMemo(() => groupHoldingsByTicker(holdings), [holdings]);
-  const industryConcentration = useMemo(
-    () => groupHoldingsByIndustry(holdings, industryByTicker),
-    [holdings, industryByTicker]
-  );
+  const allocation = useMemo(() => {
+    const base = groupHoldingsByTicker(holdings);
+    return matchSummary ? appendCash(base, matchSummary.me.cashBalance) : base;
+  }, [holdings, matchSummary]);
+
+  const opponentAllocation = useMemo(() => {
+    const base = groupHoldingsByTicker(oppHoldings);
+    return matchSummary ? appendCash(base, matchSummary.opponent.cashBalance) : base;
+  }, [oppHoldings, matchSummary]);
+
+  const opponentTitle = matchSummary
+    ? `@${matchSummary.opponent.username ?? matchSummary.opponent.name ?? "Opponent"} Holdings`
+    : "Opponent Holdings";
 
   return (
     <>
@@ -172,12 +188,12 @@ export default function GameAFiOverviewPage() {
               <HeadToHeadCard loading={summaryLoading} summary={matchSummary} holdings={holdings} />
             </div>
             <div className="md:col-span-1">
-              <IndustryBarChart
-                title="Industry Concentration"
-                slices={industryConcentration.slices}
-                total={industryConcentration.total}
-                loading={loading}
-                emptyLabel="No open positions yet -- place your first trade to get started."
+              <PortfolioDonutCard
+                title={opponentTitle}
+                slices={opponentAllocation.slices}
+                total={opponentAllocation.total}
+                loading={oppHoldingsLoading}
+                emptyLabel="No open positions yet."
                 formatValue={formatMoney}
               />
             </div>

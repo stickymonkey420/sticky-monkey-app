@@ -144,6 +144,22 @@ export async function computeHoldings(supabase: SupabaseClient, trades: PaperTra
   });
 }
 
+// The OPPONENT's raw trades for one accepted head-to-head match -- see
+// game_afi_match_opponent_trades. Feeds the exact same computeHoldings()/
+// groupHoldingsByTicker() pipeline as the caller's own trades, so the
+// Overview page's opponent-holdings card is built from identical logic to
+// the Allocation card, just fed the other side's trades. Returns [] if the
+// challenge isn't accepted or the caller isn't a participant (the RPC
+// returns zero rows in that case rather than erroring).
+export async function fetchOpponentTrades(supabase: SupabaseClient, challengeId: string): Promise<PaperTrade[]> {
+  const { data, error } = await supabase.rpc("game_afi_match_opponent_trades", { p_challenge_id: challengeId });
+  if (error) {
+    console.error("fetchOpponentTrades failed", error);
+    return [];
+  }
+  return (data ?? []) as PaperTrade[];
+}
+
 // Ticker -> industry lookup for the Overview page's Industry Concentration
 // donut (see lib/gameAfi/allocationCalc.ts groupHoldingsByIndustry). A
 // ticker with no row (or a null industry) is simply absent from the map --

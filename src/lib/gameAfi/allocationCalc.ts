@@ -56,6 +56,25 @@ export function groupHoldingsByTicker(holdings: PaperHolding[]): DonutResult {
   return buildDonut(entries, (_name, rank) => CATEGORICAL_PALETTE[rank]);
 }
 
+// Distinct from every categorical slot AND from OTHER_COLOR -- app's own
+// accent-teal token (see globals.css), not otherwise used by these charts.
+export const CASH_COLOR = "#34c9c9";
+const CASH_LABEL = "Cash";
+
+// Appends a "Cash" row after whatever groupHoldingsByTicker already built --
+// always last, regardless of size, per your call to add it "at the bottom
+// of holdings" rather than ranked in with the tickers (a mostly-cash
+// account would otherwise put Cash first, which reads oddly next to a
+// holdings breakdown). No-ops when there's no meaningful cash balance so an
+// all-invested account's donut isn't padded with a $0 slice.
+export function appendCash(result: DonutResult, cashBalance: number): DonutResult {
+  if (cashBalance <= 0) return result;
+  return {
+    slices: [...result.slices, { name: CASH_LABEL, value: cashBalance, color: CASH_COLOR }],
+    total: result.total + cashBalance,
+  };
+}
+
 // Industry concentration -- same holdings, grouped by stock_universe.industry
 // instead of ticker, so a member can see how much of a match's capital rides
 // on one industry regardless of how many different tickers it's split
