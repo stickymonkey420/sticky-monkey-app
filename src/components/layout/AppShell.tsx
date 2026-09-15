@@ -8,9 +8,7 @@ import {
   Wallet,
   CircleDollarSign,
   TrendingUp,
-  Receipt,
   User,
-  Search,
   Crown,
   FileText,
   ShieldCheck,
@@ -36,16 +34,19 @@ const LOGO_WORDMARK_URL =
 // Nested sidebar nav. The live Webflow site nests Stock Screener inside
 // Invest, but here Invest is a fully paid-gated group (Portfolio/Taxable/
 // Retirement/Vault) and Stock Screener is meant to stay visible to free
-// accounts too -- so it's pulled out to its own top-level link instead of
-// living inside Invest, since nesting it there would hide it whenever the
-// whole group is gated. Everything else follows the live site's real
-// nesting (confirmed off its accessibility tree, not a screenshot):
+// accounts too -- so it lives under the (also free-tier) Game-a-Fi group
+// instead of inside Invest, since nesting it there would hide it whenever
+// the whole group is gated. Everything else follows the live site's real
+// nesting (confirmed off its accessibility tree, not a screenshot), except
+// where reorganized per your explicit calls (Transactions folded into My
+// Wallet, Utilities renamed Settings, Stock Screener moved under Game-a-Fi):
 //   - "Income" is a single paid-gated group containing the Income overview
 //     page plus a "Trade Options" sub-group (Options/Closed Positions/
 //     Simulator) -- there is no separate top-level "Trade Options" entry.
-//   - "Utilities" is a dropdown containing Edit Categories (free) and
-//     Update API Key (admin) -- ungated at the group level so the free
-//     child still shows even though its sibling doesn't.
+//   - "Settings" (Webflow/original label "Utilities") is a dropdown
+//     containing Edit Categories (free) and Update API Key (admin) --
+//     ungated at the group level so the free child still shows even though
+//     its sibling doesn't.
 //   - "Owners" (Webflow calls this page "Investors"; renamed here since
 //     it's really about tracking company ownership, not app members) and
 //     "Users & Groups" are each a real dropdown with exactly one child on
@@ -149,6 +150,7 @@ const NAV_TREE: NavNode[] = [
     children: [
       { href: "/wallet", label: "Overview" },
       { href: "/card-center", label: "Card Center" },
+      { href: "/transactions", label: "Transactions" },
     ],
   },
   {
@@ -191,8 +193,6 @@ const NAV_TREE: NavNode[] = [
       },
     ],
   },
-  { href: "/stock-screener", label: "Stock Screener", icon: Search },
-  { href: "/transactions", label: "Transactions", icon: Receipt },
   { href: "/accounts", label: "Banking", icon: User },
   { href: "/smu", label: "SMU", icon: FileText },
   {
@@ -203,10 +203,17 @@ const NAV_TREE: NavNode[] = [
       { href: "/my-business", label: "My Business" },
     ],
   },
-  { href: "/game-a-fi", label: "Game-a-Fi", icon: Trophy },
+  {
+    label: "Game-a-Fi",
+    icon: Trophy,
+    children: [
+      { href: "/game-a-fi", label: "Standings" },
+      { href: "/stock-screener", label: "Stock Screener" },
+    ],
+  },
   { href: "/investors", label: "Owners", requires: "owner", icon: Crown },
   {
-    label: "Utilities",
+    label: "Settings",
     icon: Wrench,
     children: [
       { href: "/edit-categories", label: "Edit Categories" },
