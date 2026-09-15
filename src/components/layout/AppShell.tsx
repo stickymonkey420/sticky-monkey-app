@@ -432,13 +432,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           sign-out. The outer wrapper keeps the same sticky/full-height
           footprint the card alone used to have, so overall sidebar height
           (and its match with the profile panel) is unchanged. */}
-      <div className="sticky top-4 hidden h-[calc(100vh-2rem)] w-64 shrink-0 flex-col gap-4 md:flex">
-        <div className="flex shrink-0 flex-col items-center gap-1.5 px-2">
+      <div className="sticky top-4 hidden h-[calc(100vh-2rem)] w-64 shrink-0 flex-col gap-10 md:flex">
+        {/* Sizes/spacing pulled via getComputedStyle off the live site's
+            .logo-wrapper: 64px-tall head icon, 188px-wide wordmark, a
+            25px/1px divider rule, then the FINANCE label at 13px/300
+            weight/0.35em tracking -- not the placeholder sizes this used
+            before. */}
+        <div className="flex shrink-0 flex-col items-center px-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_HEAD_URL} alt="" className="h-12 w-12" />
+          <img src={LOGO_HEAD_URL} alt="" className="mb-0.5 h-16 w-auto" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_WORDMARK_URL} alt="Sticky Monkey" className="h-6 w-auto" />
-          <span className="text-[10px] font-semibold tracking-[0.25em] text-text-muted">FINANCE</span>
+          <img src={LOGO_WORDMARK_URL} alt="Sticky Monkey" className="h-auto w-[188px]" />
+          <div className="mb-2 h-px w-[25px]" style={{ backgroundColor: "rgba(255,255,255,0.25)" }} />
+          <span className="text-[13px] font-light tracking-[0.35em] text-text-muted">FINANCE</span>
         </div>
 
         <aside
