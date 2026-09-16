@@ -8,6 +8,7 @@ import { estimateContractPremium } from "@/lib/gameAfi/premiumEstimate";
 import type { ExecuteTradeResult, PaperAccount, PaperHolding } from "@/lib/gameAfi/paperTypes";
 import type { ContractType, PaperContractTrade, SellContractResult } from "@/lib/gameAfi/contractTypes";
 import BuySellSharesCard from "./BuySellSharesCard";
+import PreviewStat from "./PreviewStat";
 
 // Every Friday from tomorrow through ~16 weeks out -- expiration is
 // restricted to Fridays only (see the paper_contract_trades_exp_friday
@@ -30,32 +31,6 @@ function upcomingFridays(count = 16): string[] {
 // preview is a rough estimate, so cents just add noise.
 function moneyNoCents(n: number): string {
   return "$" + Math.round(n).toLocaleString("en-US");
-}
-
-// One cell of the live preview grid -- label on top (small, muted,
-// uppercase like the account tiles above), value below in its own color.
-// Kept tiny/borderless (no card-within-a-card) since this whole thing
-// already sits inside its own preview box.
-function PreviewStat({
-  label,
-  value,
-  color,
-  sub,
-}: {
-  label: string;
-  value: string;
-  color?: string;
-  sub?: string;
-}) {
-  return (
-    <div>
-      <div className="text-[10px] font-medium uppercase tracking-wide text-text-muted">{label}</div>
-      <div className="text-sm font-semibold" style={{ color: color ?? undefined }}>
-        {value}
-      </div>
-      {sub && <div className="text-[10px] text-text-muted">{sub}</div>}
-    </div>
-  );
 }
 
 function outcomeLabel(t: PaperContractTrade): { text: string; color: string } {

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/options/queries";
 import { fetchTickerPrice } from "@/lib/gameAfi/contractQueries";
 import type { ExecuteTradeResult, PaperHolding } from "@/lib/gameAfi/paperTypes";
+import PreviewStat from "./PreviewStat";
 
 // Compact Buy/Sell Shares card -- sits to the left of "Sell a Contract" in
 // the wheel section so a member can pick up the shares a covered call
@@ -103,29 +104,31 @@ export default function BuySellSharesCard({
         />
       </div>
 
+      {/* Same preview-box structure as Sell a Contract's stat grid (see
+          PreviewStat) -- a label/value grid instead of a sentence, so the
+          two cards read as one family. */}
       {ticker && (
-        <div className="mt-2 min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm">
+        <div className="mt-2 min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-3">
           {priceLoading && tickerPrice === null ? (
-            <span className="text-text-muted">Looking up {ticker}…</span>
+            <span className="text-sm text-text-muted">Looking up {ticker}…</span>
           ) : tickerPrice === null ? (
-            <span className="text-text-muted">{ticker} isn&apos;t in the tracked stock universe.</span>
+            <span className="text-sm text-text-muted">{ticker} isn&apos;t in the tracked stock universe.</span>
           ) : (
-            <span className="text-text-muted">
-              {ticker} current price:{" "}
-              <span className="font-semibold" style={{ color: "#f5d020" }}>
-                {money(tickerPrice)}
-              </span>
-            </span>
-          )}
-          {!loading && (
-            <div className="mt-1 text-xs text-text-muted">
-              {owned && owned > 0 ? (
-                <>
-                  You own <span className="font-semibold text-text-primary">{owned}</span> share
-                  {owned === 1 ? "" : "s"} of {ticker}.
-                </>
-              ) : (
-                <>No {ticker} shares owned in this account yet.</>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
+              <PreviewStat label={`${ticker} Price`} value={money(tickerPrice)} color="#f5d020" />
+              {!loading && (
+                <PreviewStat
+                  label="Shares Owned"
+                  value={`${owned ?? 0}`}
+                  sub={owned && owned > 0 ? `of ${ticker}` : `no ${ticker} shares yet`}
+                />
+              )}
+              {!loading && owned !== null && owned > 0 && (
+                <PreviewStat
+                  label="Market Value"
+                  value={money(holdings.find((h) => h.ticker === ticker)?.marketValue ?? 0)}
+                  color="#3ddc97"
+                />
               )}
             </div>
           )}
@@ -153,12 +156,6 @@ export default function BuySellSharesCard({
 
       {tradeMessage && (
         <p className={`mt-3 text-sm ${tradeMessage.ok ? "text-[#3ddc97]" : "text-[#ff5c7a]"}`}>{tradeMessage.text}</p>
-      )}
-
-      {!loading && ticker && owned !== null && owned > 0 && (
-        <p className="mt-1 text-[11px] text-text-muted/70">
-          Market value at current price: {money((holdings.find((h) => h.ticker === ticker)?.marketValue ?? 0) || 0)}
-        </p>
       )}
     </div>
   );
