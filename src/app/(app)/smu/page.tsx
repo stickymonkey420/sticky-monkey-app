@@ -1,3 +1,4 @@
+import { INTRO_VIDEO_URL, INTRO_VIDEO_POSTER_URL } from "@/lib/dashboard/introVideo";
 
 // Port of the live Webflow "SMU" (Sticky Monkey University) page (page id
 // 6a96641b0e5cff2da16490ad). Unlike every other ported page, this one's
@@ -11,15 +12,16 @@
 // the real hosted video asset (found via the Webflow MCP data_assets_tool,
 // asset id 6a96aefe185e5f18cc9542d3) plus a plain "more lessons coming
 // soon" note, so it's honest about the page's actual current scope.
-const VIDEO_URL =
-  "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/6a96aefe185e5f18cc9542d3_AbuIntro.mp4";
+//
+// VIDEO_URL/SMU_CREST_URL come from the shared lib/dashboard/introVideo.ts
+// -- also used by WelcomeVideoModal (the first-login popup on Dashboard) --
+// so both point at the same asset.
+const VIDEO_URL = INTRO_VIDEO_URL;
 const ABU_AVATAR_URL =
   "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/6a97f76bdc2bb83ea21e174f_abu-eyes-open-clean.png";
 // Shown as the video's placeholder frame before it's played, per your call
-// to swap in the SMU crest there instead of Abu's avatar. Served from this
-// app's own public/ folder (not S3, unlike the two URLs above) since it's a
-// new asset with nowhere else hosted yet.
-const SMU_CREST_URL = "/images/smu-crest.png";
+// to swap in the SMU crest there instead of Abu's avatar.
+const SMU_CREST_URL = INTRO_VIDEO_POSTER_URL;
 
 export default function SmuPage() {
   return (

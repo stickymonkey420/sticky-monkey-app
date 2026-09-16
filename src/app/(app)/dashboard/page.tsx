@@ -4,7 +4,7 @@ import IncomeHistoryChart from "@/components/dashboard/IncomeHistoryChart";
 import NetWorthHistoryChart from "@/components/dashboard/NetWorthHistoryChart";
 import LastTransactionsCard from "@/components/dashboard/LastTransactionsCard";
 import GameAfiMirrorCard from "@/components/dashboard/GameAfiMirrorCard";
-import OnboardingModal from "@/components/dashboard/OnboardingModal";
+import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
 
 // Layout matches the live Webflow Dashboard page exactly: Asset Allocation
 // + Net Worth (Net Worth now also embeds the Income week/month/YTD/
@@ -33,7 +33,7 @@ import OnboardingModal from "@/components/dashboard/OnboardingModal";
 export default function DashboardPage() {
   return (
     <>
-      <OnboardingModal />
+      <OnboardingFlow />
       <h1 className="mb-6 text-xl font-semibold text-text-primary">Dashboard</h1>
       <div className="flex min-w-0 w-full flex-col gap-6">
         <NetWorthCard />
