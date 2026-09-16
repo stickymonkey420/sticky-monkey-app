@@ -133,11 +133,7 @@ export default function SellContractWidget({
       <div className="rounded-2xl border border-card-border bg-card-bg p-5">
         <h3 className="mb-1 text-sm font-semibold text-text-primary">Sell a Contract</h3>
         <p className="mb-3 text-xs text-text-muted">
-          Simulated premium (this app has no real options-data feed -- see the estimate note below). Puts lock cash
-          collateral until expiration; covered calls require enough uncovered shares of that ticker instead. Friday
-          expirations only -- assignment is decided at Friday&apos;s closing price: a put assigned buys shares at
-          strike, a covered call assigned sells shares at strike, otherwise the contract expires worthless and you
-          keep the premium.
+          Simulated premium, Friday expirations only, with real assignment decided at Friday&apos;s close.
         </p>
         <div className="mb-3 flex gap-2">
           <button

@@ -44,7 +44,7 @@ export default function TickerQuoteCard({
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-[14px] border border-white/[0.12] bg-white/[0.03] p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
           <div className="min-w-0 flex-1">
             <div className="text-lg font-bold text-text-primary">{result.symbol}</div>
             {result.companyName && <div className="mt-0.5 text-base text-text-muted">{result.companyName}</div>}
@@ -75,29 +75,27 @@ export default function TickerQuoteCard({
             )}
           </div>
 
-          {/* Buy / Sell Option: their own column between Average Cost Owned
-              and the reserved/Score boxes, pinned to the bottom of the row
-              (lg:items-stretch above makes every column here match the
-              tallest one's height). Both open a trade widget for any
-              accepted match -- Buy for shares, Sell Option for a
-              cash-secured put or covered call (toggle inside its modal) --
-              see each button's own modal for what happens with no accepted
-              match yet. */}
-          <div className="flex shrink-0 flex-col justify-end gap-2">
-            {userId && <BuyButton ticker={result.symbol} userId={userId} />}
-            {userId && <SellPutButton ticker={result.symbol} userId={userId} />}
-          </div>
+          {/* Buy/Sell Option buttons, the Score card, and the reserved card
+              are one right-aligned group (lg:ml-auto) instead of being
+              spread across the row -- the left column no longer grows to
+              fill the gap between them. Reserved is now a thin stripe
+              (w-16) rather than matching the Score card's width, since it
+              holds nothing yet. */}
+          <div className="flex w-full flex-col items-stretch gap-4 sm:w-auto sm:flex-row lg:ml-auto lg:flex-row">
+            <div className="flex shrink-0 flex-col justify-end gap-2">
+              {userId && <BuyButton ticker={result.symbol} userId={userId} />}
+              {userId && <SellPutButton ticker={result.symbol} userId={userId} />}
+            </div>
 
-          <div className="flex w-full flex-col items-stretch gap-4 sm:w-auto sm:flex-row lg:flex-row">
             {result.stickyMonkeyScore !== null && result.stickyMonkeyScore !== undefined && (
               <StickyMonkeyScoreCard result={result} />
             )}
 
-            {/* Reserved for a future feature -- same neutral card style
-                as Sticky Monkey Score, just larger. h-full so it
-                stretches to match the row's full height instead of
-                stopping at its own min-height. */}
-            <div className="h-full min-h-[180px] w-full shrink-0 rounded-2xl border border-white/[0.12] bg-white/[0.04] p-4 sm:w-[220px]" />
+            {/* Reserved for a future feature -- thinned to a stripe since
+                it holds nothing yet. h-full so it stretches to match the
+                row's full height instead of stopping at its own
+                min-height. */}
+            <div className="h-full min-h-[180px] w-full shrink-0 rounded-2xl border border-white/[0.12] bg-white/[0.04] p-4 sm:w-16" />
           </div>
         </div>
       </div>
