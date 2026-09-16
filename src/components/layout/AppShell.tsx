@@ -357,6 +357,23 @@ function containsActive(node: NavNode, pathname: string): boolean {
   return false;
 }
 
+// Every leaf nav link gets a stable, derivable DOM id -- "nav-" plus the
+// href with "/", "?", "#", "=" collapsed to "-" (e.g. "/holdings?account=
+// brokerage" -> "nav-holdings-account-brokerage"). This is what lets the
+// Abu chatbot (components/chat/AbuChatWidget.tsx) highlight ANY sidebar
+// menu item the user asks about, not just a hand-picked few: the abu-chat
+// Edge Function's NAV_REGISTRY uses this exact same derivation for its
+// highlight keys (kept in sync by convention, documented there), and
+// AbuChatWidget's highlightCards() falls back to a plain
+// document.getElementById(key) for any key that isn't one of its own
+// page-specific card ids -- so a "nav-*" key just resolves straight to
+// this id with no extra per-item wiring needed on this end. Replaces the
+// old one-off `id={node.href === "/income" ? "income-nav-link" : ...}`
+// special case.
+function navLinkId(href: string): string {
+  return "nav-" + href.replace(/^\//, "").replace(/[/?#=]+/g, "-").replace(/[^a-zA-Z0-9-]/g, "");
+}
+
 function NavItem({
   node,
   depth,
@@ -417,10 +434,9 @@ function NavItem({
     <Link
       href={node.href!}
       onClick={onNavigate}
-      // id targeted by the Abu chatbot's card-highlight feature (see
-      // components/chat/AbuChatWidget.tsx) -- undefined for every other
-      // link, so this never shows up as a stray attribute elsewhere.
-      id={node.href === "/income" ? "income-nav-link" : undefined}
+      // Targeted by the Abu chatbot's highlight feature -- see navLinkId
+      // above and components/chat/AbuChatWidget.tsx.
+      id={navLinkId(node.href!)}
       className={`flex items-center gap-2.5 rounded-md py-2 pr-3 text-sm font-medium text-text-primary ${
         active ? "bg-white/5" : "border-l-2 border-transparent"
       }`}

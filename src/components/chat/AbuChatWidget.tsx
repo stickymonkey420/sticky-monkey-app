@@ -34,7 +34,6 @@ import { createClient } from "@/lib/supabase/client";
 //     - "expense-categories" -> #expense-categories-card.
 //     - "income-breakdown" -> #income-breakdown-card (the Options Income
 //       card -- the closest current equivalent).
-//     - "income-nav" -> #income-nav-link (sidebar nav link).
 //     - "wallet-balance" -> #wallet-balance-card (Wallet Overview card).
 //     - "brokerage-holdings" -> #eq-brokerage-card (Invest page's
 //       Brokerage donut card).
@@ -62,12 +61,15 @@ type CardLocator = () => HTMLElement | null;
 
 // Kept in sync with the abu-chat Edge Function's CARD_REGISTRY -- every key
 // here must have a matching entry there, or the highlight silently no-ops.
+// Page-body cards only -- left-sidebar MENU ITEMS are handled separately,
+// below, since they're the same on every page and their ids are derived
+// automatically (see AppShell.tsx's navLinkId) rather than hand-mapped one
+// by one here.
 const ABU_CARDS: Record<string, Record<string, CardLocator>> = {
   "/dashboard": {
     "net-worth": () => document.getElementById("nw-card"),
     "expense-categories": () => document.getElementById("expense-categories-card"),
     "income-breakdown": () => document.getElementById("income-breakdown-card"),
-    "income-nav": () => document.getElementById("income-nav-link"),
   },
   "/wallet": {
     "wallet-balance": () => document.getElementById("wallet-balance-card"),
@@ -116,16 +118,27 @@ type WindowWithSpeech = Window & {
 type ChatHistoryEntry = { role: "user" | "assistant"; content: string };
 type AbuChatResponse = { answer?: string; highlights?: string[]; audio?: string | null };
 
+// Resolves one highlight key to a DOM element. Page-body card keys (e.g.
+// "net-worth") only make sense on their own page, so those go through
+// ABU_CARDS' per-page map first; anything else -- in practice, every
+// left-sidebar menu item, whose key IS its DOM id (see AppShell.tsx's
+// navLinkId, "nav-<slug>") -- falls back to a plain getElementById. A key
+// for a menu item hidden from this member (paid-gated, or a different
+// account type) simply isn't in the DOM, so this returns null and that key
+// silently no-ops, same as an unknown key always has.
+function locateHighlight(key: string): HTMLElement | null {
+  const pageMap = ABU_CARDS[window.location.pathname];
+  const locate = pageMap?.[key];
+  if (locate) return locate();
+  return document.getElementById(key);
+}
+
 function highlightCards(keys: string[] | string | undefined): void {
   try {
     const list = Array.isArray(keys) ? keys : keys ? [keys] : [];
-    const pageMap = ABU_CARDS[window.location.pathname];
-    if (!pageMap) return;
     let scrolled = false;
     for (const key of list) {
-      const locate = pageMap[key];
-      if (!locate) continue;
-      const el = locate();
+      const el = locateHighlight(key);
       if (!el) continue;
       if (!scrolled) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
