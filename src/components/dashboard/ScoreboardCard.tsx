@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Share2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/dashboard/netWorth";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
-import { X_COMPOSE_URL } from "@/lib/profile/xHandle";
+import { shareElementToX, type ShareImageResult } from "@/lib/share/shareImageToX";
 import {
   cancelChallenge,
   fetchChallenges,
@@ -17,6 +17,19 @@ import { formatChallengeWhen, formatMoney } from "@/lib/gameAfi/format";
 
 const WINNING_COLOR = "#3ddc97";
 const LOSING_COLOR = "#ff5c7a";
+
+function shareNoteFor(result: ShareImageResult): string | null {
+  switch (result) {
+    case "shared":
+      return null;
+    case "downloaded":
+      return "Image saved -- attach it to the post that just opened.";
+    case "failed":
+      return "Couldn't capture the scoreboard. Try again.";
+    case "cancelled":
+      return null;
+  }
+}
 
 type ScoreRow = {
   key: string;
@@ -48,6 +61,18 @@ export default function ScoreboardCard() {
   const [pendingSent, setPendingSent] = useState<ChallengeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const scoreRowsRef = useRef<HTMLDivElement>(null);
+  const [sharing, setSharing] = useState(false);
+  const [shareNote, setShareNote] = useState<string | null>(null);
+
+  async function handleShare() {
+    if (!scoreRowsRef.current || sharing) return;
+    setSharing(true);
+    setShareNote(null);
+    const result = await shareElementToX(scoreRowsRef.current, "scoreboard.png");
+    setSharing(false);
+    setShareNote(shareNoteFor(result));
+  }
 
   async function load() {
     const supabase = createClient();
@@ -113,17 +138,18 @@ export default function ScoreboardCard() {
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-text-primary">Scoreboard</h3>
         {!loading && rows.length > 0 && (
-          <a
-            href={X_COMPOSE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-card-border px-2.5 py-1 text-xs font-medium text-text-muted hover:text-text-primary"
+          <button
+            type="button"
+            onClick={handleShare}
+            disabled={sharing}
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-card-border px-2.5 py-1 text-xs font-medium text-text-muted hover:text-text-primary disabled:opacity-60"
           >
             <Share2 size={13} />
-            Share to X
-          </a>
+            {sharing ? "Capturing…" : "Share to X"}
+          </button>
         )}
       </div>
+      {shareNote && <div className="mb-2 text-[11px] text-text-muted">{shareNote}</div>}
 
       {!loading && pendingReceived.length > 0 && (
         <div className="mb-3 flex flex-col divide-y divide-white/10 border-b border-white/10 pb-1">
@@ -216,7 +242,7 @@ export default function ScoreboardCard() {
       ) : rows.length === 0 ? (
         <div className="text-sm text-text-muted">No active Head to Head matches yet.</div>
       ) : (
-        <>
+        <div ref={scoreRowsRef} style={{ backgroundColor: "rgb(32,40,56)" }}>
           <div className="flex flex-col divide-y divide-white/10">
             {rows.map((r) => {
               const meAhead = r.meTotal > r.opponentTotal;
@@ -256,7 +282,7 @@ export default function ScoreboardCard() {
             <span>Total</span>
             <span>{money(total)}</span>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

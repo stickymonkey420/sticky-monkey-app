@@ -1,10 +1,10 @@
 // Validation for the optional X (Twitter) handle profile field -- shown on
-// My Profile as "X (Twitter) Handle". Not used to build any share text
-// (see X_COMPOSE_URL below -- the "Share to X" buttons on Head to Head and
-// Scoreboard open a blank compose window, no pre-filled text, per your
-// call), but kept as a real profile field for a future use (e.g. an
-// @mention or a public profile link). Deliberately looser than
-// src/lib/profile/handle.ts (the in-app "Handle"): X's own rules aren't
+// My Profile as "X (Twitter) Handle". Not used to build any share text or
+// link -- the "Share to X" buttons (see src/lib/share/shareImageToX.ts) post
+// a still shot of the score with nothing pre-filled, per your call. Kept as
+// a real profile field for a future use (e.g. an @mention or a public
+// profile link). Deliberately looser than src/lib/profile/handle.ts (the
+// in-app "Handle"): X's own rules aren't
 // enforced here server-side (no CHECK constraint -- see the
 // add_x_handle_to_profiles migration), and the worst case of a stale/wrong
 // value is just a link that 404s on X's side, not anything broken here.
@@ -30,11 +30,3 @@ export function validateXHandle(value: string): string | null {
   }
   return null;
 }
-
-// Opens X's own compose UI with nothing pre-filled -- per your call, the
-// "Share to X" buttons (HeadToHeadCard, ScoreboardCard) should let the
-// member write their own post rather than posting canned score text for
-// them. This is still just a share-intent link: it opens X's compose
-// screen in a new tab for the member to write and send themselves: no
-// auto-posting, no X account/API access needed.
-export const X_COMPOSE_URL = "https://twitter.com/intent/tweet";
