@@ -16,8 +16,19 @@ type BalanceRow = { key: string; label: string; cashBalance: number };
 // since an accepted match with no trades yet simply hasn't been
 // provisioned -- its balance is just its agreed starting capital, shown
 // here without writing anything on a dashboard view.
+//
+// Also surfaces pending Head to Head invite status (sent or received) --
+// info-only, no Accept/Decline/Cancel here. Accepting/declining a received
+// invite still happens in the Notifications bell (NotificationsModal.tsx);
+// this just answers "do I have anything pending" without opening it. This
+// took over that job from the Head to Head tab's old Received/Sent lists,
+// which were removed as redundant with this card + the bell.
+type PendingChallenge = { key: string; label: string };
+
 export default function PaperBalancesCard() {
   const [rows, setRows] = useState<BalanceRow[]>([]);
+  const [pendingReceived, setPendingReceived] = useState<PendingChallenge[]>([]);
+  const [pendingSent, setPendingSent] = useState<PendingChallenge[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,6 +63,16 @@ export default function PaperBalancesCard() {
           cashBalance: cashByChallenge.get(c.id) ?? c.starting_balance,
         }))
       );
+
+      const toLabel = (c: (typeof challenges)[number]): PendingChallenge => ({
+        key: c.id,
+        label: c.other_username ? `@${c.other_username}` : c.other_name || "Member",
+      });
+      setPendingReceived(
+        challenges.filter((c) => c.direction === "received" && c.status === "pending").map(toLabel)
+      );
+      setPendingSent(challenges.filter((c) => c.direction === "sent" && c.status === "pending").map(toLabel));
+
       setLoading(false);
     }
 
@@ -66,6 +87,22 @@ export default function PaperBalancesCard() {
   return (
     <div className="rounded-[30px] bg-[rgb(32,40,56)] p-[30px]">
       <h3 className="mb-3 text-sm font-semibold text-text-primary">Funny Money</h3>
+      {!loading && (pendingReceived.length > 0 || pendingSent.length > 0) && (
+        <div className="mb-3 flex flex-col gap-1 border-b border-white/10 pb-3 text-xs text-text-muted">
+          {pendingReceived.length > 0 && (
+            <div>
+              📨 {pendingReceived.length} pending {pendingReceived.length === 1 ? "invite" : "invites"} from{" "}
+              {pendingReceived.map((c) => c.label).join(", ")}
+            </div>
+          )}
+          {pendingSent.length > 0 && (
+            <div>
+              📤 {pendingSent.length} pending {pendingSent.length === 1 ? "invite" : "invites"} sent to{" "}
+              {pendingSent.map((c) => c.label).join(", ")}
+            </div>
+          )}
+        </div>
+      )}
       {loading ? (
         <div className="text-sm text-text-muted">Loading…</div>
       ) : rows.length === 0 ? (

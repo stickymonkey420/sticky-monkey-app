@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Repeat } from "lucide-react";
+import { Repeat, Trophy } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import ChallengeMemberModal from "@/components/gameAfi/ChallengeMemberModal";
 
 // Ported from the live Webflow Dashboard's "Add Option Trade" and "Connect
 // Finance" Quick Access buttons (dashboard-quick-actions-js edge function).
@@ -35,6 +36,7 @@ export default function QuickAccessCard() {
   const router = useRouter();
   const [showAddTrade, setShowAddTrade] = useState(true);
   const [connectLabel, setConnectLabel] = useState("Connect Finance");
+  const [challengeOpen, setChallengeOpen] = useState(false);
   const connectingRef = useRef(false);
 
   useEffect(() => {
@@ -143,6 +145,16 @@ export default function QuickAccessCard() {
 
   return (
     <div className="flex flex-col gap-3">
+      <button
+        type="button"
+        data-quick-action="challenge-member-modal"
+        onClick={() => setChallengeOpen(true)}
+        className="flex items-center gap-3 rounded-[10px] bg-[rgb(32,40,56)] px-5 py-[18px] text-left text-sm font-medium text-text-primary hover:bg-white/[0.06]"
+      >
+        <Trophy size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
+        Challenge a Member
+      </button>
+      {challengeOpen && <ChallengeMemberModal onClose={() => setChallengeOpen(false)} />}
       {showAddTrade && (
         <button
           type="button"
