@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Repeat, Trophy } from "lucide-react";
+import { Repeat, Trophy, UserPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import ChallengeMemberModal from "@/components/gameAfi/ChallengeMemberModal";
+import InviteFriendModal from "@/components/dashboard/InviteFriendModal";
 
 // Ported from the live Webflow Dashboard's "Add Option Trade" and "Connect
 // Finance" Quick Access buttons (dashboard-quick-actions-js edge function).
@@ -37,6 +38,7 @@ export default function QuickAccessCard() {
   const [showAddTrade, setShowAddTrade] = useState(true);
   const [connectLabel, setConnectLabel] = useState("Connect Finance");
   const [challengeOpen, setChallengeOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const connectingRef = useRef(false);
 
   useEffect(() => {
@@ -155,6 +157,16 @@ export default function QuickAccessCard() {
         Challenge a Member
       </button>
       {challengeOpen && <ChallengeMemberModal onClose={() => setChallengeOpen(false)} />}
+      <button
+        type="button"
+        data-quick-action="invite-friend-modal"
+        onClick={() => setInviteOpen(true)}
+        className="flex items-center gap-3 rounded-[10px] bg-[rgb(32,40,56)] px-5 py-[18px] text-left text-sm font-medium text-text-primary hover:bg-white/[0.06]"
+      >
+        <UserPlus size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
+        Invite Friend or Family
+      </button>
+      {inviteOpen && <InviteFriendModal onClose={() => setInviteOpen(false)} />}
       {showAddTrade && (
         <button
           type="button"
