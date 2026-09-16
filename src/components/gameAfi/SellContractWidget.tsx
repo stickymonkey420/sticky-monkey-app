@@ -24,6 +24,13 @@ function upcomingFridays(count = 16): string[] {
   return out;
 }
 
+// Whole-dollar formatting for the live preview line -- unlike money()
+// (used everywhere else in this widget for actual trade amounts), the
+// preview is a rough estimate, so cents just add noise.
+function moneyNoCents(n: number): string {
+  return "$" + Math.round(n).toLocaleString("en-US");
+}
+
 function outcomeLabel(t: PaperContractTrade): { text: string; color: string } {
   if (t.status === "assigned") {
     return t.contract_type === "put"
@@ -213,12 +220,17 @@ export default function SellContractWidget({
             Sell Covered Call
           </button>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Ticker + strike on their own row (ticker takes the remaining
+            width); contracts (narrowed to fit ~3 digits) + expiration
+            below that, both wrapped in min-w-0 so long option lists can't
+            push the row past the card's border; Sell button on its own
+            row, right-justified so it sits under the expiration select. */}
+        <div className="flex min-w-0 flex-wrap gap-2">
           <input
             value={tickerInput}
             onChange={(e) => setTickerInput(e.target.value)}
             placeholder="Ticker (e.g. AAPL)"
-            className="rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none"
+            className="min-w-0 flex-1 rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none"
           />
           <input
             value={strikeInput}
@@ -227,21 +239,23 @@ export default function SellContractWidget({
             type="number"
             min="0"
             step="any"
-            className="w-28 rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none"
+            className="w-24 min-w-0 rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none"
           />
+        </div>
+        <div className="mt-2 flex min-w-0 flex-wrap justify-end gap-2">
           <input
             value={contractsInput}
             onChange={(e) => setContractsInput(e.target.value)}
-            placeholder="Contracts"
+            placeholder="Qty"
             type="number"
             min="1"
             step="1"
-            className="w-28 rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none"
+            className="w-14 min-w-0 rounded-md border border-card-border bg-[#0f131c] px-2 py-2 text-sm text-text-primary outline-none"
           />
           <select
             value={expInput}
             onChange={(e) => setExpInput(e.target.value)}
-            className="rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none [color-scheme:dark]"
+            className="min-w-0 rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none [color-scheme:dark]"
           >
             <option value="">Expiration (Friday)</option>
             {fridayOptions.map((d) => (
@@ -250,6 +264,8 @@ export default function SellContractWidget({
               </option>
             ))}
           </select>
+        </div>
+        <div className="mt-2 flex justify-end">
           <button
             type="button"
             disabled={submitting}
@@ -261,7 +277,7 @@ export default function SellContractWidget({
         </div>
 
         {tickerInput.trim() && (
-          <div className="mt-3 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm">
+          <div className="mt-3 min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm">
             {priceLoading && tickerPrice === null ? (
               <span className="text-text-muted">Looking up {tickerInput.trim().toUpperCase()}…</span>
             ) : tickerPrice === null ? (
@@ -272,13 +288,14 @@ export default function SellContractWidget({
               <span className="text-text-muted">
                 {tickerInput.trim().toUpperCase()} current price:{" "}
                 <span className="font-semibold" style={{ color: "#f5d020" }}>
-                  {money(tickerPrice)}
+                  {moneyNoCents(tickerPrice)}
                 </span>
                 {previewPremium !== null && (
                   <>
                     {" "}
-                    · Est. premium: <span className="font-semibold text-[#3ddc97]">{money(previewPremium)}</span>{" "}
-                    for {Number(contractsInput) || 1} contract{Number(contractsInput) === 1 ? "" : "s"}
+                    · Est. premium:{" "}
+                    <span className="font-semibold text-[#3ddc97]">{moneyNoCents(previewPremium)}</span> for{" "}
+                    {Number(contractsInput) || 1} contract{Number(contractsInput) === 1 ? "" : "s"}
                   </>
                 )}
                 {previewCollateral !== null && (
@@ -287,7 +304,7 @@ export default function SellContractWidget({
                     ·{" "}
                     <span className="font-semibold" style={{ color: "#ff9d4d" }}>
                       {previewCollateral.kind === "cash"
-                        ? `${money(previewCollateral.amount)} collateral`
+                        ? `${moneyNoCents(previewCollateral.amount)} collateral`
                         : `${previewCollateral.amount} shares`}{" "}
                       needed
                     </span>
