@@ -266,6 +266,27 @@ function pickBrowserVoice(): SpeechSynthesisVoice | null {
 
 const LAUNCHER_POS_KEY = "abu_launcher_pos";
 
+// Per-user (keyed by id, so a shared browser doesn't mark the tour "seen"
+// for the wrong account) flag for the one-time proactive welcome greeting
+// -- see maybeAutoOpenWelcomeTour() in mountAbu.
+const WELCOME_TOUR_KEY_PREFIX = "abu_welcome_tour_shown_";
+
+function hasSeenWelcomeTour(userId: string): boolean {
+  try {
+    return window.localStorage.getItem(WELCOME_TOUR_KEY_PREFIX + userId) === "1";
+  } catch {
+    return true; // storage unavailable -- err toward not interrupting the user
+  }
+}
+
+function markWelcomeTourSeen(userId: string): void {
+  try {
+    window.localStorage.setItem(WELCOME_TOUR_KEY_PREFIX + userId, "1");
+  } catch {
+    // ignore -- best effort; worst case the greeting can show again next visit
+  }
+}
+
 type SavedPos = { left: number; top: number };
 
 function loadSavedPos(key: string): SavedPos | null {
@@ -743,6 +764,27 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
     }
   });
 
+  // Shared open logic -- used by the manual double-click-to-open handler
+  // below, and by the one-time proactive welcome greeting further down.
+  // `greeting` overrides the default first message (only relevant the very
+  // first time the panel opens, since messagesEl is otherwise non-empty);
+  // `focusInput` is false for the proactive open so it doesn't yank focus
+  // (or pop a mobile keyboard) on a page the user hasn't interacted with.
+  function openPanel(greeting?: string, focusInput = true) {
+    if (panelOpen) return;
+    panelOpen = true;
+    positionPanelNearLauncher(launcher, panel);
+    panel.style.display = "flex";
+    setStage("state-entering");
+    setTimeout(() => {
+      if (stageEl.className.indexOf("state-entering") !== -1) setStage("");
+    }, 650);
+    if (!messagesEl.children.length) {
+      addMessage("assistant", greeting || "Hi, I\'m Abu. What can I help you with?");
+    }
+    if (focusInput) inputEl.focus();
+  }
+
   launcher.addEventListener("dblclick", () => {
     if (launcherDrag.justDragged) return;
     launcher.style.transform = "scale(0.9)";
@@ -752,15 +794,7 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
     if (panelOpen) {
       closePanel();
     } else {
-      panelOpen = true;
-      positionPanelNearLauncher(launcher, panel);
-      panel.style.display = "flex";
-      setStage("state-entering");
-      setTimeout(() => {
-        if (stageEl.className.indexOf("state-entering") !== -1) setStage("");
-      }, 650);
-      if (!messagesEl.children.length) addMessage("assistant", "Hi, I\'m Abu. What can I help you with?");
-      inputEl.focus();
+      openPanel();
     }
   });
 
@@ -769,6 +803,45 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
     e.preventDefault();
     sendMessage(inputEl.value);
   });
+
+  // Proactively greet a brand-new user instead of waiting for them to find
+  // and click the launcher -- built for a fresh signup landing on an
+  // all-$0 Dashboard with nothing else there to guide them. Fires at most
+  // once ever per user (see WELCOME_TOUR_KEY_PREFIX) and only when there's
+  // genuinely nothing set up yet: no manual accounts, no wheel trades, and
+  // no Game-a-Fi challenge (pending or accepted) either. Any query error is
+  // treated as "assume they're not new" rather than risk a false popup for
+  // an existing user. Gated to /dashboard since that's where a new signup
+  // actually lands -- checked only once the async lookups resolve, which is
+  // an acceptable trade-off over wiring a route-change listener for this.
+  (async function maybeAutoOpenWelcomeTour() {
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user || hasSeenWelcomeTour(user.id)) return;
+
+      const [accountsRes, tradesRes, challengesRes] = await Promise.all([
+        supabase.from("manual_accounts").select("id").eq("user_id", user.id).limit(1),
+        supabase.from("wheel_trades").select("id").eq("user_id", user.id).limit(1),
+        supabase.rpc("game_afi_list_challenges"),
+      ]);
+      if (accountsRes.error || tradesRes.error || challengesRes.error) return;
+
+      const hasAccounts = (accountsRes.data || []).length > 0;
+      const hasTrades = (tradesRes.data || []).length > 0;
+      const hasChallenges = (challengesRes.data || []).length > 0;
+      if (hasAccounts || hasTrades || hasChallenges) return;
+      if (window.location.pathname !== "/dashboard") return;
+      if (panelOpen) return;
+
+      markWelcomeTourSeen(user.id);
+      openPanel("Welcome! I\'m Abu -- want a 30-second tour? Just ask me anything to get started.", false);
+    } catch {
+      // best-effort only -- a failed check just means no proactive greeting this time
+    }
+  })();
 
   return function cleanup() {
     try {
