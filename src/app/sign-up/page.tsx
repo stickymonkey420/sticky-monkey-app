@@ -114,7 +114,7 @@ export default function SignUpPage() {
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               className={inputClass}
-              placeholder="Gary"
+              placeholder="John"
             />
           </div>
           <div className="flex-1">
@@ -129,7 +129,7 @@ export default function SignUpPage() {
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               className={inputClass}
-              placeholder="Culwell"
+              placeholder="Doe"
             />
           </div>
         </div>
@@ -144,7 +144,7 @@ export default function SignUpPage() {
             value={handle}
             onChange={(e) => setHandle(e.target.value)}
             className={inputClass}
-            placeholder="stickymonkey"
+            placeholder="jdoe"
           />
           <p className="mt-1 text-xs text-text-muted/70">
             Shown on Game-O-Fi leaderboards and matchups. {HANDLE_HINT} You can set or change this later too.
