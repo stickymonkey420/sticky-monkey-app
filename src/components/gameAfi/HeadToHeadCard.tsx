@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Share2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
 import { formatMoney } from "@/lib/gameAfi/format";
-import { shareElementToX, type ShareImageResult } from "@/lib/share/shareImageToX";
 import type { MatchSummary } from "@/lib/gameAfi/challengeTypes";
 import type { PaperHolding } from "@/lib/gameAfi/paperTypes";
 
@@ -83,19 +81,6 @@ function pad2(n: number): string {
   return n.toString().padStart(2, "0");
 }
 
-function shareNoteFor(result: ShareImageResult): string | null {
-  switch (result) {
-    case "shared":
-      return null; // native share sheet took over -- nothing left to say
-    case "downloaded":
-      return "Image saved -- attach it to the post that just opened.";
-    case "failed":
-      return "Couldn't capture the scoreboard. Try again.";
-    case "cancelled":
-      return null;
-  }
-}
-
 function Player({
   avatarUrl,
   name,
@@ -159,36 +144,10 @@ export default function HeadToHeadCard({
 }) {
   const countdown = useCountdown(summary?.expiresAt ?? null);
   const performers = summary ? topPerformers(holdings, TOP_PERFORMER_LIMIT) : [];
-  const jumbotronRef = useRef<HTMLDivElement>(null);
-  const [sharing, setSharing] = useState(false);
-  const [shareNote, setShareNote] = useState<string | null>(null);
-
-  async function handleShare() {
-    if (!jumbotronRef.current || sharing) return;
-    setSharing(true);
-    setShareNote(null);
-    const result = await shareElementToX(jumbotronRef.current, "head-to-head.png");
-    setSharing(false);
-    setShareNote(shareNoteFor(result));
-  }
 
   return (
     <div className="flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-5">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-text-primary">Head to Head</h3>
-        {summary && (
-          <button
-            type="button"
-            onClick={handleShare}
-            disabled={sharing}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-card-border px-2.5 py-1 text-xs font-medium text-text-muted hover:text-text-primary disabled:opacity-60"
-          >
-            <Share2 size={13} />
-            {sharing ? "Capturing…" : "Share to X"}
-          </button>
-        )}
-      </div>
-      {shareNote && <div className="mb-2 text-[11px] text-text-muted">{shareNote}</div>}
+      <h3 className="mb-2 text-sm font-semibold text-text-primary">Head to Head</h3>
       {loading ? (
         <div className="flex flex-1 items-center justify-center text-sm text-text-muted">Loading…</div>
       ) : !summary ? (
@@ -199,10 +158,7 @@ export default function HeadToHeadCard({
           const oppWinning = summary.opponent.totalValue > summary.me.totalValue;
           const leader = meWinning ? summary.me : oppWinning ? summary.opponent : null;
           return (
-            <div
-              ref={jumbotronRef}
-              className="relative flex-1 overflow-hidden rounded-[10px] border border-[#1a1d24] bg-[#050608] px-4 pb-3.5 pt-3"
-            >
+            <div className="relative flex-1 overflow-hidden rounded-[10px] border border-[#1a1d24] bg-[#050608] px-4 pb-3.5 pt-3">
               {/* Chasing marquee lights along the top edge -- an idle
                   "screen's on" ambient loop, not tied to any real data. */}
               <div className="mb-3.5 flex justify-between px-0.5">
