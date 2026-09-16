@@ -334,7 +334,7 @@ export default function SellContractWidget({
                 <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
                   <PreviewStat
                     label={`${tickerInput.trim().toUpperCase()} Price`}
-                    value={moneyNoCents(tickerPrice)}
+                    value={money(tickerPrice)}
                     color="#f5d020"
                   />
                   {previewPremium !== null && (
