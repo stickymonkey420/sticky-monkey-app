@@ -25,14 +25,20 @@ const X_COMPOSE_URL = "https://twitter.com/intent/tweet";
 
 export async function shareElementToX(el: HTMLElement, filename: string): Promise<ShareImageResult> {
   // Open first, synchronously with the click, so Safari/Chrome popup
-  // blockers see it as a direct result of user interaction. Only used for
-  // the download fallback path below; closed again if Web Share succeeds.
-  const composeWindow = window.open("", "_blank", "noopener,noreferrer");
+  // blockers see it as a direct result of user interaction, and so we can
+  // navigate this SAME tab to the compose page later instead of opening a
+  // second, unrelated one. Deliberately no "noopener" here: passing that
+  // makes window.open() return null per spec (no reference back to the
+  // opened window), which broke the redirect below entirely -- every
+  // desktop run fell through to a brand new blank compose tab while the
+  // image silently downloaded, unnoticed, somewhere else. "noreferrer"
+  // alone still keeps X from seeing this page as the referrer.
+  const composeWindow = window.open("", "_blank", "noreferrer");
 
   let canvas: HTMLCanvasElement;
   try {
     const html2canvas = (await import("html2canvas")).default;
-    canvas = await html2canvas(el, { backgroundColor: null, scale: 2 });
+    canvas = await html2canvas(el, { backgroundColor: null, scale: 2, useCORS: true });
   } catch (err) {
     console.error("shareElementToX: capture failed", err);
     composeWindow?.close();
