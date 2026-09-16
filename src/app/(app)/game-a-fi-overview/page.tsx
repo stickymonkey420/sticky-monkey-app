@@ -191,7 +191,7 @@ export default function GameAFiOverviewPage() {
         <h1 className="text-xl font-semibold text-text-primary">Game-O-Fi -- Overview</h1>
       </div>
       <p className="mb-6 text-sm text-text-muted">
-        Your Head to Head paper trading holdings -- simulated shares only, priced off the Stock Screener universe.
+        Your Trade Off paper trading holdings -- simulated shares only, priced off the Stock Screener universe.
         Not real holdings; nothing here is actually at risk.
       </p>
 
@@ -199,7 +199,7 @@ export default function GameAFiOverviewPage() {
         <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">Loading…</div>
       ) : matches.length === 0 ? (
         <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">
-          You need an accepted Head to Head match before you have any holdings to show. Send or accept a challenge on
+          You need an accepted Trade Off match before you have any holdings to show. Send or accept a challenge on
           the Standings tab first.
         </div>
       ) : (

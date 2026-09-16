@@ -88,8 +88,8 @@ export default function BuyPaperTradeModal({
           <div className="text-sm text-text-muted">Loading…</div>
         ) : matches.length === 0 ? (
           <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">
-            You need an accepted Head to Head match before you can trade. Send or accept a challenge on the Head to
-            Head tab first.
+            You need an accepted Trade Off match before you can trade. Send or accept a challenge on the Trade
+            Off tab first.
           </div>
         ) : (
           <>

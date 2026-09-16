@@ -348,7 +348,7 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
                 className={FIELD_CLASS}
               />
               <p className="mt-1 text-[11px] text-text-muted">
-                {X_HANDLE_HINT} Optional -- lets &ldquo;Share to X&rdquo; links on Head to Head @mention you directly.
+                {X_HANDLE_HINT} Optional -- lets &ldquo;Share to X&rdquo; links on Trade Off @mention you directly.
               </p>
             </div>
             <div className="mb-3">

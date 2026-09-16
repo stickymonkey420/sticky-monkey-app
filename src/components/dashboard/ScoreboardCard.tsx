@@ -199,7 +199,7 @@ export default function ScoreboardCard() {
       {loading ? (
         <div className="text-sm text-text-muted">Loading…</div>
       ) : rows.length === 0 ? (
-        <div className="text-sm text-text-muted">No active Head to Head matches yet.</div>
+        <div className="text-sm text-text-muted">No active Trade Off matches yet.</div>
       ) : (
         <>
           <div className="flex flex-col divide-y divide-white/10">

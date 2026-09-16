@@ -147,7 +147,7 @@ export default function HeadToHeadCard({
 
   return (
     <div className="flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-5">
-      <h3 className="mb-2 text-sm font-semibold text-text-primary">Head to Head</h3>
+      <h3 className="mb-2 text-sm font-semibold text-text-primary">Trade Off</h3>
       {loading ? (
         <div className="flex flex-1 items-center justify-center text-sm text-text-muted">Loading…</div>
       ) : !summary ? (

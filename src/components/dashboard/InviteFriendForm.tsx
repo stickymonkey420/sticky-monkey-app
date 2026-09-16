@@ -43,7 +43,7 @@ export default function InviteFriendForm({ onSent }: { onSent?: () => void } = {
     <div className="rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-1 text-sm font-semibold text-text-primary">Invite Friend or Family</h3>
       <p className="mb-3 text-xs text-text-muted">
-        Send an invite to track investments, challenge friends in Head to Head, and learn alongside you on Sticky
+        Send an invite to track investments, challenge friends to a Trade Off, and learn alongside you on Sticky
         Monkey.
       </p>
       <form onSubmit={handleSend} className="flex flex-col gap-3">

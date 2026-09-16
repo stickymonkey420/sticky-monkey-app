@@ -10,7 +10,7 @@ export type UseCase = {
 export const USE_CASES: UseCase[] = [
   { key: "personal_tracking", label: "Personal Tracking", desc: "Budgets, manual accounts, everyday money." },
   { key: "investment_income", label: "Investment Tracking & Income Generating", desc: "Portfolio, options income, market alerts." },
-  { key: "games_paper_trading_derby", label: "Games - Paper Trading Derby", desc: "Game-O-Fi paper trading contests and Head to Head leaderboards." },
+  { key: "games_paper_trading_derby", label: "Games - Paper Trading Derby", desc: "Game-O-Fi paper trading contests and Trade Off leaderboards." },
 ];
 
 export type YesNoQuestion = {

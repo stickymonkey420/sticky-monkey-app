@@ -164,7 +164,7 @@ export default function NotificationsModal({ onClose, onChange }: { onClose: () 
         {!loading && invites.length > 0 && (
           <div className="mb-3 border-b border-white/10 pb-3">
             <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
-              Head to Head Invites
+              Trade Off Invites
             </div>
             {invites.map((c) => (
               <div key={c.id} className="flex items-start gap-3 border-b border-white/10 py-3 last:border-b-0">

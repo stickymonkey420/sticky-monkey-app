@@ -64,13 +64,13 @@ export default function GameAFiPage() {
       </div>
       <div className="flex flex-col gap-6">
         <p className="text-sm text-text-muted">
-          Challenge another member head-to-head, or join a league once your Head to Head is configured.
+          Challenge another member to a Trade Off, or join a league once your Trade Off is configured.
         </p>
 
         {!loading && !hasHandle && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-card-border bg-card-bg p-4">
             <p className="text-sm text-text-muted">
-              Set a handle to challenge or be challenged -- it&apos;s how Head to Head and League identify you.
+              Set a handle to challenge or be challenged -- it&apos;s how Trade Off and League identify you.
             </p>
             <button
               type="button"
@@ -90,7 +90,7 @@ export default function GameAFiPage() {
               tab === "headtohead" ? "bg-white/10 text-text-primary" : "bg-white/5 text-text-muted hover:bg-white/10"
             }`}
           >
-            Head to Head
+            Trade Off
           </button>
           <button
             onClick={() => setTab("league")}
