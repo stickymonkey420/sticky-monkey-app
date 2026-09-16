@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Wallet,
@@ -335,25 +335,40 @@ function filterNode(
   return node;
 }
 
-// Query strings and hashes are stripped for matching -- the four Holdings
-// deep links (?account=brokerage/crypto/traditional/roth) all resolve to
-// the same /holdings pathname, and that page scrubs its own query param
-// out of the URL right after reading it (see holdings/page.tsx), so exact
-// per-link active state isn't preservable across a reload anyway. All four
-// share pathname-only matching; harmless, since they only ever show
-// "active" together while genuinely on /holdings.
+// Hash is stripped for matching; the query string (when the href has one)
+// is matched too -- the four Holdings deep links
+// (?account=brokerage/crypto/traditional/roth) all resolve to the same
+// /holdings pathname, and that param now persists in the URL as real
+// filter state (see holdings/page.tsx) instead of being scrubbed, so each
+// link's own account= value is compared against the current URL's rather
+// than just matching on pathname. A href with no query string (every
+// other nav link) still matches on pathname alone.
 function hrefPath(href: string): string {
   return href.split(/[?#]/)[0];
 }
 
-function isLeafActive(href: string, pathname: string): boolean {
-  const path = hrefPath(href);
-  return pathname === path || pathname.startsWith(`${path}/`);
+function hrefQuery(href: string): string | null {
+  const match = href.match(/\?([^#]*)/);
+  return match ? match[1] : null;
 }
 
-function containsActive(node: NavNode, pathname: string): boolean {
-  if (node.href) return isLeafActive(node.href, pathname);
-  if (node.children) return node.children.some((c) => containsActive(c, pathname));
+function isLeafActive(href: string, pathname: string, search: string): boolean {
+  const path = hrefPath(href);
+  const pathMatches = pathname === path || pathname.startsWith(`${path}/`);
+  if (!pathMatches) return false;
+  const query = hrefQuery(href);
+  if (!query) return true;
+  const hrefParams = new URLSearchParams(query);
+  const currentParams = new URLSearchParams(search);
+  for (const [key, value] of hrefParams) {
+    if (currentParams.get(key) !== value) return false;
+  }
+  return true;
+}
+
+function containsActive(node: NavNode, pathname: string, search: string): boolean {
+  if (node.href) return isLeafActive(node.href, pathname, search);
+  if (node.children) return node.children.some((c) => containsActive(c, pathname, search));
   return false;
 }
 
@@ -378,14 +393,16 @@ function NavItem({
   node,
   depth,
   pathname,
+  search,
   onNavigate,
 }: {
   node: NavNode;
   depth: number;
   pathname: string;
+  search: string;
   onNavigate?: () => void;
 }) {
-  const hasActiveChild = node.children ? containsActive(node, pathname) : false;
+  const hasActiveChild = node.children ? containsActive(node, pathname, search) : false;
   const [open, setOpen] = useState(hasActiveChild);
   const indent = 12 + depth * 14;
   const Icon = node.icon;
@@ -420,6 +437,7 @@ function NavItem({
                 node={child}
                 depth={depth + 1}
                 pathname={pathname}
+                search={search}
                 onNavigate={onNavigate}
               />
             ))}
@@ -429,7 +447,7 @@ function NavItem({
     );
   }
 
-  const active = isLeafActive(node.href!, pathname);
+  const active = isLeafActive(node.href!, pathname, search);
   return (
     <Link
       href={node.href!}
@@ -453,6 +471,7 @@ function NavItem({
 
 function NavTree({
   pathname,
+  search,
   role,
   accountTypes,
   hasWalletData,
@@ -460,6 +479,7 @@ function NavTree({
   onNavigate,
 }: {
   pathname: string;
+  search: string;
   role: Role | null;
   accountTypes: string[] | null;
   hasWalletData: boolean | null;
@@ -472,14 +492,30 @@ function NavTree({
   return (
     <>
       {visible.map((node) => (
-        <NavItem key={node.label + (node.href ?? "")} node={node} depth={0} pathname={pathname} onNavigate={onNavigate} />
+        <NavItem
+          key={node.label + (node.href ?? "")}
+          node={node}
+          depth={0}
+          pathname={pathname}
+          search={search}
+          onNavigate={onNavigate}
+        />
       ))}
     </>
   );
 }
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+// useSearchParams() is what makes nav-active-highlighting reactive to
+// account= changes on /holdings (see isLeafActive/hrefQuery above) --
+// clicking Brokerage after Crypto needs the sidebar to re-evaluate which
+// link matches even though the pathname itself doesn't change. It
+// requires a Suspense boundary for production builds, so the real work
+// lives in AppShellInner and the exported AppShell just wraps it (same
+// pattern as holdings/page.tsx).
+function AppShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const search = searchParams.toString();
   const [mobileOpen, setMobileOpen] = useState(false);
   // Fetched once per page load (AppShell isn't a shared layout -- every
   // page mounts its own instance -- so this is a cheap single-row lookup,
@@ -573,6 +609,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <nav className="flex flex-1 flex-col gap-1 px-3">
               <NavTree
                 pathname={pathname}
+                search={search}
                 role={role}
                 accountTypes={accountTypes}
                 hasWalletData={hasWalletData}
@@ -615,6 +652,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <nav className="flex flex-1 flex-col gap-1 px-1">
             <NavTree
               pathname={pathname}
+              search={search}
               role={role}
               accountTypes={accountTypes}
               hasWalletData={hasWalletData}
@@ -643,5 +681,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
     </div>
     </ProfileProvider>
+  );
+}
+
+export default function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-text-muted">Loading…</div>}>
+      <AppShellInner>{children}</AppShellInner>
+    </Suspense>
   );
 }
