@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/options/queries";
 import { fetchTickerPrice } from "@/lib/gameAfi/contractQueries";
-import { formatMoney } from "@/lib/gameAfi/format";
 import type { ExecuteTradeResult, PaperHolding } from "@/lib/gameAfi/paperTypes";
 
 // Compact Buy/Sell Shares card -- sits to the left of "Sell a Contract" in
@@ -114,7 +113,7 @@ export default function BuySellSharesCard({
             <span className="text-text-muted">
               {ticker} current price:{" "}
               <span className="font-semibold" style={{ color: "#f5d020" }}>
-                {formatMoney(tickerPrice)}
+                {money(tickerPrice)}
               </span>
             </span>
           )}
