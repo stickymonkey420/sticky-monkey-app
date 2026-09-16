@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import HoldingsSummary from "@/components/holdings/HoldingsSummary";
 import HoldingsTable from "@/components/holdings/HoldingsTable";
 import { createClient } from "@/lib/supabase/client";
@@ -10,18 +11,25 @@ import type { AccountTypeOption } from "@/lib/holdings/types";
 // Holdings page: equity/crypto positions from the `positions` table.
 // Unlike Options (tabbed per wheel-eligible account), there's no tab UI
 // here -- by default it shows every account's holdings together, and only
-// narrows to one account when linked to with a `?account=<id>` query
-// param (e.g. a future Dashboard deep link), the same
-// read-window-search-then-clean-the-param approach Options' page.tsx uses
-// for its own `?openTrade=1`.
-export default function HoldingsPage() {
-  // Lazy initializer (not an effect) so an account-scoped deep link never
-  // flashes "all accounts" for a tick before narrowing.
-  const [accountParam] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    const match = window.location.search.match(/[?&]account=([^&]+)/);
-    return match ? decodeURIComponent(match[1]) : null;
-  });
+// narrows to one account when linked to with a `?account=<id>` query param
+// (the sidebar's Brokerage/Crypto/Traditional IRA/Roth IRA links -- see
+// AppShell.tsx).
+//
+// This used to read `window.location.search` via a useState lazy
+// initializer, which only runs on the component's first mount. The sidebar
+// links are next/link client-side navigations to the SAME route
+// (/holdings) with just a different query string, so the App Router
+// reuses the already-mounted page instead of remounting it -- the lazy
+// initializer never re-ran, so clicking Brokerage after Crypto (or after
+// the cleanup effect below had already stripped a previous ?account=) kept
+// showing every account. useSearchParams() is the App Router's reactive
+// hook for this exact case: it re-renders on every navigation to this
+// route, including ones that only change the query string.
+function HoldingsPageInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const accountParam = searchParams.get("account");
 
   const [accountOptions, setAccountOptions] = useState<AccountTypeOption[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
@@ -50,15 +58,15 @@ export default function HoldingsPage() {
   }, []);
 
   // Clean the ?account=... query param back out of the URL once accounts
-  // have loaded -- same history.replaceState cleanup Options' page.tsx
-  // does for ?openTrade=1.
+  // have loaded -- via the router (not window.history.replaceState) so the
+  // App Router's own searchParams state stays in sync with the visible
+  // URL; a raw history.replaceState would clear the address bar but leave
+  // useSearchParams still reporting the old value until the next real
+  // navigation.
   useEffect(() => {
-    if (loadingAccounts) return;
-    if (window.location.search.match(/[?&]account=/)) {
-      const cleanUrl = window.location.pathname + window.location.hash;
-      window.history.replaceState(null, "", cleanUrl);
-    }
-  }, [loadingAccounts]);
+    if (loadingAccounts || !accountParam) return;
+    router.replace(pathname, { scroll: false });
+  }, [loadingAccounts, accountParam, router, pathname]);
 
   // Only filter when `?account=` actually names a configured account -- an
   // unknown/stale id falls back to showing everything instead of an empty
@@ -92,5 +100,17 @@ export default function HoldingsPage() {
         </div>
       )}
     </>
+  );
+}
+
+// useSearchParams() requires a Suspense boundary for production builds (it
+// bails a statically-rendered page out to client-side rendering up to the
+// nearest one) -- the fallback only ever shows for a moment since accounts
+// load fast and there's no server data this page needs first.
+export default function HoldingsPage() {
+  return (
+    <Suspense fallback={<div className="text-sm text-text-muted">Loading…</div>}>
+      <HoldingsPageInner />
+    </Suspense>
   );
 }
