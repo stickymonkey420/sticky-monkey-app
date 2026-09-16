@@ -4,6 +4,19 @@ import type { ContractType, PaperContractTrade, SellContractResult } from "./con
 const CONTRACT_COLUMNS =
   "id,ticker,strike,contracts,premium,exp_date,sold_date,contract_type,status,settlement_price,settled_at";
 
+// Current price for one ticker from the curated stock_universe -- the same
+// table game_afi_paper_sell_contract itself reads server-side to price a
+// sale. Used to drive the "Sell a Contract" form's live premium preview;
+// returns null for a ticker that's blank or not in the tracked universe
+// rather than throwing, so the preview just stays empty.
+export async function fetchTickerPrice(supabase: SupabaseClient, ticker: string): Promise<number | null> {
+  const t = ticker.trim().toUpperCase();
+  if (!t) return null;
+  const { data, error } = await supabase.from("stock_universe").select("price").eq("ticker", t).maybeSingle();
+  if (error || !data) return null;
+  return Number((data as { price: number }).price);
+}
+
 // challengeId null selects the practice account's contract trades; a
 // challenge id selects that match's contract trades only -- same scoping
 // convention as fetchPaperTrades (paperQueries.ts).

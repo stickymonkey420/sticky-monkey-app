@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/options/queries";
-import { computeLockedCollateral, computeTotalPremium } from "@/lib/gameAfi/contractQueries";
+import { computeLockedCollateral, computeTotalPremium, fetchTickerPrice } from "@/lib/gameAfi/contractQueries";
+import { estimateContractPremium } from "@/lib/gameAfi/premiumEstimate";
 import type { PaperAccount } from "@/lib/gameAfi/paperTypes";
 import type { ContractType, PaperContractTrade, SellContractResult } from "@/lib/gameAfi/contractTypes";
 
@@ -63,8 +65,52 @@ export default function SellContractWidget({
   const [expInput, setExpInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [tradeMessage, setTradeMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const [tickerPrice, setTickerPrice] = useState<number | null>(null);
+  const [priceLoading, setPriceLoading] = useState(false);
 
   const fridayOptions = useMemo(() => upcomingFridays(), []);
+
+  // Live current price for whatever's typed in the ticker field, debounced
+  // so it doesn't fire a lookup on every keystroke -- drives the premium
+  // preview below the form so a member can see roughly what a sale would
+  // pay before they hit Sell, instead of only finding out from the result
+  // message afterward.
+  useEffect(() => {
+    const ticker = tickerInput.trim().toUpperCase();
+    let cancelled = false;
+    const timer = setTimeout(
+      async () => {
+        if (!ticker) {
+          if (!cancelled) setTickerPrice(null);
+          return;
+        }
+        if (!cancelled) setPriceLoading(true);
+        const supabase = createClient();
+        const price = await fetchTickerPrice(supabase, ticker);
+        if (!cancelled) {
+          setTickerPrice(price);
+          setPriceLoading(false);
+        }
+      },
+      ticker ? 350 : 0
+    );
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [tickerInput]);
+
+  const previewPremium = useMemo(
+    () =>
+      estimateContractPremium(
+        tickerPrice,
+        Number(strikeInput),
+        Number(contractsInput) || 1,
+        expInput,
+        contractType
+      ),
+    [tickerPrice, strikeInput, contractsInput, expInput, contractType]
+  );
 
   async function handleSell() {
     const ticker = tickerInput.trim().toUpperCase();
@@ -201,6 +247,31 @@ export default function SellContractWidget({
             {contractType === "put" ? "Sell Put" : "Sell Call"}
           </button>
         </div>
+
+        {tickerInput.trim() && (
+          <div className="mt-3 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm">
+            {priceLoading && tickerPrice === null ? (
+              <span className="text-text-muted">Looking up {tickerInput.trim().toUpperCase()}…</span>
+            ) : tickerPrice === null ? (
+              <span className="text-text-muted">
+                {tickerInput.trim().toUpperCase()} isn&apos;t in the tracked stock universe.
+              </span>
+            ) : (
+              <span className="text-text-muted">
+                {tickerInput.trim().toUpperCase()} current price:{" "}
+                <span className="font-semibold text-text-primary">{money(tickerPrice)}</span>
+                {previewPremium !== null && (
+                  <>
+                    {" "}
+                    · Est. premium: <span className="font-semibold text-[#3ddc97]">{money(previewPremium)}</span>{" "}
+                    for {Number(contractsInput) || 1} contract{Number(contractsInput) === 1 ? "" : "s"}
+                  </>
+                )}
+              </span>
+            )}
+          </div>
+        )}
+
         {tradeMessage && (
           <p className={`mt-3 text-sm ${tradeMessage.ok ? "text-[#3ddc97]" : "text-[#ff5c7a]"}`}>{tradeMessage.text}</p>
         )}
