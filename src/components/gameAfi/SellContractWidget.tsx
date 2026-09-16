@@ -5,8 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/options/queries";
 import { computeLockedCollateral, computeTotalPremium, fetchTickerPrice } from "@/lib/gameAfi/contractQueries";
 import { estimateContractPremium } from "@/lib/gameAfi/premiumEstimate";
-import type { PaperAccount } from "@/lib/gameAfi/paperTypes";
+import type { ExecuteTradeResult, PaperAccount, PaperHolding } from "@/lib/gameAfi/paperTypes";
 import type { ContractType, PaperContractTrade, SellContractResult } from "@/lib/gameAfi/contractTypes";
+import BuySellSharesCard from "./BuySellSharesCard";
 
 // Every Friday from tomorrow through ~16 weeks out -- expiration is
 // restricted to Fridays only (see the paper_contract_trades_exp_friday
@@ -52,6 +53,9 @@ export default function SellContractWidget({
   trades,
   sell,
   initialTicker,
+  sharesLoading = true,
+  sharesHoldings = [],
+  sharesTrade,
 }: {
   loading: boolean;
   account: PaperAccount | null;
@@ -64,6 +68,13 @@ export default function SellContractWidget({
     contractType?: ContractType
   ) => Promise<SellContractResult>;
   initialTicker?: string;
+  // Buy/Sell Shares card, rendered to the left of Sell a Contract -- optional
+  // since it needs the shares-mode account wired up by the caller (see
+  // usePaperTradingAccount); when omitted the shares card just doesn't
+  // render rather than erroring.
+  sharesLoading?: boolean;
+  sharesHoldings?: PaperHolding[];
+  sharesTrade?: (ticker: string, side: "buy" | "sell", shares: number) => Promise<ExecuteTradeResult>;
 }) {
   const [contractType, setContractType] = useState<ContractType>("put");
   const [tickerInput, setTickerInput] = useState(initialTicker ?? "");
@@ -195,127 +206,142 @@ export default function SellContractWidget({
         ))}
       </div>
 
-      <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-        <h3 className="mb-1 text-sm font-semibold text-text-primary">Sell a Contract</h3>
-        <p className="mb-3 text-xs text-text-muted">
-          Simulated premium, Friday expirations only, with real assignment decided at Friday&apos;s close.
-        </p>
-        <div className="mb-3 flex gap-2">
-          <button
-            type="button"
-            onClick={() => setContractType("put")}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-              contractType === "put" ? "bg-white/10 text-text-primary" : "bg-white/5 text-text-muted hover:bg-white/10"
-            }`}
-          >
-            Sell Cash-Secured Put
-          </button>
-          <button
-            type="button"
-            onClick={() => setContractType("call")}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-              contractType === "call" ? "bg-white/10 text-text-primary" : "bg-white/5 text-text-muted hover:bg-white/10"
-            }`}
-          >
-            Sell Covered Call
-          </button>
-        </div>
-        {/* All 4 inputs on one line -- ticker shortened way down (it's
-            never more than ~5 characters), strike and contracts narrow to
-            match, expiration taking whatever's left. Sell button on its
-            own row underneath, right-justified so it sits under the
-            expiration select. */}
-        <div className="flex min-w-0 items-center gap-2">
-          <input
-            value={tickerInput}
-            onChange={(e) => setTickerInput(e.target.value)}
-            placeholder="Ticker"
-            className="w-16 min-w-0 rounded-md border border-card-border bg-[#0f131c] px-2 py-2 text-sm text-text-primary outline-none"
-          />
-          <input
-            value={strikeInput}
-            onChange={(e) => setStrikeInput(e.target.value)}
-            placeholder="Strike"
-            type="number"
-            min="0"
-            step="any"
-            className="w-20 min-w-0 rounded-md border border-card-border bg-[#0f131c] px-2 py-2 text-sm text-text-primary outline-none"
-          />
-          <input
-            value={contractsInput}
-            onChange={(e) => setContractsInput(e.target.value)}
-            placeholder="Qty"
-            type="number"
-            min="1"
-            step="1"
-            className="w-14 min-w-0 rounded-md border border-card-border bg-[#0f131c] px-2 py-2 text-sm text-text-primary outline-none"
-          />
-          <select
-            value={expInput}
-            onChange={(e) => setExpInput(e.target.value)}
-            className="min-w-0 flex-1 rounded-md border border-card-border bg-[#0f131c] px-2 py-2 text-sm text-text-primary outline-none [color-scheme:dark]"
-          >
-            <option value="">Exp (Fri)</option>
-            {fridayOptions.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mt-2 flex justify-end">
-          <button
-            type="button"
-            disabled={submitting}
-            onClick={handleSell}
-            className="rounded-md bg-[#3ddc97] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-50"
-          >
-            {contractType === "put" ? "Sell Put" : "Sell Call"}
-          </button>
-        </div>
+      {/* Buy/Sell Shares sits to the left of the (now half-width) Sell a
+          Contract card -- a covered call needs shares on hand, and an
+          assigned put just handed you some, so both actions live side by
+          side here instead of sending a member back up to the shares
+          section for either one. */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        {sharesTrade && (
+          <BuySellSharesCard loading={sharesLoading} holdings={sharesHoldings} trade={sharesTrade} />
+        )}
 
-        {tickerInput.trim() && (
-          <div className="mt-3 min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm">
-            {priceLoading && tickerPrice === null ? (
-              <span className="text-text-muted">Looking up {tickerInput.trim().toUpperCase()}…</span>
-            ) : tickerPrice === null ? (
-              <span className="text-text-muted">
-                {tickerInput.trim().toUpperCase()} isn&apos;t in the tracked stock universe.
-              </span>
-            ) : (
-              <span className="text-text-muted">
-                {tickerInput.trim().toUpperCase()} current price:{" "}
-                <span className="font-semibold" style={{ color: "#f5d020" }}>
-                  {moneyNoCents(tickerPrice)}
-                </span>
-                {previewPremium !== null && (
-                  <>
-                    {" "}
-                    · Est. premium:{" "}
-                    <span className="font-semibold text-[#3ddc97]">{moneyNoCents(previewPremium)}</span> for{" "}
-                    {Number(contractsInput) || 1} contract{Number(contractsInput) === 1 ? "" : "s"}
-                  </>
-                )}
-                {previewCollateral !== null && (
-                  <>
-                    {" "}
-                    ·{" "}
-                    <span className="font-semibold" style={{ color: "#ff9d4d" }}>
-                      {previewCollateral.kind === "cash"
-                        ? `${moneyNoCents(previewCollateral.amount)} collateral`
-                        : `${previewCollateral.amount} shares`}{" "}
-                      needed
-                    </span>
-                  </>
-                )}
-              </span>
-            )}
+        <div className="flex-1 rounded-2xl border border-card-border bg-card-bg p-5">
+          <h3 className="mb-1 text-sm font-semibold text-text-primary">Sell a Contract</h3>
+          <p className="mb-3 text-xs text-text-muted">
+            Simulated premium, Friday expirations only, with real assignment decided at Friday&apos;s close.
+          </p>
+          <div className="mb-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setContractType("put")}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                contractType === "put"
+                  ? "bg-white/10 text-text-primary"
+                  : "bg-white/5 text-text-muted hover:bg-white/10"
+              }`}
+            >
+              Sell Cash-Secured Put
+            </button>
+            <button
+              type="button"
+              onClick={() => setContractType("call")}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                contractType === "call"
+                  ? "bg-white/10 text-text-primary"
+                  : "bg-white/5 text-text-muted hover:bg-white/10"
+              }`}
+            >
+              Sell Covered Call
+            </button>
           </div>
-        )}
+          {/* Ticker widened (x2 from the previous pass) since a half-width
+              card has room again; expiration sized to fit the date string
+              itself (was flex-1, stretching to fill whatever was left). */}
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <input
+              value={tickerInput}
+              onChange={(e) => setTickerInput(e.target.value)}
+              placeholder="Ticker"
+              className="w-32 min-w-0 rounded-md border border-card-border bg-[#0f131c] px-2 py-2 text-sm text-text-primary outline-none"
+            />
+            <input
+              value={strikeInput}
+              onChange={(e) => setStrikeInput(e.target.value)}
+              placeholder="Strike"
+              type="number"
+              min="0"
+              step="any"
+              className="w-20 min-w-0 rounded-md border border-card-border bg-[#0f131c] px-2 py-2 text-sm text-text-primary outline-none"
+            />
+            <input
+              value={contractsInput}
+              onChange={(e) => setContractsInput(e.target.value)}
+              placeholder="Qty"
+              type="number"
+              min="1"
+              step="1"
+              className="w-14 min-w-0 rounded-md border border-card-border bg-[#0f131c] px-2 py-2 text-sm text-text-primary outline-none"
+            />
+            <select
+              value={expInput}
+              onChange={(e) => setExpInput(e.target.value)}
+              className="w-32 min-w-0 rounded-md border border-card-border bg-[#0f131c] px-2 py-2 text-sm text-text-primary outline-none [color-scheme:dark]"
+            >
+              <option value="">Exp (Fri)</option>
+              {fridayOptions.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="mt-2 flex justify-end">
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={handleSell}
+              className="rounded-md bg-[#3ddc97] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-50"
+            >
+              {contractType === "put" ? "Sell Put" : "Sell Call"}
+            </button>
+          </div>
 
-        {tradeMessage && (
-          <p className={`mt-3 text-sm ${tradeMessage.ok ? "text-[#3ddc97]" : "text-[#ff5c7a]"}`}>{tradeMessage.text}</p>
-        )}
+          {tickerInput.trim() && (
+            <div className="mt-3 min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm">
+              {priceLoading && tickerPrice === null ? (
+                <span className="text-text-muted">Looking up {tickerInput.trim().toUpperCase()}…</span>
+              ) : tickerPrice === null ? (
+                <span className="text-text-muted">
+                  {tickerInput.trim().toUpperCase()} isn&apos;t in the tracked stock universe.
+                </span>
+              ) : (
+                <span className="text-text-muted">
+                  {tickerInput.trim().toUpperCase()} current price:{" "}
+                  <span className="font-semibold" style={{ color: "#f5d020" }}>
+                    {moneyNoCents(tickerPrice)}
+                  </span>
+                  {previewPremium !== null && (
+                    <>
+                      {" "}
+                      · Est. premium:{" "}
+                      <span className="font-semibold text-[#3ddc97]">{moneyNoCents(previewPremium)}</span> for{" "}
+                      {Number(contractsInput) || 1} contract{Number(contractsInput) === 1 ? "" : "s"}
+                    </>
+                  )}
+                  {previewCollateral !== null && (
+                    <>
+                      {" "}
+                      ·{" "}
+                      <span className="font-semibold" style={{ color: "#ff9d4d" }}>
+                        {previewCollateral.kind === "cash"
+                          ? `${moneyNoCents(previewCollateral.amount)} collateral`
+                          : `${previewCollateral.amount} shares`}{" "}
+                        needed
+                      </span>
+                    </>
+                  )}
+                </span>
+              )}
+            </div>
+          )}
+
+          {tradeMessage && (
+            <p className={`mt-3 text-sm ${tradeMessage.ok ? "text-[#3ddc97]" : "text-[#ff5c7a]"}`}>
+              {tradeMessage.text}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="rounded-2xl border border-card-border bg-card-bg p-5">

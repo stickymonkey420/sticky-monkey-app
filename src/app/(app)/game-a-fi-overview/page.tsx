@@ -83,7 +83,7 @@ export default function GameAFiOverviewPage() {
   // Each still no-ops (its effect never fires a fetch) when passed a null
   // userId, same guard usePaperTradingAccount's own callers already rely on
   // elsewhere (e.g. BuyPaperTradeModal).
-  const { loading, holdings } = usePaperTradingAccount(hasMatch ? userId : null, selectedChallengeId);
+  const { loading, holdings, trade } = usePaperTradingAccount(hasMatch ? userId : null, selectedChallengeId);
   const contractAccount = useContractTradingAccount(hasMatch ? userId : null, selectedChallengeId);
 
   // Opponent's holdings for the currently-selected match -- fetches their
@@ -279,6 +279,9 @@ export default function GameAFiOverviewPage() {
               account={contractAccount.account}
               trades={contractAccount.trades}
               sell={contractAccount.sell}
+              sharesLoading={loading}
+              sharesHoldings={holdings}
+              sharesTrade={trade}
             />
           </div>
         </>

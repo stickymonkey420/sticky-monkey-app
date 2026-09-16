@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useContractTradingAccount } from "@/lib/gameAfi/useContractTrading";
+import { usePaperTradingAccount } from "@/lib/gameAfi/usePaperTrading";
 import { fetchChallenges } from "@/lib/gameAfi/challengeQueries";
 import { formatMoney } from "@/lib/gameAfi/format";
 import type { ChallengeRow } from "@/lib/gameAfi/challengeTypes";
@@ -47,6 +48,13 @@ export default function SellContractModal({
 
   const hasMatch = selectedChallengeId !== null;
   const { loading, account, trades, sell } = useContractTradingAccount(hasMatch ? userId : null, selectedChallengeId);
+  // Backs the Buy/Sell Shares card SellContractWidget renders alongside
+  // Sell a Contract -- same account this match's shares mode already uses.
+  const {
+    loading: sharesLoading,
+    holdings: sharesHoldings,
+    trade: sharesTrade,
+  } = usePaperTradingAccount(hasMatch ? userId : null, selectedChallengeId);
 
   const activeMatch = matches.find((m) => m.id === selectedChallengeId);
   const title = activeMatch
@@ -60,7 +68,7 @@ export default function SellContractModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-card-bg p-7 shadow-2xl">
+      <div className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-card-bg p-7 shadow-2xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-bold text-text-primary">{title}</h2>
           <button
@@ -101,7 +109,16 @@ export default function SellContractModal({
               </select>
             </div>
 
-            <SellContractWidget loading={loading} account={account} trades={trades} sell={sell} initialTicker={ticker} />
+            <SellContractWidget
+              loading={loading}
+              account={account}
+              trades={trades}
+              sell={sell}
+              initialTicker={ticker}
+              sharesLoading={sharesLoading}
+              sharesHoldings={sharesHoldings}
+              sharesTrade={sharesTrade}
+            />
           </>
         )}
       </div>
