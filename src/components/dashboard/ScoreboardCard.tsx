@@ -4,32 +4,44 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/dashboard/netWorth";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
-import { cancelChallenge, fetchChallenges, respondToChallenge } from "@/lib/gameAfi/challengeQueries";
+import {
+  cancelChallenge,
+  fetchChallenges,
+  fetchMatchSummary,
+  respondToChallenge,
+} from "@/lib/gameAfi/challengeQueries";
 import type { ChallengeRow } from "@/lib/gameAfi/challengeTypes";
 import { formatChallengeWhen, formatMoney } from "@/lib/gameAfi/format";
 
-type BalanceRow = { key: string; label: string; cashBalance: number };
+const WINNING_COLOR = "#3ddc97";
+const LOSING_COLOR = "#ff5c7a";
 
-// "Scoreboard" (formerly "Funny Money") -- Game-a-Fi paper cash across every
-// accepted Head to Head match this member is in (each its own isolated cash
-// balance -- see the paper-account-scoping migration), PLUS pending invite
-// status (sent or received). The free-standing "Monkey Monkey" practice
-// account is intentionally NOT shown here (per the user: "I don't think I
-// need monkey monkey"). Balances are read-only: reads paper_accounts
-// directly rather than provisioning missing rows via ensurePaperAccount,
-// since an accepted match with no trades yet simply hasn't been
-// provisioned -- its balance is just its agreed starting capital, shown
-// here without writing anything on a dashboard view.
+type ScoreRow = {
+  key: string;
+  opponentLabel: string;
+  meTotal: number;
+  opponentTotal: number;
+  startingBalance: number;
+};
+
+// "Scoreboard" (formerly "Funny Money") -- a real head-to-head score (your
+// total paper portfolio value -- cash + holdings, via game_afi_match_summary
+// -- vs your opponent's) for every accepted Head to Head match this member
+// is in, PLUS pending invite status (sent or received). Per your call, this
+// replaced a plain "your cash balance next to their handle" list, which
+// wasn't actually a comparison at all. The free-standing "Monkey Monkey"
+// practice account is intentionally NOT shown here (per the user: "I don't
+// think I need monkey monkey").
 //
 // The received-invite rows are the same Accept/Decline card that used to
 // live only in the Notifications bell (NotificationsModal.tsx) -- per your
 // call to surface it here too instead of a plain summary line. Accepting or
-// declining refreshes both the invite list AND the balances below (a newly
+// declining refreshes both the invite list AND the scores below (a newly
 // accepted match gets its own row). Sent invites get their own Cancel
 // action here too -- that had no home since the old Head to Head tab's
 // Sent list was removed.
 export default function ScoreboardCard() {
-  const [rows, setRows] = useState<BalanceRow[]>([]);
+  const [rows, setRows] = useState<ScoreRow[]>([]);
   const [pendingReceived, setPendingReceived] = useState<ChallengeRow[]>([]);
   const [pendingSent, setPendingSent] = useState<ChallengeRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,23 +57,20 @@ export default function ScoreboardCard() {
       return;
     }
 
-    const [{ data: accounts }, challenges] = await Promise.all([
-      supabase.from("paper_accounts").select("challenge_id,cash_balance").eq("user_id", user.id),
-      fetchChallenges(supabase),
-    ]);
-
-    const cashByChallenge = new Map<string, number>();
-    for (const a of (accounts ?? []) as { challenge_id: string | null; cash_balance: number }[]) {
-      if (a.challenge_id) cashByChallenge.set(a.challenge_id, Number(a.cash_balance));
-    }
-
+    const challenges = await fetchChallenges(supabase);
     const accepted = challenges.filter((c) => c.status === "accepted");
+    const summaries = await Promise.all(accepted.map((c) => fetchMatchSummary(supabase, c.id)));
+
     setRows(
-      accepted.map((c) => ({
-        key: c.id,
-        label: c.other_username ? `@${c.other_username}` : c.other_name || "Member",
-        cashBalance: cashByChallenge.get(c.id) ?? c.starting_balance,
-      }))
+      summaries
+        .filter((s): s is NonNullable<typeof s> => s !== null)
+        .map((s) => ({
+          key: s.challengeId,
+          opponentLabel: s.opponent.username ? `@${s.opponent.username}` : s.opponent.name || "Member",
+          meTotal: s.me.totalValue,
+          opponentTotal: s.opponent.totalValue,
+          startingBalance: s.startingBalance,
+        }))
     );
     setPendingReceived(challenges.filter((c) => c.direction === "received" && c.status === "pending"));
     setPendingSent(challenges.filter((c) => c.direction === "sent" && c.status === "pending"));
@@ -95,7 +104,7 @@ export default function ScoreboardCard() {
     load();
   }
 
-  const total = rows.reduce((sum, r) => sum + r.cashBalance, 0);
+  const total = rows.reduce((sum, r) => sum + r.meTotal, 0);
 
   return (
     <div className="rounded-[30px] bg-[rgb(32,40,56)] p-[30px]">
@@ -192,22 +201,47 @@ export default function ScoreboardCard() {
       ) : rows.length === 0 ? (
         <div className="text-sm text-text-muted">No active Head to Head matches yet.</div>
       ) : (
-        <table className="w-full border-collapse text-sm">
-          <tbody className="divide-y divide-white/10">
-            {rows.map((r) => (
-              <tr key={r.key}>
-                <td className="py-2 text-text-muted">{r.label}</td>
-                <td className="py-2 text-right font-medium text-text-primary">{money(r.cashBalance)}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t border-white/10">
-              <td className="pt-2.5 text-sm font-semibold text-text-primary">Total</td>
-              <td className="pt-2.5 text-right text-sm font-semibold text-text-primary">{money(total)}</td>
-            </tr>
-          </tfoot>
-        </table>
+        <>
+          <div className="flex flex-col divide-y divide-white/10">
+            {rows.map((r) => {
+              const meAhead = r.meTotal > r.opponentTotal;
+              const oppAhead = r.opponentTotal > r.meTotal;
+              const meColor = meAhead ? WINNING_COLOR : oppAhead ? LOSING_COLOR : undefined;
+              const oppColor = oppAhead ? WINNING_COLOR : meAhead ? LOSING_COLOR : undefined;
+              const pct = r.startingBalance > 0 ? ((r.meTotal - r.opponentTotal) / r.startingBalance) * 100 : 0;
+              return (
+                <div key={r.key} className="flex flex-col gap-0.5 py-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-text-primary" style={{ color: meColor }}>
+                      You
+                    </span>
+                    <span className="font-medium text-text-primary" style={{ color: meColor }}>
+                      {money(r.meTotal)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-text-primary" style={{ color: oppColor }}>
+                      {r.opponentLabel}
+                    </span>
+                    <span className="text-text-primary" style={{ color: oppColor }}>
+                      {money(r.opponentTotal)}
+                    </span>
+                  </div>
+                  <div
+                    className="text-right text-xs text-text-muted"
+                    style={{ color: meAhead ? WINNING_COLOR : oppAhead ? LOSING_COLOR : undefined }}
+                  >
+                    {meAhead || oppAhead ? `${Math.abs(pct).toFixed(1)}% ${meAhead ? "ahead" : "behind"}` : "Tied"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-1 flex items-center justify-between border-t border-white/10 pt-2.5 text-sm font-semibold text-text-primary">
+            <span>Total</span>
+            <span>{money(total)}</span>
+          </div>
+        </>
       )}
     </div>
   );
