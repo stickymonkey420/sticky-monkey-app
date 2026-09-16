@@ -210,8 +210,13 @@ export default function SellContractWidget({
           Contract card -- a covered call needs shares on hand, and an
           assigned put just handed you some, so both actions live side by
           side here instead of sending a member back up to the shares
-          section for either one. */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+          section for either one. No items-start override here (default is
+          stretch) so both cards always match height -- whichever one has
+          more content (the preview box appearing, a trade message, etc.)
+          sets it, and the shorter card's own content still sits at its
+          natural top position with the slack landing below it rather than
+          between its fields and its buttons. */}
+      <div className="flex flex-col gap-4 lg:flex-row">
         {sharesTrade && (
           <BuySellSharesCard loading={sharesLoading} holdings={sharesHoldings} trade={sharesTrade} />
         )}
@@ -245,15 +250,16 @@ export default function SellContractWidget({
               Sell Covered Call
             </button>
           </div>
-          {/* Ticker widened (x2 from the previous pass) since a half-width
-              card has room again; expiration sized to fit the date string
-              itself (was flex-1, stretching to fill whatever was left). */}
+          {/* Ticker now absorbs whatever width Strike/Qty/Exp don't need
+              (flex-1, was a fixed w-32) -- that naturally packs those three
+              fields against the row's right edge, lined up with the Sell
+              button underneath instead of trailing off after the ticker. */}
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <input
               value={tickerInput}
               onChange={(e) => setTickerInput(e.target.value)}
               placeholder="Ticker"
-              className="w-32 min-w-0 rounded-md border border-card-border bg-[#0f131c] px-2 py-2 text-sm text-text-primary outline-none"
+              className="min-w-[80px] flex-1 rounded-md border border-card-border bg-[#0f131c] px-2 py-2 text-sm text-text-primary outline-none"
             />
             <input
               value={strikeInput}
