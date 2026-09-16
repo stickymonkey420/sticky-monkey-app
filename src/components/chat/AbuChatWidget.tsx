@@ -79,8 +79,17 @@ const ABU_CARDS: Record<string, Record<string, CardLocator>> = {
   },
 };
 
+// Cards that live in the persistent right-side profile pane (mounted once in
+// the app layout, so visible -- and highlightable -- on every page, unlike
+// ABU_CARDS above which is keyed per-page). Kept in sync with the abu-chat
+// Edge Function's GLOBAL_REGISTRY the same way ABU_CARDS is kept in sync
+// with CARD_REGISTRY.
+const GLOBAL_CARDS: Record<string, CardLocator> = {
+  "quick-access": () => document.getElementById("quick-access-section"),
+};
+
 // Verbatim from the Webflow footer script's injected <style> block.
-const ABU_CSS = `.abu-figure{width:100%;height:100%;display:block;overflow:visible;}.abu-eyelid{transform:scaleY(0);}.abu-mouth-open{opacity:0;}.abu-mouth-closed{opacity:1;}.abu-laser-dot{opacity:0;filter:drop-shadow(0 0 4px #ff3b3b);transition:opacity .2s ease;}.abu-thinking-dots ellipse{opacity:0;}.abu-arm-r-rest{opacity:1;transition:opacity .25s ease;}.abu-arm-r-point{opacity:0;transition:opacity .25s ease;}#abu-launcher .abu-eyelid,#abu-stage .abu-eyelid{animation:abuBlink 4.6s infinite;}#abu-launcher .abu-body-group,#abu-stage .abu-body-group{animation:abuBreathe 3.2s ease-in-out infinite;}@keyframes abuBlink{0%,90%,100%{transform:scaleY(0);}94%{transform:scaleY(1);}}@keyframes abuBreathe{0%,100%{transform:translateY(0);}50%{transform:translateY(-1.5px);}}#abu-stage.state-talking .abu-mouth-open{animation:abuTalk .24s steps(1) infinite;}#abu-stage.state-talking .abu-mouth-closed{animation:abuTalkInv .24s steps(1) infinite;}@keyframes abuTalk{0%,100%{opacity:0;}50%{opacity:1;}}@keyframes abuTalkInv{0%,100%{opacity:1;}50%{opacity:0;}}#abu-stage.state-thinking .abu-head-group{animation:abuThink 1.6s ease-in-out infinite;}@keyframes abuThink{0%,100%{transform:rotate(0deg);}50%{transform:rotate(3deg);}}#abu-stage.state-thinking .abu-thinking-dots ellipse{animation:abuDots 1.4s infinite;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(2){animation-delay:.2s;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(3){animation-delay:.4s;}#abu-stage.state-pointing .abu-arm-r-point{opacity:1;}#abu-stage.state-pointing .abu-arm-r-rest{opacity:0;}#abu-stage.state-pointing .abu-laser-dot{opacity:1;animation:abuLaser .9s ease-in-out infinite;}@keyframes abuLaser{0%,100%{opacity:.6;}50%{opacity:1;}}#abu-stage.state-entering .abu-figure{animation:abuEnter .6s cubic-bezier(.34,1.56,.64,1) both;}@keyframes abuEnter{0%{transform:translateY(70px) scale(.7);opacity:0;}60%{transform:translateY(-8px) scale(1.05);opacity:1;}100%{transform:translateY(0) scale(1);}}#abu-stage-wrap{width:100%;height:132px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:center;background:radial-gradient(ellipse at center 85%, rgba(245,208,32,0.08), transparent 70%);border-bottom:1px solid rgba(255,255,255,0.08);}#abu-stage{width:150px;height:150px;margin-bottom:-14px;}#abu-launcher .abu-figure{transform:scale(1.9) translateY(6px);}.abu-icon-btn{cursor:pointer;color:#8a90a8;font-size:15px;line-height:1;padding:4px 6px;border-radius:6px;user-select:none;}.abu-icon-btn:hover{background:rgba(255,255,255,0.08);color:#eef0f7;}.abu-icon-btn.active{color:#f5d020;}@keyframes abuMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,59,0.5);}50%{box-shadow:0 0 0 6px rgba(255,59,59,0);}}#abu-mic.listening{background:#ff3b3b !important;color:#fff !important;animation:abuMicPulse 1s infinite;}@keyframes abuCardPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,208,32,.65),0 0 0 0 rgba(245,208,32,.35);}50%{box-shadow:0 0 0 6px rgba(245,208,32,.45),0 0 26px 10px rgba(245,208,32,.25);}}.abu-card-glow{animation:abuCardPulse 1.3s ease-in-out 2;border-radius:12px;position:relative;z-index:5;}`;
+const ABU_CSS = `.abu-figure{width:100%;height:100%;display:block;overflow:visible;}.abu-eyelid{transform:scaleY(0);}.abu-mouth-open{opacity:0;}.abu-mouth-closed{opacity:1;}.abu-laser-dot{opacity:0;filter:drop-shadow(0 0 4px #ff3b3b);transition:opacity .2s ease;}.abu-thinking-dots ellipse{opacity:0;}.abu-arm-r-rest{opacity:1;transition:opacity .25s ease;}.abu-arm-r-point{opacity:0;transition:opacity .25s ease;}#abu-launcher .abu-eyelid,#abu-stage .abu-eyelid{animation:abuBlink 4.6s infinite;}#abu-launcher .abu-body-group,#abu-stage .abu-body-group{animation:abuBreathe 3.2s ease-in-out infinite;}@keyframes abuBlink{0%,90%,100%{transform:scaleY(0);}94%{transform:scaleY(1);}}@keyframes abuBreathe{0%,100%{transform:translateY(0);}50%{transform:translateY(-1.5px);}}#abu-stage.state-talking .abu-mouth-open{animation:abuTalk .24s steps(1) infinite;}#abu-stage.state-talking .abu-mouth-closed{animation:abuTalkInv .24s steps(1) infinite;}@keyframes abuTalk{0%,100%{opacity:0;}50%{opacity:1;}}@keyframes abuTalkInv{0%,100%{opacity:1;}50%{opacity:0;}}#abu-stage.state-thinking .abu-head-group{animation:abuThink 1.6s ease-in-out infinite;}@keyframes abuThink{0%,100%{transform:rotate(0deg);}50%{transform:rotate(3deg);}}#abu-stage.state-thinking .abu-thinking-dots ellipse{animation:abuDots 1.4s infinite;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(2){animation-delay:.2s;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(3){animation-delay:.4s;}#abu-stage.state-pointing .abu-arm-r-point{opacity:1;}#abu-stage.state-pointing .abu-arm-r-rest{opacity:0;}#abu-stage.state-pointing .abu-laser-dot{opacity:1;animation:abuLaser .9s ease-in-out infinite;}@keyframes abuLaser{0%,100%{opacity:.6;}50%{opacity:1;}}#abu-stage.state-entering .abu-figure{animation:abuEnter .6s cubic-bezier(.34,1.56,.64,1) both;}@keyframes abuEnter{0%{transform:translateY(70px) scale(.7);opacity:0;}60%{transform:translateY(-8px) scale(1.05);opacity:1;}100%{transform:translateY(0) scale(1);}}#abu-stage-wrap{width:100%;height:132px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:center;background:radial-gradient(ellipse at center 85%, rgba(245,208,32,0.08), transparent 70%);border-bottom:1px solid rgba(255,255,255,0.08);}#abu-stage{width:150px;height:150px;margin-bottom:-14px;}#abu-launcher .abu-figure{transform:scale(1.9) translateY(6px);}.abu-icon-btn{cursor:pointer;color:#8a90a8;font-size:15px;line-height:1;padding:4px 6px;border-radius:6px;user-select:none;}.abu-icon-btn:hover{background:rgba(255,255,255,0.08);color:#eef0f7;}.abu-icon-btn.active{color:#f5d020;}@keyframes abuMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,59,0.5);}50%{box-shadow:0 0 0 6px rgba(255,59,59,0);}}#abu-mic.listening{background:#ff3b3b !important;color:#fff !important;animation:abuMicPulse 1s infinite;}@keyframes abuCardPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,208,32,.65),0 0 0 0 rgba(245,208,32,.35);}50%{box-shadow:0 0 0 6px rgba(245,208,32,.45),0 0 26px 10px rgba(245,208,32,.25);}}.abu-card-glow{animation:abuCardPulse 1.3s ease-in-out 2;border-radius:12px;position:relative;z-index:5;}#abu-launcher.abu-dragging,#abu-panel.abu-dragging{cursor:grabbing !important;}`;
 
 // The two "clean" illustrated Abu-face stills the user had made in Webflow
 // (open-eyed / closed-eyed), hosted permanently on Webflow's own asset CDN
@@ -128,12 +137,84 @@ type AbuChatResponse = { answer?: string; highlights?: string[]; audio?: string 
 // silently no-ops, same as an unknown key always has.
 function locateHighlight(key: string): HTMLElement | null {
   const pageMap = ABU_CARDS[window.location.pathname];
-  const locate = pageMap?.[key];
+  const locate = pageMap?.[key] || GLOBAL_CARDS[key];
   if (locate) return locate();
   return document.getElementById(key);
 }
 
-function highlightCards(keys: string[] | string | undefined): void {
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function rectsOverlap(a: DOMRect, b: DOMRect): boolean {
+  return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+}
+
+// If `movable` (the open chat panel, in practice) is currently covering
+// `target` (the card/nav item Abu just highlighted), slide it out of the way
+// -- toward whichever side has more room, falling back to an up/down shift
+// -- for `durationMs`, then slide it back to exactly where it was. This is
+// what makes "ask about something Abu is sitting on top of" actually reveal
+// the thing being talked about, instead of just glowing behind the panel.
+function autoShiftIfOverlapping(movable: HTMLElement, target: HTMLElement, durationMs: number): void {
+  if (!movable || getComputedStyle(movable).display === "none") return;
+  const moRect = movable.getBoundingClientRect();
+  if (moRect.width === 0 || moRect.height === 0) return;
+  const targetRect = target.getBoundingClientRect();
+  if (!rectsOverlap(moRect, targetRect)) return;
+
+  const prevLeft = movable.style.left;
+  const prevTop = movable.style.top;
+  const prevRight = movable.style.right;
+  const prevBottom = movable.style.bottom;
+  const prevTransition = movable.style.transition;
+
+  const margin = 16;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const maxLeft = Math.max(margin, vw - moRect.width - margin);
+  const maxTop = Math.max(margin, vh - moRect.height - margin);
+
+  let newLeft = moRect.left;
+  const movableCenterX = moRect.left + moRect.width / 2;
+  const targetCenterX = targetRect.left + targetRect.width / 2;
+  if (movableCenterX >= targetCenterX) {
+    newLeft = clamp(Math.max(moRect.left, targetRect.right + margin), margin, maxLeft);
+  } else {
+    newLeft = clamp(Math.min(moRect.left, targetRect.left - margin - moRect.width), margin, maxLeft);
+  }
+
+  let newTop = moRect.top;
+  const stillOverlapsHorizontally = !(newLeft + moRect.width <= targetRect.left || newLeft >= targetRect.right);
+  if (stillOverlapsHorizontally) {
+    newLeft = moRect.left;
+    const movableCenterY = moRect.top + moRect.height / 2;
+    const targetCenterY = targetRect.top + targetRect.height / 2;
+    if (movableCenterY >= targetCenterY) {
+      newTop = clamp(Math.max(moRect.top, targetRect.bottom + margin), margin, maxTop);
+    } else {
+      newTop = clamp(Math.min(moRect.top, targetRect.top - margin - moRect.height), margin, maxTop);
+    }
+  }
+
+  movable.style.transition = "left .35s ease, top .35s ease";
+  movable.style.right = "auto";
+  movable.style.bottom = "auto";
+  movable.style.left = `${newLeft}px`;
+  movable.style.top = `${newTop}px`;
+
+  window.setTimeout(() => {
+    movable.style.left = prevLeft;
+    movable.style.top = prevTop;
+    movable.style.right = prevRight;
+    movable.style.bottom = prevBottom;
+    window.setTimeout(() => {
+      movable.style.transition = prevTransition;
+    }, 400);
+  }, durationMs);
+}
+
+function highlightCards(keys: string[] | string | undefined, panelEl: HTMLElement | null, panelIsOpen: boolean): void {
   try {
     const list = Array.isArray(keys) ? keys : keys ? [keys] : [];
     let scrolled = false;
@@ -143,6 +224,13 @@ function highlightCards(keys: string[] | string | undefined): void {
       if (!scrolled) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
         scrolled = true;
+        // Give the smooth scroll a beat to settle before measuring/shifting
+        // the panel -- checking overlap immediately would use pre-scroll
+        // coordinates.
+        if (panelIsOpen && panelEl) {
+          const target = el;
+          window.setTimeout(() => autoShiftIfOverlapping(panelEl, target, 2400), 380);
+        }
       }
       el.classList.add("abu-card-glow");
       setTimeout(() => el.classList.remove("abu-card-glow"), 2700);
@@ -176,6 +264,131 @@ function pickBrowserVoice(): SpeechSynthesisVoice | null {
   return pool[0] || voices[0] || null;
 }
 
+const LAUNCHER_POS_KEY = "abu_launcher_pos";
+const PANEL_POS_KEY = "abu_panel_pos";
+
+type SavedPos = { left: number; top: number };
+
+function loadSavedPos(key: string): SavedPos | null {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SavedPos>;
+    if (typeof parsed.left === "number" && typeof parsed.top === "number") return parsed as SavedPos;
+  } catch {
+    // ignore -- fall back to the default docked position
+  }
+  return null;
+}
+
+function saveSavedPos(key: string, el: HTMLElement): void {
+  try {
+    const rect = el.getBoundingClientRect();
+    window.localStorage.setItem(key, JSON.stringify({ left: rect.left, top: rect.top }));
+  } catch {
+    // ignore -- not worth surfacing a storage failure over a remembered position
+  }
+}
+
+// Applies a previously-saved drag position to `el`, clamped to the current
+// viewport so a saved spot from a wider window (or a since-resized one)
+// never leaves the widget stranded off-screen. `fallbackW`/`fallbackH` cover
+// the panel's case: it starts as `display:none`, so its measured rect is
+// 0x0 until it's first opened.
+function applySavedPos(el: HTMLElement, key: string, fallbackW: number, fallbackH: number): void {
+  const pos = loadSavedPos(key);
+  if (!pos) return;
+  const rect = el.getBoundingClientRect();
+  const w = rect.width || fallbackW;
+  const h = rect.height || fallbackH;
+  const maxLeft = Math.max(4, window.innerWidth - w - 4);
+  const maxTop = Math.max(4, window.innerHeight - h - 4);
+  el.style.right = "auto";
+  el.style.bottom = "auto";
+  el.style.left = `${clamp(pos.left, 4, maxLeft)}px`;
+  el.style.top = `${clamp(pos.top, 4, maxTop)}px`;
+}
+
+// Makes `el` draggable by pressing and dragging on `handle` (which may be
+// `el` itself, e.g. the launcher bubble, or a child of it, e.g. the panel's
+// header bar). Uses the Pointer Events API so mouse, touch, and pen all work
+// through one code path -- this is the "single click hold and drag" the user
+// asked for. A small movement threshold keeps a plain click/dblclick on the
+// handle (or a button inside it, like the panel's close/mute icons) working
+// normally when the pointer doesn't actually move. Returns a mutable state
+// object whose `justDragged` flag callers can check to suppress the
+// trailing click/dblclick a real drag gesture leaves behind.
+function makeDraggable(el: HTMLElement, handle: HTMLElement, onDragEnd?: () => void): { justDragged: boolean } {
+  const THRESHOLD = 6;
+  const state = { dragging: false, moved: false, justDragged: false };
+  let startX = 0;
+  let startY = 0;
+  let startLeft = 0;
+  let startTop = 0;
+
+  handle.style.touchAction = "none";
+
+  handle.addEventListener("pointerdown", (e: PointerEvent) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const rect = el.getBoundingClientRect();
+    startX = e.clientX;
+    startY = e.clientY;
+    startLeft = rect.left;
+    startTop = rect.top;
+    state.dragging = true;
+    state.moved = false;
+    try {
+      handle.setPointerCapture(e.pointerId);
+    } catch {
+      // ignore -- dragging still works without capture, just less robust
+    }
+  });
+
+  handle.addEventListener("pointermove", (e: PointerEvent) => {
+    if (!state.dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if (!state.moved && Math.hypot(dx, dy) < THRESHOLD) return;
+    if (!state.moved) {
+      state.moved = true;
+      el.style.transition = "none";
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+      el.classList.add("abu-dragging");
+    }
+    const rect = el.getBoundingClientRect();
+    const maxLeft = Math.max(4, window.innerWidth - rect.width - 4);
+    const maxTop = Math.max(4, window.innerHeight - rect.height - 4);
+    el.style.left = `${clamp(startLeft + dx, 4, maxLeft)}px`;
+    el.style.top = `${clamp(startTop + dy, 4, maxTop)}px`;
+  });
+
+  function endDrag(e: PointerEvent) {
+    if (!state.dragging) return;
+    state.dragging = false;
+    el.style.transition = "";
+    el.classList.remove("abu-dragging");
+    if (state.moved) {
+      state.justDragged = true;
+      window.setTimeout(() => {
+        state.justDragged = false;
+      }, 400);
+      try {
+        handle.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+      onDragEnd?.();
+    }
+    state.moved = false;
+  }
+  handle.addEventListener("pointerup", endDrag);
+  handle.addEventListener("pointercancel", endDrag);
+  handle.addEventListener("lostpointercapture", endDrag);
+
+  return state;
+}
+
 // Builds the whole widget (launcher + panel), wires every handler, and
 // returns a cleanup function. Mirrors the Webflow script's single IIFE
 // almost line for line -- this stays a plain DOM/closure module (not
@@ -206,6 +419,19 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
 
   document.body.appendChild(launcher);
   document.body.appendChild(panel);
+
+  // Restore wherever the user last dragged the launcher/panel to (if
+  // anywhere) -- otherwise they stay at their default docked corner.
+  applySavedPos(launcher, LAUNCHER_POS_KEY, 60, 60);
+  applySavedPos(panel, PANEL_POS_KEY, 320, 480);
+
+  // Let the user drag the launcher bubble, and the open panel by its header
+  // bar, to anywhere on the page (click/tap, hold, and drag). Positions
+  // persist across visits via localStorage.
+  const launcherDrag = makeDraggable(launcher, launcher, () => saveSavedPos(LAUNCHER_POS_KEY, launcher));
+  const headerEl = panel.firstElementChild as HTMLDivElement;
+  headerEl.style.cursor = "grab";
+  makeDraggable(panel, headerEl, () => saveSavedPos(PANEL_POS_KEY, panel));
 
   // Blink loop for the launcher's photo icon: same 4.6s cadence as the old
   // vector eyelid animation, briefly swapping to the closed-eyes frame.
@@ -434,7 +660,7 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
       addMessage("assistant", answer);
       history.push({ role: "assistant", content: answer });
       waiting = false;
-      highlightCards(data.highlights);
+      highlightCards(data.highlights, panel, panelOpen);
       speak(answer, data.audio);
     } catch {
       placeholder.remove();
@@ -471,6 +697,7 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
   });
 
   launcher.addEventListener("dblclick", () => {
+    if (launcherDrag.justDragged) return;
     launcher.style.transform = "scale(0.9)";
     setTimeout(() => {
       launcher.style.transform = "";

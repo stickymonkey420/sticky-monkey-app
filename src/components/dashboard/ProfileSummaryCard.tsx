@@ -119,8 +119,11 @@ export default function ProfileSummaryCard() {
           nested panel box rather than a full-width standalone card. */}
       <InvestmentAlertCard />
 
-      {/* Quick Access */}
-      <div>
+      {/* Quick Access -- id is a stable highlight target for the Abu chat
+          widget (see AbuChatWidget.tsx's GLOBAL_CARDS): this whole panel is
+          mounted once in the app layout and visible on every page, so it's
+          registered as a global highlight key rather than a per-page one. */}
+      <div id="quick-access-section">
         <h4 className="mb-3 text-sm font-semibold text-text-primary">Quick Access</h4>
         <QuickAccessCard />
       </div>
