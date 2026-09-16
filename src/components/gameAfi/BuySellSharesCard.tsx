@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/options/queries";
+import { fetchTickerPrice } from "@/lib/gameAfi/contractQueries";
+import { formatMoney } from "@/lib/gameAfi/format";
 import type { ExecuteTradeResult, PaperHolding } from "@/lib/gameAfi/paperTypes";
 
 // Compact Buy/Sell Shares card -- sits to the left of "Sell a Contract" in
@@ -26,9 +29,38 @@ export default function BuySellSharesCard({
   const [sharesInput, setSharesInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [tradeMessage, setTradeMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const [tickerPrice, setTickerPrice] = useState<number | null>(null);
+  const [priceLoading, setPriceLoading] = useState(false);
 
   const ticker = tickerInput.trim().toUpperCase();
   const owned = ticker ? (holdings.find((h) => h.ticker === ticker)?.shares ?? 0) : null;
+
+  // Live current price for whatever's typed in the ticker field, debounced
+  // the same way Sell a Contract's preview does -- so a member can see
+  // roughly what a Buy/Sell here will cost before submitting it.
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(
+      async () => {
+        if (!ticker) {
+          if (!cancelled) setTickerPrice(null);
+          return;
+        }
+        if (!cancelled) setPriceLoading(true);
+        const supabase = createClient();
+        const price = await fetchTickerPrice(supabase, ticker);
+        if (!cancelled) {
+          setTickerPrice(price);
+          setPriceLoading(false);
+        }
+      },
+      ticker ? 350 : 0
+    );
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [ticker]);
 
   async function handleTrade(side: "buy" | "sell") {
     const shares = Number(sharesInput);
@@ -72,17 +104,33 @@ export default function BuySellSharesCard({
         />
       </div>
 
-      {ticker && !loading && (
-        <p className="mt-2 text-xs text-text-muted">
-          {owned && owned > 0 ? (
-            <>
-              You own <span className="font-semibold text-text-primary">{owned}</span> share
-              {owned === 1 ? "" : "s"} of {ticker}.
-            </>
+      {ticker && (
+        <div className="mt-2 min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm">
+          {priceLoading && tickerPrice === null ? (
+            <span className="text-text-muted">Looking up {ticker}…</span>
+          ) : tickerPrice === null ? (
+            <span className="text-text-muted">{ticker} isn&apos;t in the tracked stock universe.</span>
           ) : (
-            <>No {ticker} shares owned in this account yet.</>
+            <span className="text-text-muted">
+              {ticker} current price:{" "}
+              <span className="font-semibold" style={{ color: "#f5d020" }}>
+                {formatMoney(tickerPrice)}
+              </span>
+            </span>
           )}
-        </p>
+          {!loading && (
+            <div className="mt-1 text-xs text-text-muted">
+              {owned && owned > 0 ? (
+                <>
+                  You own <span className="font-semibold text-text-primary">{owned}</span> share
+                  {owned === 1 ? "" : "s"} of {ticker}.
+                </>
+              ) : (
+                <>No {ticker} shares owned in this account yet.</>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       <div className="mt-2 flex justify-end gap-2">
