@@ -46,7 +46,7 @@ export const ACCOUNT_TYPE_DEFS: { key: string; label: string }[] = [
 export const USE_CASE_DEFS: { key: string; label: string }[] = [
   { key: "personal_tracking", label: "Personal Tracking" },
   { key: "investment_income", label: "Investment Tracking & Income Generating" },
-  { key: "travel_connections", label: "Travel Connections" },
+  { key: "games_paper_trading_derby", label: "Games - Paper Trading Derby" },
 ];
 
 export const TRI_STATE_FIELD_DEFS: { key: string; label: string }[] = [
