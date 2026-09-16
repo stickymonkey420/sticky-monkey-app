@@ -11,7 +11,7 @@ import {
 import type { TickerQuoteResult } from "@/lib/screener/types";
 import type { Role } from "@/lib/usersGroups/types";
 import Gauge from "./Gauge";
-import { AverageCostOwnedCard, BuyButton } from "./TickerCostAndActions";
+import { AverageCostOwnedCard, BuyButton, SellPutButton } from "./TickerCostAndActions";
 
 // The quote + Sticky Monkey Score + gauges card, extracted from
 // TickerLookup's search-result rendering so it can be reused wherever a
@@ -75,12 +75,16 @@ export default function TickerQuoteCard({
             )}
           </div>
 
-          {/* Buy: its own column between Average Cost Owned and the
-              reserved/Score boxes, pinned to the bottom of the row
+          {/* Buy / Sell Put: their own column between Average Cost Owned
+              and the reserved/Score boxes, pinned to the bottom of the row
               (lg:items-stretch above makes every column here match the
-              tallest one's height). */}
-          <div className="flex shrink-0 flex-col justify-end">
+              tallest one's height). Buy opens a Buy/Sell-Shares match's
+              trade widget; Sell Put opens a Sell-Contracts (wheel) match's
+              -- see each button's own modal for what happens with no
+              matching accepted match yet. */}
+          <div className="flex shrink-0 flex-col justify-end gap-2">
             {userId && <BuyButton ticker={result.symbol} userId={userId} />}
+            {userId && <SellPutButton ticker={result.symbol} userId={userId} />}
           </div>
 
           <div className="flex w-full flex-col items-stretch gap-4 sm:w-auto sm:flex-row lg:flex-row">

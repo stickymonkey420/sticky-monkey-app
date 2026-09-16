@@ -6,6 +6,8 @@ import PaperHoldingsTable from "@/components/gameAfi/PaperHoldingsTable";
 import PortfolioDonutCard from "@/components/invest/PortfolioDonutCard";
 import HeadToHeadCard from "@/components/gameAfi/HeadToHeadCard";
 import { usePaperTradingAccount } from "@/lib/gameAfi/usePaperTrading";
+import { useContractTradingAccount } from "@/lib/gameAfi/useContractTrading";
+import SellContractWidget from "@/components/gameAfi/SellContractWidget";
 import { fetchChallenges, fetchMatchSummary } from "@/lib/gameAfi/challengeQueries";
 import { computeHoldings, fetchOpponentTrades } from "@/lib/gameAfi/paperQueries";
 import { appendCash, applyColorOverrides, groupHoldingsByTicker } from "@/lib/gameAfi/allocationCalc";
@@ -74,7 +76,15 @@ export default function GameAFiOverviewPage() {
   }, []);
 
   const hasMatch = selectedChallengeId !== null;
-  const { loading, holdings } = usePaperTradingAccount(hasMatch ? userId : null, selectedChallengeId);
+  const selectedMatch = matches.find((m) => m.id === selectedChallengeId);
+  const isContractsMode = selectedMatch?.strategy === "contracts";
+
+  // Only one of these two hooks is ever actually active for the currently
+  // selected match -- each no-ops (its effect never fires a fetch) when
+  // passed a null userId, same guard usePaperTradingAccount's own callers
+  // already rely on elsewhere (e.g. BuyPaperTradeModal).
+  const { loading, holdings } = usePaperTradingAccount(hasMatch && !isContractsMode ? userId : null, selectedChallengeId);
+  const contractAccount = useContractTradingAccount(hasMatch && isContractsMode ? userId : null, selectedChallengeId);
 
   // Opponent's holdings for the currently-selected match -- fetches their
   // raw trades via game_afi_match_opponent_trades, then reuses the exact
@@ -219,40 +229,57 @@ export default function GameAFiOverviewPage() {
             </select>
           </div>
 
-          <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-4">
-            <div className="md:col-span-1">
-              <PortfolioDonutCard
-                title={myTitle}
-                slices={allocation.slices}
-                total={allocation.total}
-                loading={loading}
-                emptyLabel="No open positions yet -- place your first trade to get started."
-                formatValue={formatMoney}
-                onColorChange={handleColorChange}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <HeadToHeadCard loading={summaryLoading} summary={matchSummary} holdings={holdings} />
-            </div>
-            <div className="md:col-span-1">
-              <PortfolioDonutCard
-                title={opponentTitle}
-                slices={opponentAllocation.slices}
-                total={opponentAllocation.total}
-                loading={oppHoldingsLoading}
-                emptyLabel="No open positions yet."
-                formatValue={formatMoney}
-                onColorChange={handleColorChange}
-              />
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">
-              Loading…
-            </div>
+          {isContractsMode ? (
+            // "Sell Contracts" (wheel) mode -- no shares, no opponent
+            // holdings/allocation donuts to show (game_afi_match_summary is
+            // holdings-value based and doesn't apply here yet -- opponent
+            // premium visibility is a fast-follow, see
+            // game_afi_match_opponent_contract_trades). Just this member's
+            // own contract-selling widget for now.
+            <SellContractWidget
+              loading={contractAccount.loading}
+              account={contractAccount.account}
+              trades={contractAccount.trades}
+              sell={contractAccount.sell}
+            />
           ) : (
-            <PaperHoldingsTable holdings={holdings} />
+            <>
+              <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-4">
+                <div className="md:col-span-1">
+                  <PortfolioDonutCard
+                    title={myTitle}
+                    slices={allocation.slices}
+                    total={allocation.total}
+                    loading={loading}
+                    emptyLabel="No open positions yet -- place your first trade to get started."
+                    formatValue={formatMoney}
+                    onColorChange={handleColorChange}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <HeadToHeadCard loading={summaryLoading} summary={matchSummary} holdings={holdings} />
+                </div>
+                <div className="md:col-span-1">
+                  <PortfolioDonutCard
+                    title={opponentTitle}
+                    slices={opponentAllocation.slices}
+                    total={opponentAllocation.total}
+                    loading={oppHoldingsLoading}
+                    emptyLabel="No open positions yet."
+                    formatValue={formatMoney}
+                    onColorChange={handleColorChange}
+                  />
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">
+                  Loading…
+                </div>
+              ) : (
+                <PaperHoldingsTable holdings={holdings} />
+              )}
+            </>
           )}
         </>
       )}

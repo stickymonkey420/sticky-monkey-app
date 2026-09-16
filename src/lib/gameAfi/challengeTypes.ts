@@ -26,6 +26,12 @@ export type ChallengeRow = {
   starting_balance: number;
   // Optional match end date, set by the challenger when sending the invite.
   expires_at: string | null;
+  // Chosen once by the challenger when sending the invite (see
+  // game_afi_send_challenge's p_strategy): "shares" is the original
+  // buy/sell-shares Trade Off; "contracts" is the simulated cash-secured-put
+  // "wheel" mode -- selling contracts only, no share buying at all. Defaults
+  // to "shares" for every match created before this field existed.
+  strategy: "shares" | "contracts";
 };
 
 // Both sides of one accepted head-to-head match -- see

@@ -7,6 +7,7 @@ import { computeAvgCost, fetchPaperTradesForTicker } from "@/lib/gameAfi/paperQu
 import { fetchActualAvgCostForTicker } from "@/lib/holdings/queries";
 import type { Role } from "@/lib/usersGroups/types";
 import BuyPaperTradeModal from "@/components/gameAfi/BuyPaperTradeModal";
+import SellContractModal from "@/components/gameAfi/SellContractModal";
 
 function isPaidTier(role: Role | null): boolean {
   return role === "paid" || role === "app_director";
@@ -106,6 +107,29 @@ export function BuyButton({ ticker, userId }: { ticker: string; userId: string }
         Buy
       </button>
       {buyOpen && <BuyPaperTradeModal userId={userId} ticker={ticker} onClose={() => setBuyOpen(false)} />}
+    </>
+  );
+}
+
+// "Sell Put" button, the "Sell Contracts" (wheel) mode's equivalent of
+// BuyButton above -- opens SellContractModal instead, which only offers
+// matches whose strategy is 'contracts'. Shown alongside Buy regardless of
+// whether the member has a contracts-mode match yet; same "show the
+// button, explain what's missing inside the modal" pattern BuyPaperTradeModal
+// already uses for "no accepted match yet".
+export function SellPutButton({ ticker, userId }: { ticker: string; userId: string }) {
+  const [sellOpen, setSellOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setSellOpen(true)}
+        className="shrink-0 rounded-md bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c]"
+      >
+        Sell Put
+      </button>
+      {sellOpen && <SellContractModal userId={userId} ticker={ticker} onClose={() => setSellOpen(false)} />}
     </>
   );
 }
