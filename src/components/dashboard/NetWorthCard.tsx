@@ -62,19 +62,29 @@ export default function NetWorthCard() {
         return;
       }
 
-      const [{ data: accountData, error: accountErr }, { data: tradeData, error: tradeErr }] = await Promise.all([
+      const [
+        { data: accountData, error: accountErr },
+        { data: tradeData, error: tradeErr },
+        { data: profileData },
+      ] = await Promise.all([
         supabase.from("manual_accounts").select("category,account_name,balance").eq("user_id", user.id),
         supabase
           .from("wheel_trades")
           .select("premium,contracts,status,account_type,entry_date,strike,trade_type")
           .eq("user_id", user.id),
+        supabase.from("profiles").select("account_types").eq("id", user.id).maybeSingle(),
       ]);
 
       if (cancelled) return;
       const accounts: ManualAccount[] = accountErr ? [] : accountData || [];
       setSummary(summarizeNetWorth(accounts));
       const trades: IncomeTableTrade[] = tradeErr ? [] : tradeData || [];
-      setIncomeRows(computeIncomeTable(trades));
+      // Only show Income rows for accounts the profile has actually enabled
+      // (profiles.account_types) -- a profile with none of brokerage/
+      // traditional/roth turned on shouldn't see three all-zero rows for
+      // accounts that don't apply to it.
+      const enabledAccountKeys: string[] = profileData?.account_types || [];
+      setIncomeRows(computeIncomeTable(trades, enabledAccountKeys));
       setHasData(accounts.length > 0 || trades.length > 0);
       setLoading(false);
     }
@@ -180,43 +190,48 @@ export default function NetWorthCard() {
           </div>
         </div>
 
-        <div className="mt-6">
-          <h4 className="mb-3 text-sm font-semibold text-text-primary">Income</h4>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  <th className="pb-2 pr-3 font-semibold">Account</th>
-                  <th className="pb-2 pr-3 font-semibold">Week</th>
-                  <th className="pb-2 pr-3 font-semibold">Month</th>
-                  <th className="pb-2 pr-3 font-semibold">YTD</th>
-                  <th className="pb-2 font-semibold">Collateral</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...incomeRows, PROJECTED_ROW].map((row) => (
-                  <tr key={row.account} className="border-t border-white/[0.06]">
-                    <td className={`py-2 pr-3 ${row.account === "Projected" ? "italic text-text-muted" : "font-medium text-text-primary"}`}>
-                      {row.account}
-                    </td>
-                    <td className="py-2 pr-3" style={{ color: "#3ddc97" }}>
-                      {loading ? "…" : money2(row.week)}
-                    </td>
-                    <td className="py-2 pr-3" style={{ color: "#3ddc97" }}>
-                      {loading ? "…" : money2(row.month)}
-                    </td>
-                    <td className="py-2 pr-3" style={{ color: "#f2c14e" }}>
-                      {loading ? "…" : Number.isNaN(row.ytd) ? "—" : money2(row.ytd)}
-                    </td>
-                    <td className="py-2" style={{ color: "#eb5757" }}>
-                      {loading ? "…" : row.collateral === null ? "—" : money2(row.collateral)}
-                    </td>
+        {/* Hidden entirely (loading excepted) when the profile has no
+            wheel-eligible account enabled -- a lone "Projected" placeholder
+            row with nothing above it to project isn't useful on its own. */}
+        {(loading || incomeRows.length > 0) && (
+          <div className="mt-6">
+            <h4 className="mb-3 text-sm font-semibold text-text-primary">Income</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                    <th className="pb-2 pr-3 font-semibold">Account</th>
+                    <th className="pb-2 pr-3 font-semibold">Week</th>
+                    <th className="pb-2 pr-3 font-semibold">Month</th>
+                    <th className="pb-2 pr-3 font-semibold">YTD</th>
+                    <th className="pb-2 font-semibold">Collateral</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {[...incomeRows, PROJECTED_ROW].map((row) => (
+                    <tr key={row.account} className="border-t border-white/[0.06]">
+                      <td className={`py-2 pr-3 ${row.account === "Projected" ? "italic text-text-muted" : "font-medium text-text-primary"}`}>
+                        {row.account}
+                      </td>
+                      <td className="py-2 pr-3" style={{ color: "#3ddc97" }}>
+                        {loading ? "…" : money2(row.week)}
+                      </td>
+                      <td className="py-2 pr-3" style={{ color: "#3ddc97" }}>
+                        {loading ? "…" : money2(row.month)}
+                      </td>
+                      <td className="py-2 pr-3" style={{ color: "#f2c14e" }}>
+                        {loading ? "…" : Number.isNaN(row.ytd) ? "—" : money2(row.ytd)}
+                      </td>
+                      <td className="py-2" style={{ color: "#eb5757" }}>
+                        {loading ? "…" : row.collateral === null ? "—" : money2(row.collateral)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -39,14 +39,27 @@ function isoWeekStart(d: Date): Date {
   return copy;
 }
 
-export function computeIncomeTable(trades: IncomeTableTrade[]): IncomeTableRow[] {
+// `enabledAccountKeys` is the signed-in profile's `account_types` (see
+// lib/usersGroups/types.ts) -- when provided, rows are limited to accounts
+// the profile actually has turned on, so a profile with no brokerage/
+// traditional/roth accounts enabled doesn't show three all-zero rows for
+// accounts that don't apply to it. Passing null/undefined keeps the old
+// "show all three" behavior for any caller that hasn't been updated yet.
+export function computeIncomeTable(
+  trades: IncomeTableTrade[],
+  enabledAccountKeys?: string[] | null
+): IncomeTableRow[] {
   const now = new Date();
   const weekStart = isoWeekStart(now);
   const monthKey = now.toISOString().slice(0, 7);
   const yearKey = now.toISOString().slice(0, 4);
 
+  const accountOrder = enabledAccountKeys
+    ? ACCOUNT_ORDER.filter((a) => enabledAccountKeys.includes(a.key))
+    : ACCOUNT_ORDER;
+
   const buckets: Record<string, { week: number; month: number; ytd: number; collateral: number }> = {};
-  ACCOUNT_ORDER.forEach((a) => {
+  accountOrder.forEach((a) => {
     buckets[a.key] = { week: 0, month: 0, ytd: 0, collateral: 0 };
   });
 
@@ -67,7 +80,7 @@ export function computeIncomeTable(trades: IncomeTableTrade[]): IncomeTableRow[]
     }
   });
 
-  return ACCOUNT_ORDER.map((a) => ({
+  return accountOrder.map((a) => ({
     account: a.label,
     week: buckets[a.key].week,
     month: buckets[a.key].month,
