@@ -1,6 +1,14 @@
 import { type EmailOtpType } from "@supabase/supabase-js";
 import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/auth/safeNext";
+
+// Types where "verified" is itself the news worth telling the user about --
+// these land on /auth/confirmed (a "You're confirmed!" style acknowledgement)
+// instead of going straight to `next`. Magic link ("magiclink"/"email") and
+// password recovery ("recovery") skip it: those destinations (dashboard,
+// update-password) already make it obvious the link worked.
+const CONFIRMATION_ACK_TYPES = new Set(["signup", "invite", "email_change"]);
 
 // Handles the confirmation link from every Supabase auth email (confirm
 // signup, magic link, password recovery, email change, invite). Supabase's
@@ -53,13 +61,6 @@ function escapeAttr(value: string): string {
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-}
-
-// `next` is reflected straight into a redirect target -- restrict it to an
-// in-app relative path so this can never become an open redirect.
-function safeNext(next: string | null): string {
-  if (next && next.startsWith("/") && !next.startsWith("//")) return next;
-  return "/dashboard";
 }
 
 function renderInterstitial(params: { token_hash: string; type: string; next: string }) {
@@ -130,7 +131,10 @@ export async function POST(request: NextRequest) {
       // (e.g. /update-password) only serves via GET -- producing a
       // confusing 405 right after a successful verification. 303 forces
       // the follow-up request to be a GET regardless of the original method.
-      return NextResponse.redirect(new URL(next, request.url), 303);
+      const destination = CONFIRMATION_ACK_TYPES.has(type)
+        ? `/auth/confirmed?type=${encodeURIComponent(type)}&next=${encodeURIComponent(next)}`
+        : next;
+      return NextResponse.redirect(new URL(destination, request.url), 303);
     }
   }
 
