@@ -81,7 +81,7 @@ export default function BuySellSharesCard({
   }
 
   return (
-    <div className="flex-1 rounded-2xl border border-card-border bg-card-bg p-5">
+    <div className="flex flex-1 flex-col rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-1 text-sm font-semibold text-text-primary">Buy / Sell Shares</h3>
       <p className="mb-3 text-xs text-text-muted">
         Pick up shares for a covered call, or unload shares from an assigned put.
@@ -104,37 +104,6 @@ export default function BuySellSharesCard({
         />
       </div>
 
-      {/* Same preview-box structure as Sell a Contract's stat grid (see
-          PreviewStat) -- a label/value grid instead of a sentence, so the
-          two cards read as one family. */}
-      {ticker && (
-        <div className="mt-2 min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-3">
-          {priceLoading && tickerPrice === null ? (
-            <span className="text-sm text-text-muted">Looking up {ticker}…</span>
-          ) : tickerPrice === null ? (
-            <span className="text-sm text-text-muted">{ticker} isn&apos;t in the tracked stock universe.</span>
-          ) : (
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
-              <PreviewStat label={`${ticker} Price`} value={money(tickerPrice)} color="#f5d020" />
-              {!loading && (
-                <PreviewStat
-                  label="Shares Owned"
-                  value={`${owned ?? 0}`}
-                  sub={owned && owned > 0 ? `of ${ticker}` : `no ${ticker} shares yet`}
-                />
-              )}
-              {!loading && owned !== null && owned > 0 && (
-                <PreviewStat
-                  label="Market Value"
-                  value={money(holdings.find((h) => h.ticker === ticker)?.marketValue ?? 0)}
-                  color="#3ddc97"
-                />
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
       <div className="mt-2 flex justify-end gap-2">
         <button
           type="button"
@@ -154,9 +123,48 @@ export default function BuySellSharesCard({
         </button>
       </div>
 
-      {tradeMessage && (
-        <p className={`mt-3 text-sm ${tradeMessage.ok ? "text-[#3ddc97]" : "text-[#ff5c7a]"}`}>{tradeMessage.text}</p>
-      )}
+      {/* mt-auto pins this to the card's bottom edge -- same visual anchor
+          as Sell a Contract's preview box, even when this card is
+          stretched taller than its own content (it sits to the left of
+          Sell a Contract in a flex row that equalizes both heights). */}
+      <div className="mt-auto pt-2">
+        {/* Same preview-box structure as Sell a Contract's stat grid (see
+            PreviewStat) -- a label/value grid instead of a sentence, so the
+            two cards read as one family. */}
+        {ticker && (
+          <div className="min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-3">
+            {priceLoading && tickerPrice === null ? (
+              <span className="text-sm text-text-muted">Looking up {ticker}…</span>
+            ) : tickerPrice === null ? (
+              <span className="text-sm text-text-muted">{ticker} isn&apos;t in the tracked stock universe.</span>
+            ) : (
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
+                <PreviewStat label={`${ticker} Price`} value={money(tickerPrice)} color="#f5d020" />
+                {!loading && (
+                  <PreviewStat
+                    label="Shares Owned"
+                    value={`${owned ?? 0}`}
+                    sub={owned && owned > 0 ? `of ${ticker}` : `no ${ticker} shares yet`}
+                  />
+                )}
+                {!loading && owned !== null && owned > 0 && (
+                  <PreviewStat
+                    label="Market Value"
+                    value={money(holdings.find((h) => h.ticker === ticker)?.marketValue ?? 0)}
+                    color="#3ddc97"
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tradeMessage && (
+          <p className={`mt-3 text-sm ${tradeMessage.ok ? "text-[#3ddc97]" : "text-[#ff5c7a]"}`}>
+            {tradeMessage.text}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
