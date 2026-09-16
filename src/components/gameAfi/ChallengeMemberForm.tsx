@@ -27,10 +27,6 @@ export default function ChallengeMemberForm({ onSent }: { onSent?: () => void } 
   const [message, setMessage] = useState("");
   const [startingBalance, setStartingBalance] = useState(DEFAULT_STARTING_BALANCE);
   const [expiresAt, setExpiresAt] = useState("");
-  // Chosen once here and locked in for the life of the match -- see
-  // game_afi_send_challenge's p_strategy. "contracts" is the simulated
-  // cash-secured-put "wheel" mode: selling contracts only, no share buying.
-  const [strategy, setStrategy] = useState<"shares" | "contracts">("shares");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendSuccess, setSendSuccess] = useState<string | null>(null);
@@ -52,13 +48,16 @@ export default function ChallengeMemberForm({ onSent }: { onSent?: () => void } 
 
     setSending(true);
     const supabase = createClient();
+    // No strategy argument -- every match now supports Buy/Sell Shares,
+    // CSPs, and covered calls together (the game_afi_challenges.strategy
+    // column is vestigial; the server default ('shares') is unused/ignored
+    // by the trading UI).
     const { error } = await sendChallenge(
       supabase,
       trimmedHandle,
       message,
       balance,
-      expiresAt ? new Date(`${expiresAt}T23:59:59`).toISOString() : null,
-      strategy
+      expiresAt ? new Date(`${expiresAt}T23:59:59`).toISOString() : null
     );
     setSending(false);
 
@@ -71,7 +70,6 @@ export default function ChallengeMemberForm({ onSent }: { onSent?: () => void } 
     setMessage("");
     setStartingBalance(DEFAULT_STARTING_BALANCE);
     setExpiresAt("");
-    setStrategy("shares");
     onSent?.();
   }
 
@@ -131,37 +129,10 @@ export default function ChallengeMemberForm({ onSent }: { onSent?: () => void } 
             className="w-full rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-muted"
           />
         </div>
-        <div>
-          <label className="mb-1.5 block text-xs text-text-muted">Strategy</label>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setStrategy("shares")}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-                strategy === "shares" ? "bg-white/10 text-text-primary" : "bg-white/5 text-text-muted hover:bg-white/10"
-              }`}
-            >
-              Buy/Sell Shares
-            </button>
-            <button
-              type="button"
-              onClick={() => setStrategy("contracts")}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-                strategy === "contracts" ? "bg-white/10 text-text-primary" : "bg-white/5 text-text-muted hover:bg-white/10"
-              }`}
-            >
-              Sell Contracts (Wheel)
-            </button>
-          </div>
-          <p className="mt-1.5 text-[11px] text-text-muted">
-            {strategy === "contracts"
-              ? "Simulated cash-secured puts only -- no shares are ever bought, even if \"assigned.\" Score is total premium collected. Premiums are a simplified simulation, not real options pricing."
-              : "The original Trade Off: buy and sell simulated shares from the curated ticker list."}
-          </p>
-        </div>
         <p className="text-[11px] text-text-muted">
           Whoever accepts is agreeing to these exact terms -- holdings during the match are expected to be bought
-          with this starting capital.
+          with this starting capital. Every match supports buying/selling shares, selling cash-secured puts, and
+          selling covered calls (curated ticker list, Friday expirations, real Friday-close assignment).
         </p>
         <div className="flex items-center gap-3">
           <button

@@ -8,13 +8,13 @@ import { formatMoney } from "@/lib/gameAfi/format";
 import type { ChallengeRow } from "@/lib/gameAfi/challengeTypes";
 import SellContractWidget from "./SellContractWidget";
 
-// Popup opened by the "Sell Put" button in the Stock Screener ticker
+// Popup opened by the "Sell Option" button in the Stock Screener ticker
 // card's action box -- the "Sell Contracts" (wheel) mode's equivalent of
-// BuyPaperTradeModal. Only offers matches whose strategy is 'contracts'
-// (set once at challenge creation -- see ChallengeMemberForm's strategy
-// toggle); a match set to Buy/Sell Shares never appears here, and vice
-// versa for BuyPaperTradeModal. Same overlay pattern (click the backdrop
-// to close).
+// BuyPaperTradeModal. Offers every accepted Trade Off match (same
+// unfiltered list BuyPaperTradeModal uses) -- Buy/Sell Shares, CSPs, and
+// covered calls are all available together on any match now, not a
+// strategy chosen once at challenge creation. Same overlay pattern (click
+// the backdrop to close).
 export default function SellContractModal({
   userId,
   ticker,
@@ -34,7 +34,7 @@ export default function SellContractModal({
       const supabase = createClient();
       const rows = await fetchChallenges(supabase);
       if (cancelled) return;
-      const accepted = rows.filter((c) => c.status === "accepted" && c.strategy === "contracts");
+      const accepted = rows.filter((c) => c.status === "accepted");
       setMatches(accepted);
       setSelectedChallengeId(accepted[0]?.id ?? null);
       setMatchesLoaded(true);
@@ -50,8 +50,8 @@ export default function SellContractModal({
 
   const activeMatch = matches.find((m) => m.id === selectedChallengeId);
   const title = activeMatch
-    ? `vs @${activeMatch.other_username ?? activeMatch.other_name ?? "Member"} -- Sell ${ticker} Put`
-    : `Sell ${ticker} Put`;
+    ? `vs @${activeMatch.other_username ?? activeMatch.other_name ?? "Member"} -- Sell ${ticker} Option`
+    : `Sell ${ticker} Option`;
 
   return (
     <div
@@ -73,16 +73,16 @@ export default function SellContractModal({
           </button>
         </div>
         <p className="mb-4 text-xs text-text-muted">
-          Practice selling cash-secured puts with simulated money and simulated premium -- no shares are ever bought,
-          even if a put like this would be assigned in real life.
+          Practice selling cash-secured puts and covered calls with simulated money and simulated premium.
+          Assignment is decided for real at Friday&apos;s closing price -- see the Settled Contracts table below.
         </p>
 
         {!matchesLoaded ? (
           <div className="text-sm text-text-muted">Loading…</div>
         ) : matches.length === 0 ? (
           <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">
-            You need an accepted Trade Off match set to &quot;Sell Contracts (Wheel)&quot; before you can trade here.
-            Send a challenge with that strategy on the Trade Off tab first.
+            You need an accepted Trade Off match before you can trade here. Send or accept a challenge on the
+            Standings tab first.
           </div>
         ) : (
           <>

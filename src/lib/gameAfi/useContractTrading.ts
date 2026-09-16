@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ensurePaperAccount } from "./paperQueries";
 import { fetchContractTrades, sellContract } from "./contractQueries";
 import type { PaperAccount } from "./paperTypes";
-import type { PaperContractTrade, SellContractResult } from "./contractTypes";
+import type { ContractType, PaperContractTrade, SellContractResult } from "./contractTypes";
 
 // Shared data layer for the "Sell Contracts" (wheel) mode's account +
 // contract-trade history + sell action -- mirrors usePaperTrading.ts's
@@ -44,9 +44,15 @@ export function useContractTradingAccount(userId: string | null, challengeId: st
   }, [userId, refresh]);
 
   const sell = useCallback(
-    async (ticker: string, strike: number, contracts: number, expDate: string): Promise<SellContractResult> => {
+    async (
+      ticker: string,
+      strike: number,
+      contracts: number,
+      expDate: string,
+      contractType: ContractType = "put"
+    ): Promise<SellContractResult> => {
       const supabase = createClient();
-      const result = await sellContract(supabase, ticker, strike, contracts, expDate, challengeId);
+      const result = await sellContract(supabase, ticker, strike, contracts, expDate, challengeId, contractType);
       if (result.ok) await refresh();
       return result;
     },

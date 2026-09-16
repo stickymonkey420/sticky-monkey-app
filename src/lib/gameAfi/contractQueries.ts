@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { PaperContractTrade, SellContractResult } from "./contractTypes";
+import type { ContractType, PaperContractTrade, SellContractResult } from "./contractTypes";
+
+const CONTRACT_COLUMNS =
+  "id,ticker,strike,contracts,premium,exp_date,sold_date,contract_type,status,settlement_price,settled_at";
 
 // challengeId null selects the practice account's contract trades; a
 // challenge id selects that match's contract trades only -- same scoping
@@ -11,7 +14,7 @@ export async function fetchContractTrades(
 ): Promise<PaperContractTrade[]> {
   let query = supabase
     .from("paper_contract_trades")
-    .select("id,ticker,strike,contracts,premium,exp_date,sold_date")
+    .select(CONTRACT_COLUMNS)
     .eq("user_id", userId)
     .order("sold_date", { ascending: false });
   query = challengeId === null ? query.is("challenge_id", null) : query.eq("challenge_id", challengeId);
@@ -41,13 +44,19 @@ export async function fetchOpponentContractTrades(
   return (data ?? []) as PaperContractTrade[];
 }
 
+// contractType defaults to "put" for callers that haven't been updated to
+// pass one explicitly. See game_afi_paper_sell_contract: puts lock cash
+// collateral, calls require enough uncovered shares held instead --
+// enforced server-side either way, and it also rejects any exp_date that
+// isn't a Friday.
 export async function sellContract(
   supabase: SupabaseClient,
   ticker: string,
   strike: number,
   contracts: number,
   expDate: string,
-  challengeId: string | null = null
+  challengeId: string | null = null,
+  contractType: ContractType = "put"
 ): Promise<SellContractResult> {
   const { data, error } = await supabase.rpc("game_afi_paper_sell_contract", {
     p_ticker: ticker,
@@ -55,6 +64,7 @@ export async function sellContract(
     p_contracts: contracts,
     p_exp_date: expDate,
     p_challenge_id: challengeId,
+    p_contract_type: contractType,
   });
   if (error || !data || data.length === 0) {
     console.error("sellContract failed", error);
@@ -64,19 +74,35 @@ export async function sellContract(
   return { ok: row.ok, message: row.message, premium: row.premium, newCashBalance: row.new_cash_balance };
 }
 
-// Collateral (strike * contracts * 100) locked by every still-open
-// (exp_date >= today) contract -- computed client-side from the same rows
-// fetchContractTrades already returns, the same way incomeTable.ts derives
-// real-CSP collateral, rather than a second round-trip RPC.
+// Cash collateral locked by every still-open PUT (strike * contracts * 100)
+// -- covered calls never lock cash (they consume share collateral instead,
+// see computeCoveredCallShares below), so they're excluded here. Uses the
+// server-computed `status` column now that settlement is real (a contract
+// past its exp_date but not yet swept by the hourly settlement job is still
+// `status='open'`, which is what actually matters for collateral).
 export function computeLockedCollateral(trades: PaperContractTrade[]): number {
-  const todayIso = new Date().toISOString().slice(0, 10);
-  return trades.filter((t) => t.exp_date >= todayIso).reduce((sum, t) => sum + t.strike * t.contracts * 100, 0);
+  return trades
+    .filter((t) => t.contract_type === "put" && t.status === "open")
+    .reduce((sum, t) => sum + t.strike * t.contracts * 100, 0);
 }
 
-// Total premium ever collected, expired or not -- this mode's score (see
-// ChallengeMemberForm's strategy toggle copy): premium is credited and kept
-// at sale time regardless of what happens at expiration, since there's no
-// assignment simulation at all.
+// Shares currently obligated to open covered calls (contracts * 100),
+// grouped by ticker -- mirrors the coverage check game_afi_paper_sell_contract
+// itself runs server-side before allowing a new call, surfaced here so the
+// UI can show a member how many of their shares are already spoken for.
+export function computeCoveredCallShares(trades: PaperContractTrade[]): Map<string, number> {
+  const covered = new Map<string, number>();
+  for (const t of trades) {
+    if (t.contract_type !== "call" || t.status !== "open") continue;
+    covered.set(t.ticker, (covered.get(t.ticker) ?? 0) + t.contracts * 100);
+  }
+  return covered;
+}
+
+// Total premium ever collected, expired or assigned -- premium is credited
+// and kept at sale time regardless of outcome at expiration (that's true for
+// real options too: assignment changes your shares/cash from the strike,
+// not the premium you already pocketed).
 export function computeTotalPremium(trades: PaperContractTrade[]): number {
   return trades.reduce((sum, t) => sum + t.premium, 0);
 }

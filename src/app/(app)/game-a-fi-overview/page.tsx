@@ -76,15 +76,15 @@ export default function GameAFiOverviewPage() {
   }, []);
 
   const hasMatch = selectedChallengeId !== null;
-  const selectedMatch = matches.find((m) => m.id === selectedChallengeId);
-  const isContractsMode = selectedMatch?.strategy === "contracts";
 
-  // Only one of these two hooks is ever actually active for the currently
-  // selected match -- each no-ops (its effect never fires a fetch) when
-  // passed a null userId, same guard usePaperTradingAccount's own callers
-  // already rely on elsewhere (e.g. BuyPaperTradeModal).
-  const { loading, holdings } = usePaperTradingAccount(hasMatch && !isContractsMode ? userId : null, selectedChallengeId);
-  const contractAccount = useContractTradingAccount(hasMatch && isContractsMode ? userId : null, selectedChallengeId);
+  // Both hooks are always active for the currently selected match now --
+  // Buy/Sell Shares, CSPs, and covered calls all coexist on every match, so
+  // there's no more exclusive strategy branch to gate either one behind.
+  // Each still no-ops (its effect never fires a fetch) when passed a null
+  // userId, same guard usePaperTradingAccount's own callers already rely on
+  // elsewhere (e.g. BuyPaperTradeModal).
+  const { loading, holdings } = usePaperTradingAccount(hasMatch ? userId : null, selectedChallengeId);
+  const contractAccount = useContractTradingAccount(hasMatch ? userId : null, selectedChallengeId);
 
   // Opponent's holdings for the currently-selected match -- fetches their
   // raw trades via game_afi_match_opponent_trades, then reuses the exact
@@ -229,58 +229,58 @@ export default function GameAFiOverviewPage() {
             </select>
           </div>
 
-          {isContractsMode ? (
-            // "Sell Contracts" (wheel) mode -- no shares, no opponent
-            // holdings/allocation donuts to show (game_afi_match_summary is
-            // holdings-value based and doesn't apply here yet -- opponent
-            // premium visibility is a fast-follow, see
-            // game_afi_match_opponent_contract_trades). Just this member's
-            // own contract-selling widget for now.
+          {/* Shares: allocation donuts, Head to Head/Trade Off summary card,
+              and the holdings table -- unchanged from before the full-wheel
+              expansion. */}
+          <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-4">
+            <div className="md:col-span-1">
+              <PortfolioDonutCard
+                title={myTitle}
+                slices={allocation.slices}
+                total={allocation.total}
+                loading={loading}
+                emptyLabel="No open positions yet -- place your first trade to get started."
+                formatValue={formatMoney}
+                onColorChange={handleColorChange}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <HeadToHeadCard loading={summaryLoading} summary={matchSummary} holdings={holdings} />
+            </div>
+            <div className="md:col-span-1">
+              <PortfolioDonutCard
+                title={opponentTitle}
+                slices={opponentAllocation.slices}
+                total={opponentAllocation.total}
+                loading={oppHoldingsLoading}
+                emptyLabel="No open positions yet."
+                formatValue={formatMoney}
+                onColorChange={handleColorChange}
+              />
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">
+              Loading…
+            </div>
+          ) : (
+            <PaperHoldingsTable holdings={holdings} />
+          )}
+
+          {/* Contracts (wheel): CSPs and covered calls now coexist with
+              shares on every match -- see the full-wheel-with-assignment
+              migration -- so this renders below the shares section instead
+              of replacing it. */}
+          <div className="mt-6">
+            <h2 className="mb-3 text-base font-semibold text-text-primary">Sell Contracts (Wheel)</h2>
             <SellContractWidget
               loading={contractAccount.loading}
               account={contractAccount.account}
               trades={contractAccount.trades}
               sell={contractAccount.sell}
             />
-          ) : (
-            <>
-              <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-4">
-                <div className="md:col-span-1">
-                  <PortfolioDonutCard
-                    title={myTitle}
-                    slices={allocation.slices}
-                    total={allocation.total}
-                    loading={loading}
-                    emptyLabel="No open positions yet -- place your first trade to get started."
-                    formatValue={formatMoney}
-                    onColorChange={handleColorChange}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <HeadToHeadCard loading={summaryLoading} summary={matchSummary} holdings={holdings} />
-                </div>
-                <div className="md:col-span-1">
-                  <PortfolioDonutCard
-                    title={opponentTitle}
-                    slices={opponentAllocation.slices}
-                    total={opponentAllocation.total}
-                    loading={oppHoldingsLoading}
-                    emptyLabel="No open positions yet."
-                    formatValue={formatMoney}
-                    onColorChange={handleColorChange}
-                  />
-                </div>
-              </div>
-
-              {loading ? (
-                <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">
-                  Loading…
-                </div>
-              ) : (
-                <PaperHoldingsTable holdings={holdings} />
-              )}
-            </>
-          )}
+          </div>
         </>
       )}
     </>
