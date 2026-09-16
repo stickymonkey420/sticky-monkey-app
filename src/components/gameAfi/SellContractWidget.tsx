@@ -112,6 +112,18 @@ export default function SellContractWidget({
     [tickerPrice, strikeInput, contractsInput, expInput, contractType]
   );
 
+  // Put collateral is a dollar amount (strike * contracts * 100, locked from
+  // paper cash -- see computeLockedCollateral); a covered call locks shares
+  // instead, so its "collateral" is a share count, not a dollar figure.
+  const strikeNum = Number(strikeInput);
+  const contractsNum = Number(contractsInput) || 1;
+  const previewCollateral =
+    strikeNum > 0
+      ? contractType === "put"
+        ? { kind: "cash" as const, amount: strikeNum * contractsNum * 100 }
+        : { kind: "shares" as const, amount: contractsNum * 100 }
+      : null;
+
   async function handleSell() {
     const ticker = tickerInput.trim().toUpperCase();
     const strike = Number(strikeInput);
@@ -259,12 +271,26 @@ export default function SellContractWidget({
             ) : (
               <span className="text-text-muted">
                 {tickerInput.trim().toUpperCase()} current price:{" "}
-                <span className="font-semibold text-text-primary">{money(tickerPrice)}</span>
+                <span className="font-semibold" style={{ color: "#f5d020" }}>
+                  {money(tickerPrice)}
+                </span>
                 {previewPremium !== null && (
                   <>
                     {" "}
                     · Est. premium: <span className="font-semibold text-[#3ddc97]">{money(previewPremium)}</span>{" "}
                     for {Number(contractsInput) || 1} contract{Number(contractsInput) === 1 ? "" : "s"}
+                  </>
+                )}
+                {previewCollateral !== null && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <span className="font-semibold" style={{ color: "#ff9d4d" }}>
+                      {previewCollateral.kind === "cash"
+                        ? `${money(previewCollateral.amount)} collateral`
+                        : `${previewCollateral.amount} shares`}{" "}
+                      needed
+                    </span>
                   </>
                 )}
               </span>
