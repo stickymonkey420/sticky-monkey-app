@@ -4,13 +4,10 @@ import ChallengeMemberForm from "./ChallengeMemberForm";
 
 // Head-to-head challenges tab (Game-a-Fi page). Used to also list every
 // Received/Sent challenge with Accept/Decline/Cancel actions here, but per
-// your call that's redundant: Accept/Decline for a received invite already
-// lives in the Notifications bell (NotificationsModal.tsx, which filters
-// fetchChallenges() to direction === "received" && status === "pending"),
-// and a status summary of pending invites (sent or received) now lives on
-// the Dashboard's "Funny Money" card (PaperBalancesCard.tsx) instead.
-// Cancelling an already-sent pending invite lost its dedicated UI along
-// with the Sent list -- there's no other surface for that action right now.
+// your call that's redundant: Accept/Decline for a received invite lives in
+// both the Notifications bell (NotificationsModal.tsx) and the Dashboard's
+// Scoreboard card (ScoreboardCard.tsx, formerly "Funny Money"), which also
+// covers Cancel for a pending sent invite -- so this tab is just the form.
 export default function ChallengesPanel() {
   return <ChallengeMemberForm />;
 }

@@ -9,7 +9,7 @@ import { computeWalletOverview, type WalletOverview } from "@/lib/wallet/calc";
 import { useProfile } from "@/lib/profile/ProfileProvider";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
 import InvestmentAlertCard from "./InvestmentAlertCard";
-import PaperBalancesCard from "./PaperBalancesCard";
+import ScoreboardCard from "./ScoreboardCard";
 import QuickAccessCard from "./QuickAccessCard";
 
 const EMPTY_OVERVIEW: WalletOverview = {
@@ -113,7 +113,7 @@ export default function ProfileSummaryCard() {
 
       {/* Funny Money -- Game-a-Fi paper cash across the practice account
           and every accepted Head to Head match. */}
-      <PaperBalancesCard />
+      <ScoreboardCard />
 
       {/* Investment Alert -- same component used elsewhere, restyled as a
           nested panel box rather than a full-width standalone card. */}
