@@ -64,6 +64,17 @@ export async function cancelChallenge(supabase: SupabaseClient, challengeId: str
   return { error: readableError(error) };
 }
 
+// Deletes a Trade Off competition outright -- either participant, any
+// status (pending/accepted/declined/cancelled). Unlike cancelChallenge
+// (challenger-only, pending-only, sets status='cancelled'), this hard-
+// deletes the row; the match's simulated cash/holdings/contract history
+// (paper_accounts/paper_trades/paper_contract_trades) cascades away with
+// it. See game_afi_delete_challenge.
+export async function deleteChallenge(supabase: SupabaseClient, challengeId: string): Promise<ChallengeActionResult> {
+  const { error } = await supabase.rpc("game_afi_delete_challenge", { p_challenge_id: challengeId });
+  return { error: readableError(error) };
+}
+
 export async function fetchChallenges(supabase: SupabaseClient): Promise<ChallengeRow[]> {
   const { data, error } = await supabase.rpc("game_afi_list_challenges");
   if (error) {

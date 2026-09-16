@@ -6,6 +6,7 @@ import { money } from "@/lib/dashboard/netWorth";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
 import {
   cancelChallenge,
+  deleteChallenge,
   fetchChallenges,
   fetchMatchSummary,
   respondToChallenge,
@@ -39,7 +40,13 @@ type ScoreRow = {
 // declining refreshes both the invite list AND the scores below (a newly
 // accepted match gets its own row). Sent invites get their own Cancel
 // action here too -- that had no home since the old Head to Head tab's
-// Sent list was removed.
+// Sent list was removed. Each accepted match also gets a Delete action
+// (game_afi_delete_challenge) -- per your call to let people get out of a
+// competition entirely for now; it's a hard delete (with a confirm), not
+// just hiding the row, since there was previously no way to end an already-
+// accepted match at all (Cancel only ever applied to a still-pending sent
+// invite).
+
 export default function ScoreboardCard() {
   const [rows, setRows] = useState<ScoreRow[]>([]);
   const [pendingReceived, setPendingReceived] = useState<ChallengeRow[]>([]);
@@ -100,6 +107,21 @@ export default function ScoreboardCard() {
     setActioningId(id);
     const supabase = createClient();
     await cancelChallenge(supabase, id);
+    setActioningId(null);
+    load();
+  }
+
+  // Ends an accepted competition outright -- per your call to give people
+  // a way to get out of one "for now" (there was no way to end one once
+  // accepted; the existing Cancel button only ever applied to a still-
+  // pending sent invite). Confirms first since this permanently deletes
+  // the match's paper trade history along with it (see
+  // game_afi_delete_challenge's cascade).
+  async function handleDelete(id: string, opponentLabel: string) {
+    if (!window.confirm(`Delete this competition against ${opponentLabel}? This can't be undone.`)) return;
+    setActioningId(id);
+    const supabase = createClient();
+    await deleteChallenge(supabase, id);
     setActioningId(null);
     load();
   }
@@ -227,11 +249,21 @@ export default function ScoreboardCard() {
                       {money(r.opponentTotal)}
                     </span>
                   </div>
-                  <div
-                    className="text-right text-xs text-text-muted"
-                    style={{ color: meAhead ? WINNING_COLOR : oppAhead ? LOSING_COLOR : undefined }}
-                  >
-                    {meAhead || oppAhead ? `${Math.abs(pct).toFixed(1)}% ${meAhead ? "ahead" : "behind"}` : "Tied"}
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="text-xs text-text-muted"
+                      style={{ color: meAhead ? WINNING_COLOR : oppAhead ? LOSING_COLOR : undefined }}
+                    >
+                      {meAhead || oppAhead ? `${Math.abs(pct).toFixed(1)}% ${meAhead ? "ahead" : "behind"}` : "Tied"}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={actioningId === r.key}
+                      onClick={() => handleDelete(r.key, r.opponentLabel)}
+                      className="text-xs text-text-muted underline decoration-dotted hover:text-[#ff5c7a] disabled:opacity-60"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               );
