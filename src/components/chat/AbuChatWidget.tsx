@@ -89,7 +89,7 @@ const GLOBAL_CARDS: Record<string, CardLocator> = {
 };
 
 // Verbatim from the Webflow footer script's injected <style> block.
-const ABU_CSS = `.abu-figure{width:100%;height:100%;display:block;overflow:visible;}.abu-eyelid{transform:scaleY(0);}.abu-mouth-open{opacity:0;}.abu-mouth-closed{opacity:1;}.abu-laser-dot{opacity:0;filter:drop-shadow(0 0 4px #ff3b3b);transition:opacity .2s ease;}.abu-thinking-dots ellipse{opacity:0;}.abu-arm-r-rest{opacity:1;transition:opacity .25s ease;}.abu-arm-r-point{opacity:0;transition:opacity .25s ease;}#abu-launcher .abu-eyelid,#abu-stage .abu-eyelid{animation:abuBlink 4.6s infinite;}#abu-launcher .abu-body-group,#abu-stage .abu-body-group{animation:abuBreathe 3.2s ease-in-out infinite;}@keyframes abuBlink{0%,90%,100%{transform:scaleY(0);}94%{transform:scaleY(1);}}@keyframes abuBreathe{0%,100%{transform:translateY(0);}50%{transform:translateY(-1.5px);}}#abu-stage.state-talking .abu-mouth-open{animation:abuTalk .24s steps(1) infinite;}#abu-stage.state-talking .abu-mouth-closed{animation:abuTalkInv .24s steps(1) infinite;}@keyframes abuTalk{0%,100%{opacity:0;}50%{opacity:1;}}@keyframes abuTalkInv{0%,100%{opacity:1;}50%{opacity:0;}}#abu-stage.state-thinking .abu-head-group{animation:abuThink 1.6s ease-in-out infinite;}@keyframes abuThink{0%,100%{transform:rotate(0deg);}50%{transform:rotate(3deg);}}#abu-stage.state-thinking .abu-thinking-dots ellipse{animation:abuDots 1.4s infinite;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(2){animation-delay:.2s;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(3){animation-delay:.4s;}#abu-stage.state-pointing .abu-arm-r-point{opacity:1;}#abu-stage.state-pointing .abu-arm-r-rest{opacity:0;}#abu-stage.state-pointing .abu-laser-dot{opacity:1;animation:abuLaser .9s ease-in-out infinite;}@keyframes abuLaser{0%,100%{opacity:.6;}50%{opacity:1;}}#abu-stage.state-entering .abu-figure{animation:abuEnter .6s cubic-bezier(.34,1.56,.64,1) both;}@keyframes abuEnter{0%{transform:translateY(70px) scale(.7);opacity:0;}60%{transform:translateY(-8px) scale(1.05);opacity:1;}100%{transform:translateY(0) scale(1);}}#abu-stage-wrap{width:100%;height:132px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:center;background:radial-gradient(ellipse at center 85%, rgba(245,208,32,0.08), transparent 70%);border-bottom:1px solid rgba(255,255,255,0.08);}#abu-stage{width:150px;height:150px;margin-bottom:-14px;}#abu-launcher .abu-figure{transform:scale(1.9) translateY(6px);}.abu-icon-btn{cursor:pointer;color:#8a90a8;font-size:15px;line-height:1;padding:4px 6px;border-radius:6px;user-select:none;}.abu-icon-btn:hover{background:rgba(255,255,255,0.08);color:#eef0f7;}.abu-icon-btn.active{color:#f5d020;}@keyframes abuMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,59,0.5);}50%{box-shadow:0 0 0 6px rgba(255,59,59,0);}}#abu-mic.listening{background:#ff3b3b !important;color:#fff !important;animation:abuMicPulse 1s infinite;}@keyframes abuCardPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,208,32,.65),0 0 0 0 rgba(245,208,32,.35);}50%{box-shadow:0 0 0 6px rgba(245,208,32,.45),0 0 26px 10px rgba(245,208,32,.25);}}.abu-card-glow{animation:abuCardPulse 1.3s ease-in-out 2;border-radius:12px;position:relative;z-index:5;}#abu-launcher.abu-dragging,#abu-panel.abu-dragging{cursor:grabbing !important;}`;
+const ABU_CSS = `.abu-figure{width:100%;height:100%;display:block;overflow:visible;}.abu-eyelid{transform:scaleY(0);}.abu-mouth-open{opacity:0;}.abu-mouth-closed{opacity:1;}.abu-laser-dot{opacity:0;filter:drop-shadow(0 0 4px #ff3b3b);transition:opacity .2s ease;}.abu-thinking-dots ellipse{opacity:0;}.abu-arm-r-rest{opacity:1;transition:opacity .25s ease;}.abu-arm-r-point{opacity:0;transition:opacity .25s ease;}#abu-launcher .abu-eyelid,#abu-stage .abu-eyelid{animation:abuBlink 4.6s infinite;}#abu-launcher .abu-body-group,#abu-stage .abu-body-group{animation:abuBreathe 3.2s ease-in-out infinite;}@keyframes abuBlink{0%,90%,100%{transform:scaleY(0);}94%{transform:scaleY(1);}}@keyframes abuBreathe{0%,100%{transform:translateY(0);}50%{transform:translateY(-1.5px);}}#abu-stage.state-talking .abu-mouth-open{animation:abuTalk .24s steps(1) infinite;}#abu-stage.state-talking .abu-mouth-closed{animation:abuTalkInv .24s steps(1) infinite;}@keyframes abuTalk{0%,100%{opacity:0;}50%{opacity:1;}}@keyframes abuTalkInv{0%,100%{opacity:1;}50%{opacity:0;}}#abu-stage.state-thinking .abu-head-group{animation:abuThink 1.6s ease-in-out infinite;}@keyframes abuThink{0%,100%{transform:rotate(0deg);}50%{transform:rotate(3deg);}}#abu-stage.state-thinking .abu-thinking-dots ellipse{animation:abuDots 1.4s infinite;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(2){animation-delay:.2s;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(3){animation-delay:.4s;}#abu-stage.state-pointing .abu-arm-r-point{opacity:1;}#abu-stage.state-pointing .abu-arm-r-rest{opacity:0;}#abu-stage.state-pointing .abu-laser-dot{opacity:1;animation:abuLaser .9s ease-in-out infinite;}@keyframes abuLaser{0%,100%{opacity:.6;}50%{opacity:1;}}#abu-stage.state-entering .abu-figure{animation:abuEnter .6s cubic-bezier(.34,1.56,.64,1) both;}@keyframes abuEnter{0%{transform:translateY(70px) scale(.7);opacity:0;}60%{transform:translateY(-8px) scale(1.05);opacity:1;}100%{transform:translateY(0) scale(1);}}#abu-stage-wrap{width:100%;height:132px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:center;background:radial-gradient(ellipse at center 85%, rgba(245,208,32,0.08), transparent 70%);border-bottom:1px solid rgba(255,255,255,0.08);}#abu-stage{width:150px;height:150px;margin-bottom:-14px;}#abu-launcher .abu-figure{transform:scale(1.9) translateY(6px);}.abu-icon-btn{cursor:pointer;color:#8a90a8;font-size:15px;line-height:1;padding:4px 6px;border-radius:6px;user-select:none;}.abu-icon-btn:hover{background:rgba(255,255,255,0.08);color:#eef0f7;}.abu-icon-btn.active{color:#f5d020;}@keyframes abuMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,59,0.5);}50%{box-shadow:0 0 0 6px rgba(255,59,59,0);}}#abu-mic.listening{background:#ff3b3b !important;color:#fff !important;animation:abuMicPulse 1s infinite;}@keyframes abuCardPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,208,32,.65),0 0 0 0 rgba(245,208,32,.35);}50%{box-shadow:0 0 0 6px rgba(245,208,32,.45),0 0 26px 10px rgba(245,208,32,.25);}}.abu-card-glow{animation:abuCardPulse 1.3s ease-in-out 2;border-radius:12px;position:relative;z-index:5;}#abu-launcher.abu-dragging{cursor:grabbing !important;}`;
 
 // The two "clean" illustrated Abu-face stills the user had made in Webflow
 // (open-eyed / closed-eyed), hosted permanently on Webflow's own asset CDN
@@ -265,7 +265,6 @@ function pickBrowserVoice(): SpeechSynthesisVoice | null {
 }
 
 const LAUNCHER_POS_KEY = "abu_launcher_pos";
-const PANEL_POS_KEY = "abu_panel_pos";
 
 type SavedPos = { left: number; top: number };
 
@@ -309,16 +308,21 @@ function applySavedPos(el: HTMLElement, key: string, fallbackW: number, fallback
   el.style.top = `${clamp(pos.top, 4, maxTop)}px`;
 }
 
-// Makes `el` draggable by pressing and dragging on `handle` (which may be
-// `el` itself, e.g. the launcher bubble, or a child of it, e.g. the panel's
-// header bar). Uses the Pointer Events API so mouse, touch, and pen all work
-// through one code path -- this is the "single click hold and drag" the user
-// asked for. A small movement threshold keeps a plain click/dblclick on the
-// handle (or a button inside it, like the panel's close/mute icons) working
-// normally when the pointer doesn't actually move. Returns a mutable state
-// object whose `justDragged` flag callers can check to suppress the
-// trailing click/dblclick a real drag gesture leaves behind.
-function makeDraggable(el: HTMLElement, handle: HTMLElement, onDragEnd?: () => void): { justDragged: boolean } {
+// Makes `el` draggable by pressing and dragging on `handle` (`el` itself, in
+// practice -- the launcher bubble). Uses the Pointer Events API so mouse,
+// touch, and pen all work through one code path -- this is the "single
+// click hold and drag" the user asked for. A small movement threshold keeps
+// a plain click/dblclick on the handle working normally when the pointer
+// doesn't actually move. `onDrag` fires on every qualifying move (so a
+// caller -- the panel, attached to the launcher -- can follow along live);
+// `onDragEnd` fires once, only after an actual drag (not a plain click).
+// Returns a mutable state object whose `justDragged` flag callers can check
+// to suppress the trailing click/dblclick a real drag gesture leaves behind.
+function makeDraggable(
+  el: HTMLElement,
+  handle: HTMLElement,
+  opts: { onDrag?: () => void; onDragEnd?: () => void } = {}
+): { justDragged: boolean } {
   const THRESHOLD = 6;
   const state = { dragging: false, moved: false, justDragged: false };
   let startX = 0;
@@ -361,6 +365,7 @@ function makeDraggable(el: HTMLElement, handle: HTMLElement, onDragEnd?: () => v
     const maxTop = Math.max(4, window.innerHeight - rect.height - 4);
     el.style.left = `${clamp(startLeft + dx, 4, maxLeft)}px`;
     el.style.top = `${clamp(startTop + dy, 4, maxTop)}px`;
+    opts.onDrag?.();
   });
 
   function endDrag(e: PointerEvent) {
@@ -378,7 +383,7 @@ function makeDraggable(el: HTMLElement, handle: HTMLElement, onDragEnd?: () => v
       } catch {
         // ignore
       }
-      onDragEnd?.();
+      opts.onDragEnd?.();
     }
     state.moved = false;
   }
@@ -387,6 +392,36 @@ function makeDraggable(el: HTMLElement, handle: HTMLElement, onDragEnd?: () => v
   handle.addEventListener("lostpointercapture", endDrag);
 
   return state;
+}
+
+// Positions the (fixed-position) panel snug against the launcher's current
+// spot -- above it when there's room, below it otherwise, and hugging
+// whichever side of the screen the launcher is nearer to -- so the panel
+// visually stays "attached" to the launcher no matter where it's been
+// dragged. Called once when the panel opens, and continuously while the
+// launcher is being dragged (if the panel happens to be open at the time),
+// per the user's preferred "it just goes where the icon goes" behavior.
+function positionPanelNearLauncher(launcher: HTMLElement, panel: HTMLElement): void {
+  const lRect = launcher.getBoundingClientRect();
+  const pRect = panel.getBoundingClientRect();
+  const pw = pRect.width || 320;
+  const ph = pRect.height || 480;
+  const margin = 12;
+  const gap = 12;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  const launcherCenterX = lRect.left + lRect.width / 2;
+  let left = launcherCenterX > vw / 2 ? lRect.right - pw : lRect.left;
+  left = clamp(left, margin, Math.max(margin, vw - pw - margin));
+
+  let top = lRect.top - ph - gap >= margin ? lRect.top - ph - gap : Math.min(lRect.bottom + gap, vh - ph - margin);
+  top = clamp(top, margin, Math.max(margin, vh - ph - margin));
+
+  panel.style.right = "auto";
+  panel.style.bottom = "auto";
+  panel.style.left = `${left}px`;
+  panel.style.top = `${top}px`;
 }
 
 // Builds the whole widget (launcher + panel), wires every handler, and
@@ -420,18 +455,31 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
   document.body.appendChild(launcher);
   document.body.appendChild(panel);
 
-  // Restore wherever the user last dragged the launcher/panel to (if
-  // anywhere) -- otherwise they stay at their default docked corner.
-  applySavedPos(launcher, LAUNCHER_POS_KEY, 60, 60);
-  applySavedPos(panel, PANEL_POS_KEY, 320, 480);
+  // Declared up here (rather than alongside the rest of mountAbu's other
+  // `let`s below) so the drag wiring just below -- which needs to check
+  // whether the panel is currently open -- can close over it without a
+  // used-before-declared error.
+  let panelOpen = false;
 
-  // Let the user drag the launcher bubble, and the open panel by its header
-  // bar, to anywhere on the page (click/tap, hold, and drag). Positions
-  // persist across visits via localStorage.
-  const launcherDrag = makeDraggable(launcher, launcher, () => saveSavedPos(LAUNCHER_POS_KEY, launcher));
-  const headerEl = panel.firstElementChild as HTMLDivElement;
-  headerEl.style.cursor = "grab";
-  makeDraggable(panel, headerEl, () => saveSavedPos(PANEL_POS_KEY, panel));
+  // Restore wherever the user last dragged the launcher to (if anywhere) --
+  // otherwise it stays at its default docked corner.
+  applySavedPos(launcher, LAUNCHER_POS_KEY, 60, 60);
+
+  // Let the user pick up the launcher bubble and drop it anywhere on the
+  // page (click/tap, hold, and drag). The panel isn't independently
+  // draggable -- per the user's preferred behavior, it just stays attached
+  // to wherever the launcher is: it re-anchors on every drag frame (if
+  // open) and again once the drag ends, and re-anchors fresh each time it's
+  // opened. Launcher position persists across visits via localStorage.
+  const launcherDrag = makeDraggable(launcher, launcher, {
+    onDrag: () => {
+      if (panelOpen) positionPanelNearLauncher(launcher, panel);
+    },
+    onDragEnd: () => {
+      saveSavedPos(LAUNCHER_POS_KEY, launcher);
+      if (panelOpen) positionPanelNearLauncher(launcher, panel);
+    },
+  });
 
   // Blink loop for the launcher's photo icon: same 4.6s cadence as the old
   // vector eyelid animation, briefly swapping to the closed-eyes frame.
@@ -454,7 +502,6 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
   const stageEl = panel.querySelector<HTMLDivElement>("#abu-stage")!;
 
   const history: ChatHistoryEntry[] = [];
-  let panelOpen = false;
   let waiting = false;
   let muted = false;
   let currentAudio: HTMLAudioElement | null = null;
@@ -706,6 +753,7 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
       closePanel();
     } else {
       panelOpen = true;
+      positionPanelNearLauncher(launcher, panel);
       panel.style.display = "flex";
       setStage("state-entering");
       setTimeout(() => {
