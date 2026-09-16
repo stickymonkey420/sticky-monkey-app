@@ -5,12 +5,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import AuthCard from "@/components/auth/AuthCard";
+import { HANDLE_HINT, isHandleTakenError, validateHandle } from "@/lib/profile/handle";
 
 const inputClass =
   "w-full rounded-lg border border-card-border bg-white/5 px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted/60 focus:border-[#4f8cff] focus:outline-none";
 
 export default function SignUpPage() {
   const router = useRouter();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [handle, setHandle] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -22,6 +26,15 @@ export default function SignUpPage() {
     e.preventDefault();
     setError(null);
 
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("First and last name are required.");
+      return;
+    }
+    const handleError = validateHandle(handle);
+    if (handleError) {
+      setError(handleError);
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Passwords don't match.");
       return;
@@ -38,12 +51,29 @@ export default function SignUpPage() {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/confirm?next=/dashboard`,
+        // Read by the handle_new_user() trigger (public.handle_new_user)
+        // to seed profiles.name/username on insert -- "name" is the
+        // combined display name used everywhere else in the app (Users &
+        // Groups, TopBar, etc.), first_name/last_name ride along in
+        // auth metadata only, for future use. "handle" is optional --
+        // an empty string is coalesced to NULL by the trigger, same as
+        // clearing it later in My Profile.
+        data: {
+          name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          handle: handle.trim(),
+        },
       },
     });
     setLoading(false);
 
     if (error) {
-      setError(error.message);
+      // A taken handle fails the whole signUp() call (the handle_new_user
+      // trigger runs inside the same transaction as the auth.users
+      // insert, so a unique-index violation there rolls the signup back
+      // entirely -- no orphaned account, safe to just let them retry).
+      setError(isHandleTakenError(error.message) ? "That handle is already taken. Try another." : error.message);
       return;
     }
 
@@ -71,6 +101,55 @@ export default function SignUpPage() {
   return (
     <AuthCard title="Create an account" subtitle="Get started with Sticky Monkey Finance.">
       <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <label className="mb-1.5 block text-xs font-medium text-text-muted" htmlFor="first-name">
+              First name
+            </label>
+            <input
+              id="first-name"
+              type="text"
+              required
+              autoComplete="given-name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className={inputClass}
+              placeholder="Gary"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="mb-1.5 block text-xs font-medium text-text-muted" htmlFor="last-name">
+              Last name
+            </label>
+            <input
+              id="last-name"
+              type="text"
+              required
+              autoComplete="family-name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className={inputClass}
+              placeholder="Culwell"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-text-muted" htmlFor="handle">
+            Handle <span className="text-text-muted/60">(optional)</span>
+          </label>
+          <input
+            id="handle"
+            type="text"
+            autoComplete="off"
+            value={handle}
+            onChange={(e) => setHandle(e.target.value)}
+            className={inputClass}
+            placeholder="stickymonkey"
+          />
+          <p className="mt-1 text-xs text-text-muted/70">
+            Shown on Game-O-Fi leaderboards and matchups. {HANDLE_HINT} You can set or change this later too.
+          </p>
+        </div>
         <div>
           <label className="mb-1.5 block text-xs font-medium text-text-muted" htmlFor="email">
             Email

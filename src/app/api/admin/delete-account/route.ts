@@ -34,7 +34,17 @@ const AUDIT_FK_CLEARS: { table: string; column: string }[] = [
 //
 // App Director only, enforced here (not just in the UI) since this uses
 // the service-role key and bypasses RLS entirely.
-export async function POST(request: Request) {
+// The actual body, wrapped by POST() below in a try/catch. Split out so a
+// thrown error (as opposed to one of the handled `{error}` returns below)
+// still comes back as a proper JSON error response instead of Next.js's
+// bare non-JSON 500 page. That distinction matters here specifically:
+// createAdminClient() below does a plain `throw new Error(...)` if
+// SUPABASE_SERVICE_ROLE_KEY isn't set in this deployment's environment,
+// and an uncaught throw from a route handler never reaches
+// NextResponse.json -- the client's `deleteAccount()` (lib/usersGroups/
+// queries.ts) then can't parse a JSON body and falls back to its own
+// generic "Could not delete this account." with the real reason lost.
+async function handleDelete(request: Request): Promise<NextResponse> {
   let userId: string | undefined;
   try {
     ({ userId } = (await request.json()) as { userId?: string });
@@ -64,7 +74,9 @@ export async function POST(request: Request) {
   }
 
   // 2. Everything from here uses the service-role client -- this is the
-  // only way to actually remove a Supabase Auth user.
+  // only way to actually remove a Supabase Auth user. Throws if
+  // SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_URL aren't set in
+  // this environment -- caught by POST()'s try/catch below.
   const admin = createAdminClient();
 
   // 2a. A cap table entry represents real equity ownership. Don't let an
@@ -118,4 +130,13 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ success: true });
+}
+
+export async function POST(request: Request) {
+  try {
+    return await handleDelete(request);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unexpected server error.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
