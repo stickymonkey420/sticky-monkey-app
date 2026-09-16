@@ -1,11 +1,13 @@
-// Validation for the optional X (Twitter) handle profile field -- used by
-// the "Share to X" quick links on the Head to Head jumbotron
-// (HeadToHeadCard.tsx) to @mention a member directly instead of just
-// naming them in plain text. Deliberately looser than src/lib/profile/handle.ts
-// (the in-app "Handle"): X's own rules aren't enforced here server-side (no
-// CHECK constraint -- see the add_x_handle_to_profiles migration), and the
-// worst case of a stale/wrong value is just a share link that 404s on X's
-// side, not anything broken in this app.
+// Validation for the optional X (Twitter) handle profile field -- shown on
+// My Profile as "X (Twitter) Handle". Not used to build any share text
+// (see X_COMPOSE_URL below -- the "Share to X" buttons on Head to Head and
+// Scoreboard open a blank compose window, no pre-filled text, per your
+// call), but kept as a real profile field for a future use (e.g. an
+// @mention or a public profile link). Deliberately looser than
+// src/lib/profile/handle.ts (the in-app "Handle"): X's own rules aren't
+// enforced here server-side (no CHECK constraint -- see the
+// add_x_handle_to_profiles migration), and the worst case of a stale/wrong
+// value is just a link that 404s on X's side, not anything broken here.
 //
 // X currently allows 1-15 characters: letters, numbers, and underscores.
 export const X_HANDLE_REGEX = /^[A-Za-z0-9_]{1,15}$/;
@@ -29,16 +31,10 @@ export function validateXHandle(value: string): string | null {
   return null;
 }
 
-// The plain-text label to show/use when a member has no X handle set --
-// falls back to their in-app Handle, then their name, matching the
-// convention used everywhere else in Game-a-Fi (ChallengeMemberForm,
-// ScoreboardCard, HeadToHeadCard).
-export function xShareLabel(xHandle: string | null, username: string | null, name: string | null): string {
-  if (xHandle) return `@${xHandle}`;
-  if (username) return `@${username}`;
-  return name || "Member";
-}
-
-export function xIntentUrl(text: string): string {
-  return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-}
+// Opens X's own compose UI with nothing pre-filled -- per your call, the
+// "Share to X" buttons (HeadToHeadCard, ScoreboardCard) should let the
+// member write their own post rather than posting canned score text for
+// them. This is still just a share-intent link: it opens X's compose
+// screen in a new tab for the member to write and send themselves: no
+// auto-posting, no X account/API access needed.
+export const X_COMPOSE_URL = "https://twitter.com/intent/tweet";

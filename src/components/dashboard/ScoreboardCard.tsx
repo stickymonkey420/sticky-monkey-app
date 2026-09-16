@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Share2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/dashboard/netWorth";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
+import { X_COMPOSE_URL } from "@/lib/profile/xHandle";
 import {
   cancelChallenge,
   fetchChallenges,
@@ -108,7 +110,20 @@ export default function ScoreboardCard() {
 
   return (
     <div className="rounded-[30px] bg-[rgb(32,40,56)] p-[30px]">
-      <h3 className="mb-3 text-sm font-semibold text-text-primary">Scoreboard</h3>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-text-primary">Scoreboard</h3>
+        {!loading && rows.length > 0 && (
+          <a
+            href={X_COMPOSE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-card-border px-2.5 py-1 text-xs font-medium text-text-muted hover:text-text-primary"
+          >
+            <Share2 size={13} />
+            Share to X
+          </a>
+        )}
+      </div>
 
       {!loading && pendingReceived.length > 0 && (
         <div className="mb-3 flex flex-col divide-y divide-white/10 border-b border-white/10 pb-1">
