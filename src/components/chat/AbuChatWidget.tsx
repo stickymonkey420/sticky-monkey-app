@@ -394,34 +394,34 @@ function makeDraggable(
   return state;
 }
 
-// Positions the (fixed-position) panel snug against the launcher's current
-// spot -- above it when there's room, below it otherwise, and hugging
-// whichever side of the screen the launcher is nearer to -- so the panel
-// visually stays "attached" to the launcher no matter where it's been
-// dragged. Called once when the panel opens, and continuously while the
-// launcher is being dragged (if the panel happens to be open at the time),
-// per the user's preferred "it just goes where the icon goes" behavior.
+// Docks the (fixed-position) panel to one of exactly two fixed spots --
+// bottom-left or bottom-right -- based on a simple binary test of which
+// half of the screen the launcher is currently on. Not a continuous
+// "hug the icon's exact position" calculation: the panel always lands at
+// the same left-dock or right-dock coordinates, it just picks which of
+// the two per the user's spec ("if the icon is in the left [half] it
+// will shift to the left side, if it is in the right [half] it will
+// shift to the right side"). Called once when the panel opens, and
+// continuously while the launcher is being dragged (if the panel happens
+// to be open at the time).
 function positionPanelNearLauncher(launcher: HTMLElement, panel: HTMLElement): void {
   const lRect = launcher.getBoundingClientRect();
-  const pRect = panel.getBoundingClientRect();
-  const pw = pRect.width || 320;
-  const ph = pRect.height || 480;
-  const margin = 12;
-  const gap = 12;
   const vw = window.innerWidth;
-  const vh = window.innerHeight;
+  const dock = 24; // matches the launcher/panel's original default 24px dock margin
+  const bottom = 96; // panel's original fixed vertical dock, kept constant either side
 
   const launcherCenterX = lRect.left + lRect.width / 2;
-  let left = launcherCenterX > vw / 2 ? lRect.right - pw : lRect.left;
-  left = clamp(left, margin, Math.max(margin, vw - pw - margin));
+  const onLeftHalf = launcherCenterX < vw / 2;
 
-  let top = lRect.top - ph - gap >= margin ? lRect.top - ph - gap : Math.min(lRect.bottom + gap, vh - ph - margin);
-  top = clamp(top, margin, Math.max(margin, vh - ph - margin));
-
-  panel.style.right = "auto";
-  panel.style.bottom = "auto";
-  panel.style.left = `${left}px`;
-  panel.style.top = `${top}px`;
+  panel.style.top = "auto";
+  panel.style.bottom = `${bottom}px`;
+  if (onLeftHalf) {
+    panel.style.left = `${dock}px`;
+    panel.style.right = "auto";
+  } else {
+    panel.style.left = "auto";
+    panel.style.right = `${dock}px`;
+  }
 }
 
 // Builds the whole widget (launcher + panel), wires every handler, and
