@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import HoldingsSummary from "@/components/holdings/HoldingsSummary";
 import HoldingsTable from "@/components/holdings/HoldingsTable";
 import { createClient } from "@/lib/supabase/client";
@@ -13,22 +13,29 @@ import type { AccountTypeOption } from "@/lib/holdings/types";
 // here -- by default it shows every account's holdings together, and only
 // narrows to one account when linked to with a `?account=<id>` query param
 // (the sidebar's Brokerage/Crypto/Traditional IRA/Roth IRA links -- see
-// AppShell.tsx).
+// AppShell.tsx). That query param IS the filter's state -- it's persistent,
+// not a one-shot trigger (unlike Options' `?openTrade=1`), so it's meant to
+// stay in the URL and in the address bar/back button/refresh/shared link.
 //
 // This used to read `window.location.search` via a useState lazy
 // initializer, which only runs on the component's first mount. The sidebar
 // links are next/link client-side navigations to the SAME route
 // (/holdings) with just a different query string, so the App Router
 // reuses the already-mounted page instead of remounting it -- the lazy
-// initializer never re-ran, so clicking Brokerage after Crypto (or after
-// the cleanup effect below had already stripped a previous ?account=) kept
+// initializer never re-ran, so clicking Brokerage after Crypto kept
 // showing every account. useSearchParams() is the App Router's reactive
 // hook for this exact case: it re-renders on every navigation to this
 // route, including ones that only change the query string.
+//
+// A follow-up attempt also tried scrubbing `?account=` back out of the URL
+// once accounts loaded (via router.replace). That broke the filter
+// entirely: since `selectedAccount` below is derived live from the query
+// param with no separate persisted state, clearing the param immediately
+// undid the filter right after it was applied. No code in this app links
+// to a bare `/holdings` without a query param, so there's no case that
+// needs the param scrubbed -- it just stays in the URL.
 function HoldingsPageInner() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
   const accountParam = searchParams.get("account");
 
   const [accountOptions, setAccountOptions] = useState<AccountTypeOption[]>([]);
@@ -56,17 +63,6 @@ function HoldingsPageInner() {
       window.removeEventListener("pageshow", onPageShow);
     };
   }, []);
-
-  // Clean the ?account=... query param back out of the URL once accounts
-  // have loaded -- via the router (not window.history.replaceState) so the
-  // App Router's own searchParams state stays in sync with the visible
-  // URL; a raw history.replaceState would clear the address bar but leave
-  // useSearchParams still reporting the old value until the next real
-  // navigation.
-  useEffect(() => {
-    if (loadingAccounts || !accountParam) return;
-    router.replace(pathname, { scroll: false });
-  }, [loadingAccounts, accountParam, router, pathname]);
 
   // Only filter when `?account=` actually names a configured account -- an
   // unknown/stale id falls back to showing everything instead of an empty
