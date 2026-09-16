@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { money } from "@/lib/options/queries";
+import { daysToExpiration, money } from "@/lib/options/queries";
 import { computeLockedCollateral, computeTotalPremium, fetchTickerPrice } from "@/lib/gameAfi/contractQueries";
 import { estimateContractPremium } from "@/lib/gameAfi/premiumEstimate";
 import type { ExecuteTradeResult, PaperAccount, PaperHolding } from "@/lib/gameAfi/paperTypes";
@@ -30,6 +30,32 @@ function upcomingFridays(count = 16): string[] {
 // preview is a rough estimate, so cents just add noise.
 function moneyNoCents(n: number): string {
   return "$" + Math.round(n).toLocaleString("en-US");
+}
+
+// One cell of the live preview grid -- label on top (small, muted,
+// uppercase like the account tiles above), value below in its own color.
+// Kept tiny/borderless (no card-within-a-card) since this whole thing
+// already sits inside its own preview box.
+function PreviewStat({
+  label,
+  value,
+  color,
+  sub,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+  sub?: string;
+}) {
+  return (
+    <div>
+      <div className="text-[10px] font-medium uppercase tracking-wide text-text-muted">{label}</div>
+      <div className="text-sm font-semibold" style={{ color: color ?? undefined }}>
+        {value}
+      </div>
+      {sub && <div className="text-[10px] text-text-muted">{sub}</div>}
+    </div>
+  );
 }
 
 function outcomeLabel(t: PaperContractTrade): { text: string; color: string } {
@@ -141,6 +167,24 @@ export default function SellContractWidget({
         ? { kind: "cash" as const, amount: strikeNum * contractsNum * 100 }
         : { kind: "shares" as const, amount: contractsNum * 100 }
       : null;
+
+  // Return on capital: premium collected divided by whatever's actually
+  // tied up to make the sale -- the cash collateral for a put, or the
+  // market value of the shares a call ties up (there's no cash lock for a
+  // call, so its "capital" is those shares at the current price instead).
+  const capitalBasis =
+    previewCollateral === null
+      ? null
+      : previewCollateral.kind === "cash"
+        ? previewCollateral.amount
+        : tickerPrice !== null
+          ? previewCollateral.amount * tickerPrice
+          : null;
+  const returnOnCapitalPct =
+    previewPremium !== null && capitalBasis !== null && capitalBasis > 0
+      ? (previewPremium / capitalBasis) * 100
+      : null;
+  const daysToExp = expInput ? daysToExpiration(expInput) : null;
 
   async function handleSell() {
     const ticker = tickerInput.trim().toUpperCase();
@@ -304,40 +348,50 @@ export default function SellContractWidget({
           </div>
 
           {tickerInput.trim() && (
-            <div className="mt-3 min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm">
+            <div className="mt-3 min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-3">
               {priceLoading && tickerPrice === null ? (
-                <span className="text-text-muted">Looking up {tickerInput.trim().toUpperCase()}…</span>
+                <span className="text-sm text-text-muted">Looking up {tickerInput.trim().toUpperCase()}…</span>
               ) : tickerPrice === null ? (
-                <span className="text-text-muted">
+                <span className="text-sm text-text-muted">
                   {tickerInput.trim().toUpperCase()} isn&apos;t in the tracked stock universe.
                 </span>
               ) : (
-                <span className="text-text-muted">
-                  {tickerInput.trim().toUpperCase()} current price:{" "}
-                  <span className="font-semibold" style={{ color: "#f5d020" }}>
-                    {moneyNoCents(tickerPrice)}
-                  </span>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
+                  <PreviewStat
+                    label={`${tickerInput.trim().toUpperCase()} Price`}
+                    value={moneyNoCents(tickerPrice)}
+                    color="#f5d020"
+                  />
                   {previewPremium !== null && (
-                    <>
-                      {" "}
-                      · Est. premium:{" "}
-                      <span className="font-semibold text-[#3ddc97]">{moneyNoCents(previewPremium)}</span> for{" "}
-                      {Number(contractsInput) || 1} contract{Number(contractsInput) === 1 ? "" : "s"}
-                    </>
+                    <PreviewStat
+                      label="Est. Premium"
+                      value={moneyNoCents(previewPremium)}
+                      color="#3ddc97"
+                      sub={`${contractsNum} contract${contractsNum === 1 ? "" : "s"}`}
+                    />
                   )}
                   {previewCollateral !== null && (
-                    <>
-                      {" "}
-                      ·{" "}
-                      <span className="font-semibold" style={{ color: "#ff9d4d" }}>
-                        {previewCollateral.kind === "cash"
-                          ? `${moneyNoCents(previewCollateral.amount)} collateral`
-                          : `${previewCollateral.amount} shares`}{" "}
-                        needed
-                      </span>
-                    </>
+                    <PreviewStat
+                      label={previewCollateral.kind === "cash" ? "Collateral Needed" : "Shares Needed"}
+                      value={
+                        previewCollateral.kind === "cash"
+                          ? moneyNoCents(previewCollateral.amount)
+                          : `${previewCollateral.amount} sh`
+                      }
+                      color="#ff9d4d"
+                    />
                   )}
-                </span>
+                  {returnOnCapitalPct !== null && (
+                    <PreviewStat
+                      label="Return on Capital"
+                      value={`${returnOnCapitalPct.toFixed(1)}%`}
+                      color="#3ddc97"
+                    />
+                  )}
+                  {daysToExp !== null && daysToExp > 0 && (
+                    <PreviewStat label="Days to Exp" value={`${daysToExp}`} />
+                  )}
+                </div>
               )}
             </div>
           )}
