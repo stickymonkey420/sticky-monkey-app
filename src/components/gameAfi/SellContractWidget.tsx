@@ -220,17 +220,17 @@ export default function SellContractWidget({
             Sell Covered Call
           </button>
         </div>
-        {/* Ticker + strike on their own row (ticker takes the remaining
-            width); contracts (narrowed to fit ~3 digits) + expiration
-            below that, both wrapped in min-w-0 so long option lists can't
-            push the row past the card's border; Sell button on its own
-            row, right-justified so it sits under the expiration select. */}
-        <div className="flex min-w-0 flex-wrap gap-2">
+        {/* All 4 inputs on one line -- ticker shortened way down (it's
+            never more than ~5 characters), strike and contracts narrow to
+            match, expiration taking whatever's left. Sell button on its
+            own row underneath, right-justified so it sits under the
+            expiration select. */}
+        <div className="flex min-w-0 items-center gap-2">
           <input
             value={tickerInput}
             onChange={(e) => setTickerInput(e.target.value)}
-            placeholder="Ticker (e.g. AAPL)"
-            className="min-w-0 flex-1 rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none"
+            placeholder="Ticker"
+            className="w-16 min-w-0 rounded-md border border-card-border bg-[#0f131c] px-2 py-2 text-sm text-text-primary outline-none"
           />
           <input
             value={strikeInput}
@@ -239,10 +239,8 @@ export default function SellContractWidget({
             type="number"
             min="0"
             step="any"
-            className="w-24 min-w-0 rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none"
+            className="w-20 min-w-0 rounded-md border border-card-border bg-[#0f131c] px-2 py-2 text-sm text-text-primary outline-none"
           />
-        </div>
-        <div className="mt-2 flex min-w-0 flex-wrap justify-end gap-2">
           <input
             value={contractsInput}
             onChange={(e) => setContractsInput(e.target.value)}
@@ -255,9 +253,9 @@ export default function SellContractWidget({
           <select
             value={expInput}
             onChange={(e) => setExpInput(e.target.value)}
-            className="min-w-0 rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none [color-scheme:dark]"
+            className="min-w-0 flex-1 rounded-md border border-card-border bg-[#0f131c] px-2 py-2 text-sm text-text-primary outline-none [color-scheme:dark]"
           >
-            <option value="">Expiration (Friday)</option>
+            <option value="">Exp (Fri)</option>
             {fridayOptions.map((d) => (
               <option key={d} value={d}>
                 {d}
