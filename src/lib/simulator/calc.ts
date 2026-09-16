@@ -31,21 +31,29 @@ export const DEFAULT_INPUTS: SimulatorInputs = {
 };
 
 // Collateral-weighted average weekly return from real CSP trade history --
-// ported verbatim from the live script's loadSuggestedRate(): per-trade
-// return = premium / (strike*100 - premium), weighted by collateral =
-// contracts*100*strike. Matches the user's personal "Average(W)" formula
-// (SUMPRODUCT(collateral, return) / SUM(collateral)).
+// per-trade return = premiumTotal / (strike*100 - premiumTotal), weighted
+// by collateral = contracts*100*strike. Matches the user's personal
+// "Average(W)" formula (SUMPRODUCT(collateral, return) / SUM(collateral)).
+//
+// wheel_trades.premium is quoted PER SHARE (standard options convention --
+// same column computeReturnPct in options/calc.ts treats as premium/strike
+// per share), so it has to be scaled by the 100 shares/contract before it's
+// comparable to strike*100 collateral. An earlier version of this function
+// used the raw per-share premium directly here, which understated every
+// trade's return by ~100x (e.g. a real ~1.4% weekly rate came out as
+// ~0.01%) -- caught from a user's simulator screenshot showing a
+// suspiciously tiny "Use my CSP trade history" suggested rate.
 export function computeSuggestedRate(rows: CspTradeRow[]): number | null {
   let weightedSum = 0;
   let totalCollateral = 0;
   for (const r of rows) {
     const strike = Number(r.strike) || 0;
-    const premium = Number(r.premium) || 0;
+    const premiumTotal = (Number(r.premium) || 0) * 100;
     const contracts = Number(r.contracts) || 0;
     const collateral = contracts * 100 * strike;
-    const perContractCollateral = strike * 100 - premium;
+    const perContractCollateral = strike * 100 - premiumTotal;
     if (collateral <= 0 || perContractCollateral <= 0) continue;
-    const perTradeReturn = premium / perContractCollateral;
+    const perTradeReturn = premiumTotal / perContractCollateral;
     weightedSum += collateral * perTradeReturn;
     totalCollateral += collateral;
   }
