@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/profile/ProfileProvider";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
 import { HANDLE_HINT, isHandleTakenError, validateHandle } from "@/lib/profile/handle";
+import { X_HANDLE_HINT, normalizeXHandle, validateXHandle } from "@/lib/profile/xHandle";
 import { ACCOUNT_TYPE_DEFS } from "@/lib/usersGroups/types";
 import { saveProfileDetails, updateAvatarUrl, type ProfileDetailsInput } from "@/lib/usersGroups/queries";
 import type { OnboardingAnswers } from "@/lib/dashboard/onboarding";
@@ -22,7 +23,7 @@ const FIELD_CLASS =
 // Only the columns this modal needs -- a subset of EditProfileModal's admin
 // PROFILE_COLUMNS, plus use_cases/onboarding_survey to seed a survey retake.
 const SELF_PROFILE_COLUMNS =
-  "id,name,email,username,date_of_birth,present_address,permanent_address,postal_code,avatar_url,account_types,use_cases,onboarding_survey";
+  "id,name,email,username,date_of_birth,present_address,permanent_address,postal_code,avatar_url,account_types,use_cases,onboarding_survey,x_handle";
 
 type SelfProfile = {
   id: string;
@@ -37,6 +38,7 @@ type SelfProfile = {
   account_types: string[] | null;
   use_cases: string[] | null;
   onboarding_survey: Record<string, unknown> | null;
+  x_handle: string | null;
 };
 
 // Self-service counterpart to the admin-only EditProfileModal (Users &
@@ -62,6 +64,7 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
   const [postalCode, setPostalCode] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [accountTypes, setAccountTypes] = useState<string[]>([]);
+  const [xHandle, setXHandle] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +103,7 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
         setPostalCode(p.postal_code ?? "");
         setAvatarUrl(p.avatar_url ?? "");
         setAccountTypes(p.account_types ?? []);
+        setXHandle(p.x_handle ?? "");
       }
       setLoading(false);
     }
@@ -124,6 +128,12 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
       setError(handleError);
       return;
     }
+    const normalizedXHandle = normalizeXHandle(xHandle);
+    const xHandleError = validateXHandle(normalizedXHandle);
+    if (xHandleError) {
+      setError(xHandleError);
+      return;
+    }
 
     setSaving(true);
     const supabase = createClient();
@@ -137,6 +147,7 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
       postal_code: postalCode || null,
       avatar_url: avatarUrl || null,
       account_types: accountTypes,
+      x_handle: normalizedXHandle || null,
     };
     const { error: err } = await saveProfileDetails(supabase, userId, input);
     setSaving(false);
@@ -325,6 +336,19 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
               <p className="mt-1 text-[11px] text-text-muted">
                 {HANDLE_HINT} Used to identify you on Game-a-Fi leaderboards, leagues, and tournaments instead of
                 your name.
+              </p>
+            </div>
+            <div className="mb-3">
+              <label className="mb-1.5 block text-xs text-text-muted">X (Twitter) Handle</label>
+              <input
+                type="text"
+                value={xHandle}
+                onChange={(e) => setXHandle(e.target.value)}
+                placeholder="e.g. sandmonkey15"
+                className={FIELD_CLASS}
+              />
+              <p className="mt-1 text-[11px] text-text-muted">
+                {X_HANDLE_HINT} Optional -- lets &ldquo;Share to X&rdquo; links on Head to Head @mention you directly.
               </p>
             </div>
             <div className="mb-3">

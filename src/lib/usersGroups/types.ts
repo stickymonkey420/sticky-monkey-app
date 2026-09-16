@@ -32,6 +32,7 @@ export type Profile = {
   postal_code: string | null;
   avatar_url: string | null;
   account_types: string[] | null;
+  x_handle: string | null;
 };
 
 export const ACCOUNT_TYPE_DEFS: { key: string; label: string }[] = [

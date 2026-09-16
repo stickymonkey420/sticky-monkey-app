@@ -57,6 +57,10 @@ export default function EditProfileModal({
       postal_code: postalCode || null,
       avatar_url: avatarUrl || null,
       account_types: accountTypes,
+      // No admin UI for this yet -- carried through unchanged so Save
+      // Changes here doesn't clobber a member's own X handle (set via My
+      // Profile) with null.
+      x_handle: profile.x_handle,
     });
     setSaving(false);
     if (err) {

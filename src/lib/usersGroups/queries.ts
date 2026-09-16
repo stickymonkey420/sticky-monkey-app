@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Profile, Role } from "./types";
 
 const PROFILE_COLUMNS =
-  "id,name,email,role,is_demo,created_at,use_cases,onboarding_survey,onboarding_completed_at,username,date_of_birth,present_address,permanent_address,postal_code,avatar_url,account_types";
+  "id,name,email,role,is_demo,created_at,use_cases,onboarding_survey,onboarding_completed_at,username,date_of_birth,present_address,permanent_address,postal_code,avatar_url,account_types,x_handle";
 
 export type MutationResult = { error: string | null };
 
@@ -51,6 +51,7 @@ export type ProfileDetailsInput = {
   postal_code: string | null;
   avatar_url: string | null;
   account_types: string[];
+  x_handle: string | null;
 };
 
 export async function saveProfileDetails(

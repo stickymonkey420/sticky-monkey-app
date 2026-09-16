@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Share2 } from "lucide-react";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
 import { formatMoney } from "@/lib/gameAfi/format";
+import { xIntentUrl, xShareLabel } from "@/lib/profile/xHandle";
 import type { MatchSummary } from "@/lib/gameAfi/challengeTypes";
 import type { PaperHolding } from "@/lib/gameAfi/paperTypes";
 
@@ -81,6 +83,29 @@ function pad2(n: number): string {
   return n.toString().padStart(2, "0");
 }
 
+// Composes the "Share to X" tweet text from the same score data already
+// on screen -- @mentions the opponent's own X handle when they've set one
+// (My Profile > X (Twitter) Handle), otherwise falls back to their in-app
+// Handle/name as plain text. This is a share-intent link (opens X's own
+// compose UI, pre-filled, for the member to review and send themselves) --
+// nothing is posted automatically and no X account/API access is needed.
+function buildShareText(summary: MatchSummary): string {
+  const oppLabel = xShareLabel(summary.opponent.xHandle, summary.opponent.username, summary.opponent.name);
+  const meTotal = formatMoney(summary.me.totalValue);
+  const oppTotal = formatMoney(summary.opponent.totalValue);
+  const pct =
+    summary.startingBalance > 0
+      ? Math.abs(((summary.me.totalValue - summary.opponent.totalValue) / summary.startingBalance) * 100)
+      : 0;
+  if (summary.me.totalValue > summary.opponent.totalValue) {
+    return `Leading ${oppLabel} ${pct.toFixed(1)}% in our Head to Head (${meTotal} to ${oppTotal}) on Sticky Monkey Investments.`;
+  }
+  if (summary.opponent.totalValue > summary.me.totalValue) {
+    return `Down ${pct.toFixed(1)}% to ${oppLabel} in our Head to Head (${meTotal} to ${oppTotal}) on Sticky Monkey Investments. Comeback loading.`;
+  }
+  return `Tied with ${oppLabel} at ${meTotal} in our Head to Head on Sticky Monkey Investments.`;
+}
+
 function Player({
   avatarUrl,
   name,
@@ -147,7 +172,20 @@ export default function HeadToHeadCard({
 
   return (
     <div className="flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-5">
-      <h3 className="mb-2 text-sm font-semibold text-text-primary">Head to Head</h3>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-text-primary">Head to Head</h3>
+        {summary && (
+          <a
+            href={xIntentUrl(buildShareText(summary))}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-card-border px-2.5 py-1 text-xs font-medium text-text-muted hover:text-text-primary"
+          >
+            <Share2 size={13} />
+            Share to X
+          </a>
+        )}
+      </div>
       {loading ? (
         <div className="flex flex-1 items-center justify-center text-sm text-text-muted">Loading…</div>
       ) : !summary ? (

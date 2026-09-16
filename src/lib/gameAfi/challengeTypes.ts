@@ -44,6 +44,7 @@ export type MatchSummary = {
     name: string | null;
     username: string | null;
     avatarUrl: string | null;
+    xHandle: string | null;
     cashBalance: number;
     holdingsValue: number;
     totalValue: number;
@@ -53,6 +54,7 @@ export type MatchSummary = {
     name: string | null;
     username: string | null;
     avatarUrl: string | null;
+    xHandle: string | null;
     cashBalance: number;
     holdingsValue: number;
     totalValue: number;

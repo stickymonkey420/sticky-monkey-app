@@ -95,6 +95,7 @@ export async function fetchMatchSummary(
     me_name: string | null;
     me_username: string | null;
     me_avatar_url: string | null;
+    me_x_handle: string | null;
     me_cash_balance: number;
     me_holdings_value: number;
     me_total_value: number;
@@ -102,6 +103,7 @@ export async function fetchMatchSummary(
     opponent_name: string | null;
     opponent_username: string | null;
     opponent_avatar_url: string | null;
+    opponent_x_handle: string | null;
     opponent_cash_balance: number;
     opponent_holdings_value: number;
     opponent_total_value: number;
@@ -116,6 +118,7 @@ export async function fetchMatchSummary(
       name: row.me_name,
       username: row.me_username,
       avatarUrl: row.me_avatar_url,
+      xHandle: row.me_x_handle,
       cashBalance: Number(row.me_cash_balance),
       holdingsValue: Number(row.me_holdings_value),
       totalValue: Number(row.me_total_value),
@@ -125,6 +128,7 @@ export async function fetchMatchSummary(
       name: row.opponent_name,
       username: row.opponent_username,
       avatarUrl: row.opponent_avatar_url,
+      xHandle: row.opponent_x_handle,
       cashBalance: Number(row.opponent_cash_balance),
       holdingsValue: Number(row.opponent_holdings_value),
       totalValue: Number(row.opponent_total_value),
