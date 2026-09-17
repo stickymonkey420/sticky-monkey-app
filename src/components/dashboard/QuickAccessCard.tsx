@@ -8,7 +8,8 @@ import ChallengeMemberModal from "@/components/gameAfi/ChallengeMemberModal";
 import InviteFriendModal from "@/components/dashboard/InviteFriendModal";
 
 // Ported from the live Webflow Dashboard's "Add Option Trade" and "Connect
-// Finance" Quick Access buttons (dashboard-quick-actions-js edge function).
+// Accounts" (formerly "Connect Finance") Quick Access buttons
+// (dashboard-quick-actions-js edge function).
 
 declare global {
   interface Window {
@@ -36,7 +37,7 @@ function loadPlaidScript(): Promise<void> {
 export default function QuickAccessCard() {
   const router = useRouter();
   const [showAddTrade, setShowAddTrade] = useState(true);
-  const [connectLabel, setConnectLabel] = useState("Connect Finance");
+  const [connectLabel, setConnectLabel] = useState("Connect Accounts");
   const [challengeOpen, setChallengeOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const connectingRef = useRef(false);
@@ -76,7 +77,7 @@ export default function QuickAccessCard() {
 
     if (!session) {
       setConnectLabel("Sign in first");
-      setTimeout(() => setConnectLabel("Connect Finance"), 1800);
+      setTimeout(() => setConnectLabel("Connect Accounts"), 1800);
       connectingRef.current = false;
       return;
     }
@@ -127,19 +128,19 @@ export default function QuickAccessCard() {
             setTimeout(() => window.location.reload(), 900);
           } catch {
             setConnectLabel("Try again");
-            setTimeout(() => setConnectLabel("Connect Finance"), 1800);
+            setTimeout(() => setConnectLabel("Connect Accounts"), 1800);
           }
         },
         onExit: () => {
-          setConnectLabel("Connect Finance");
+          setConnectLabel("Connect Accounts");
           connectingRef.current = false;
         },
       });
       handler.open();
-      setConnectLabel("Connect Finance");
+      setConnectLabel("Connect Accounts");
     } catch {
       setConnectLabel("Try again");
-      setTimeout(() => setConnectLabel("Connect Finance"), 1800);
+      setTimeout(() => setConnectLabel("Connect Accounts"), 1800);
     } finally {
       connectingRef.current = false;
     }
