@@ -50,8 +50,14 @@ export default function UserRow({
 
   async function handleSave() {
     setSaving(true);
-    await onSave(profile.id, { name, role, is_demo: isDemo });
-    setSaving(false);
+    try {
+      await onSave(profile.id, { name, role, is_demo: isDemo });
+    } finally {
+      // finally, not just after the await -- if onSave ever throws instead
+      // of resolving with an {error}, this row was previously left stuck
+      // on "Saving..." forever with no way to tell it had failed.
+      setSaving(false);
+    }
   }
 
   async function handleDelete() {

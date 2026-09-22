@@ -81,7 +81,13 @@ export default function UsersGroupsPage() {
     const supabase = createClient();
     const { error } = await saveProfileRow(supabase, id, changes);
     if (error) {
-      showStatus("Could not save changes.", true);
+      console.error("[Users & Groups] saveProfileRow failed", error);
+      // Include the actual message (not just a generic line) -- this is
+      // the only place a failure surfaces, and it's easy to miss since it
+      // shows at the top of the page rather than next to the row you're
+      // editing, so the more specific it is, the more likely it gets seen
+      // and reported back with something diagnosable in it.
+      showStatus(`Could not save changes: ${error}`, true);
       return;
     }
     setProfiles((rows) => rows.map((p) => (p.id === id ? { ...p, ...changes } : p)));

@@ -37,8 +37,18 @@ export async function saveProfileRow(
   id: string,
   changes: { name?: string; role?: Role; is_demo?: boolean }
 ): Promise<MutationResult> {
-  const { error } = await supabase.from("profiles").update(changes).eq("id", id);
-  return { error: error ? error.message : null };
+  // Wrapped in try/catch on purpose: an unhandled throw here (as opposed to
+  // a normal Postgrest {error} response) would previously escape as an
+  // unhandled promise rejection -- no network request even goes out, no
+  // status message shows, and the row's "Saving..." state can get stuck --
+  // which reads exactly like "I clicked Save and nothing happened."
+  try {
+    const { error } = await supabase.from("profiles").update(changes).eq("id", id);
+    return { error: error ? error.message : null };
+  } catch (err) {
+    console.error("saveProfileRow threw", err);
+    return { error: err instanceof Error ? err.message : "Unexpected error saving changes." };
+  }
 }
 
 export type ProfileDetailsInput = {
