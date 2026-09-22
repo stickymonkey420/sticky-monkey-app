@@ -14,7 +14,7 @@ import type { ManualAccount, PlaidTransaction } from "./types";
 // ---- Balance / income / expense ----
 
 export type WalletOverview = {
-  balance: number; // sum of manual_accounts.balance, excluding credit_card accounts
+  balance: number; // bank_account/business_account balances minus credit_card balances -- My Wallet is banking-only, not every manual account
   totalIncome: number; // all-time sum of negative plaid_transactions.amount (negated)
   totalExpense: number; // all-time sum of positive plaid_transactions.amount
   netThisMonth: number; // this calendar month's income - expense (can be negative)
@@ -26,10 +26,22 @@ export function computeWalletOverview(
   accounts: ManualAccount[],
   txs: PlaidTransaction[]
 ): WalletOverview {
-  let balance = 0;
+  // My Wallet's headline balance is banking + credit cards only -- it
+  // used to sum every manual account except credit cards (so a
+  // brokerage/retirement/precious-metal balance inflated it well past
+  // what a wallet/banking view should show). Same bank-only definition
+  // as the Banking page's own Total Assets/Credit Card Balance cards
+  // (src/lib/accounts/calc.ts's computeAccountsSummary) -- computed
+  // inline here rather than imported since this file already owns its
+  // own single-pass reduction over `accounts`.
+  let bankTotal = 0;
+  let creditCardTotal = 0;
   accounts.forEach((a) => {
-    if (a.category !== "credit_card") balance += Number(a.balance) || 0;
+    const bal = Number(a.balance) || 0;
+    if (a.category === "credit_card") creditCardTotal += bal;
+    else if (a.category === "bank_account" || a.category === "business_account") bankTotal += bal;
   });
+  const balance = bankTotal - creditCardTotal;
 
   let totalIncome = 0;
   let totalExpense = 0;
