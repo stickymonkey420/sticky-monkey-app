@@ -415,34 +415,61 @@ function makeDraggable(
   return state;
 }
 
-// Docks the (fixed-position) panel to one of exactly two fixed spots --
-// bottom-left or bottom-right -- based on a simple binary test of which
-// half of the screen the launcher is currently on. Not a continuous
-// "hug the icon's exact position" calculation: the panel always lands at
-// the same left-dock or right-dock coordinates, it just picks which of
-// the two per the user's spec ("if the icon is in the left [half] it
-// will shift to the left side, if it is in the right [half] it will
-// shift to the right side"). Called once when the panel opens, and
-// continuously while the launcher is being dragged (if the panel happens
-// to be open at the time).
+// Anchors the (fixed-position) panel directly to the launcher's live
+// coordinates, so it follows the icon to wherever it's been dragged --
+// not just a binary "left half of the screen vs right half" choice
+// between two fixed dock corners (which is what this used to do). The
+// point of following the icon exactly, rather than snapping to a corner,
+// is that Abu can be dragged next to whatever it's highlighting and the
+// panel opens right beside it instead of potentially covering that same
+// spot from clear across the screen.
+//
+// Horizontally: opens toward whichever side of the launcher has more
+// room (so it opens away from the nearer screen edge, same spirit as the
+// old left-half/right-half rule, just computed from the launcher's exact
+// position instead of just which half it's in). Vertically: prefers
+// opening above the launcher (matching the default docked look, where
+// the panel sits right above the bottom-right launcher), flipping to
+// open below if there isn't room above. Both axes clamp to the viewport
+// so the panel can never end up partly off-screen. Called once when the
+// panel opens, and continuously while the launcher is being dragged (if
+// the panel happens to be open at the time).
 function positionPanelNearLauncher(launcher: HTMLElement, panel: HTMLElement): void {
   const lRect = launcher.getBoundingClientRect();
   const vw = window.innerWidth;
-  const dock = 24; // matches the launcher/panel's original default 24px dock margin
-  const bottom = 96; // panel's original fixed vertical dock, kept constant either side
+  const vh = window.innerHeight;
+  const gap = 12; // space kept between the launcher and the panel's near edge
+  const margin = 4; // minimum distance from any viewport edge
+
+  // The panel starts as display:none, so before its first-ever open its
+  // measured rect is 0x0 -- fall back to its declared CSS size for that
+  // one frame (see the panel's own style.cssText below: 320x480).
+  const pRect = panel.getBoundingClientRect();
+  const panelW = pRect.width || 320;
+  const panelH = pRect.height || 480;
 
   const launcherCenterX = lRect.left + lRect.width / 2;
-  const onLeftHalf = launcherCenterX < vw / 2;
+  const launcherCenterY = lRect.top + lRect.height / 2;
 
-  panel.style.top = "auto";
-  panel.style.bottom = `${bottom}px`;
-  if (onLeftHalf) {
-    panel.style.left = `${dock}px`;
-    panel.style.right = "auto";
+  const onLeftHalf = launcherCenterX < vw / 2;
+  const rawLeft = onLeftHalf ? lRect.left : lRect.right - panelW;
+  const left = clamp(rawLeft, margin, Math.max(margin, vw - panelW - margin));
+
+  const onTopHalf = launcherCenterY < vh / 2;
+  let top: number;
+  if (onTopHalf) {
+    top = lRect.bottom + gap;
+    if (top + panelH > vh - margin) top = lRect.top - gap - panelH; // no room below -- flip up
   } else {
-    panel.style.left = "auto";
-    panel.style.right = `${dock}px`;
+    top = lRect.top - gap - panelH;
+    if (top < margin) top = lRect.bottom + gap; // no room above -- flip down
   }
+  top = clamp(top, margin, Math.max(margin, vh - panelH - margin));
+
+  panel.style.right = "auto";
+  panel.style.bottom = "auto";
+  panel.style.left = `${left}px`;
+  panel.style.top = `${top}px`;
 }
 
 // Builds the whole widget (launcher + panel), wires every handler, and
