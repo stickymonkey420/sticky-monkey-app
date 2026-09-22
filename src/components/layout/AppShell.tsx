@@ -8,7 +8,6 @@ import {
   Wallet,
   CircleDollarSign,
   TrendingUp,
-  User,
   Crown,
   FileText,
   ShieldCheck,
@@ -44,10 +43,15 @@ const LOGO_WORDMARK_URL =
 // the live site's real
 // nesting (confirmed off its accessibility tree, not a screenshot), except
 // where reorganized per your explicit calls (Transactions folded into My
-// Wallet, Utilities renamed Settings, Stock Screener moved under Game-a-Fi):
-//   - "Income" is a single paid-gated group containing the Income overview
-//     page plus a "Trade Options" sub-group (Options/Closed Positions/
-//     Simulator) -- there is no separate top-level "Trade Options" entry.
+// Wallet, Utilities renamed Settings, Stock Screener moved under Game-a-Fi,
+// plus the 2026-09 reorg below):
+//   - "Income" was originally a paid-gated group containing the Income
+//     overview page plus a "Trade Options" sub-group. Per your call, Trade
+//     Options (Options/Closed Positions/Simulator) moved into Investments
+//     instead -- new users look for options trading there, not under
+//     Income -- so Income is now flattened to a single link (same
+//     one-child-accordion-adds-no-value rule Owners/Users & Groups already
+//     followed below), keeping its existing paid gate.
 //   - "Settings" (Webflow/original label "Utilities") is a dropdown
 //     containing Edit Categories (free) and Update API Key (admin) --
 //     ungated at the group level so the free child still shows even though
@@ -57,12 +61,25 @@ const LOGO_WORDMARK_URL =
 //     "Users & Groups" are each a real dropdown with exactly one child on
 //     the live site; flattened here to single links since a 1-item
 //     accordion adds a click for no benefit.
+//   - Two plain divider rules (no label -- see the `divider` NavNode kind
+//     below) now break the once-uniform 12-item list into three visual
+//     bands per your call: money management (Dashboard through
+//     Businesses), extras (Game-O-Fi, SMU), then settings/admin (Settings,
+//     Owners, Users & Groups). Dividers carry no gate of their own -- they
+//     always sit directly above an always-visible node (Game-O-Fi is
+//     ungated; Settings always shows at least Edit Categories, which is
+//     free) so there's no risk of a dangling divider with nothing after it.
 // "My Wallet" is now also a group: "Overview" is the original wallet
-// dashboard, "Card Center" (Webflow slug moneyfarm-webflow-html-website-
-// template) is a real credit-card list/add/edit/delete screen over
-// manual_accounts (category='credit_card') -- viewing stays free (RLS
-// SELECT has no role check, same as Banking), only add/edit/delete
-// requires paid, shown inline on that page rather than hidden here.
+// dashboard, "Bank Accounts" (formerly a separate top-level "Banking" link
+// -- folded in here per your call, since it's the same "your money in
+// accounts" concept as the rest of this group rather than a distinct
+// top-level destination) keeps its own "bank" dataGate so it only shows
+// once a bank_account row exists, "Card Center" (Webflow slug
+// moneyfarm-webflow-html-website-template) is a real credit-card list/add/
+// edit/delete screen over manual_accounts (category='credit_card') --
+// viewing stays free (RLS SELECT has no role check, same as Bank
+// Accounts), only add/edit/delete requires paid, shown inline on that page
+// rather than hidden here.
 //
 // "Investments" now also has an "Accounts" child (href /invest-accounts,
 // distinct from Banking's own /accounts) -- manages the account-level
@@ -81,6 +98,11 @@ const LOGO_WORDMARK_URL =
 // The Portfolio page (/invest) mirrors this: it only renders a donut card
 // for an account type the user has actually ticked (see invest/page.tsx),
 // same account_types-is-the-source-of-truth rule, independent of role.
+// "Trade Options" (Options/Closed Positions/Simulator) lives inside this
+// group too now (moved from Income per your call) and keeps its own
+// `requires: "paid"` so it's still hidden from a free user who opted into
+// Investments via account_types alone -- the investOptIn gate only buys
+// entry into the group, options trading itself is still a paid feature.
 //
 // "Businesses" is a group: "Find a Gig" (Webflow's nav label was "Search",
 // slug side-gigs) is a searchable directory over gig_categories (50 rows,
@@ -178,6 +200,13 @@ type NavNode = {
   // node, same "hide until known" rule role/accountTypes already use.
   dataGate?: "wallet" | "bank";
   icon?: LucideIcon;
+  // A plain unlabeled separator rule rather than a real nav entry -- see
+  // the 2026-09 reorg note above. Carries no gate of its own and needs no
+  // href/children/icon; NavTree renders it as a divider instead of a
+  // NavItem, and filterNode passes it through untouched (all its gate
+  // checks are no-ops on a node with none of requires/accountTypeAny/
+  // dataGate/children set).
+  divider?: true;
 };
 
 // Icons match the live Webflow site's convention: only top-level items and
@@ -195,6 +224,7 @@ const NAV_TREE: NavNode[] = [
     dataGate: "wallet",
     children: [
       { href: "/wallet", label: "Overview" },
+      { href: "/accounts", label: "Bank Accounts", dataGate: "bank" },
       { href: "/card-center", label: "Card Center" },
       { href: "/transactions", label: "Transactions" },
     ],
@@ -221,16 +251,9 @@ const NAV_TREE: NavNode[] = [
         ],
       },
       { href: "/invest#vault-section", label: "Vault", accountTypeAny: ["metals", "sdira"] },
-    ],
-  },
-  {
-    label: "Income",
-    icon: CircleDollarSign,
-    requires: "paid",
-    children: [
-      { href: "/income", label: "Overview" },
       {
         label: "Trade Options",
+        requires: "paid",
         children: [
           { href: "/options", label: "Options" },
           { href: "/closed-positions", label: "Closed Positions" },
@@ -239,7 +262,7 @@ const NAV_TREE: NavNode[] = [
       },
     ],
   },
-  { href: "/accounts", label: "Banking", icon: User, dataGate: "bank" },
+  { href: "/income", label: "Income", icon: CircleDollarSign, requires: "paid" },
   {
     label: "Businesses",
     icon: Briefcase,
@@ -249,6 +272,7 @@ const NAV_TREE: NavNode[] = [
       { href: "/my-business", label: "My Business" },
     ],
   },
+  { label: "", divider: true },
   {
     label: "Game-O-Fi",
     icon: Trophy,
@@ -258,9 +282,8 @@ const NAV_TREE: NavNode[] = [
       { href: "/game-a-fi", label: "Standings" },
     ],
   },
-  // Stacked directly under Game-O-Fi and above Settings per your call.
   { href: "/smu", label: "SMU", icon: FileText },
-  { href: "/investors", label: "Owners", requires: "owner", icon: Crown },
+  { label: "", divider: true },
   {
     label: "Settings",
     icon: Wrench,
@@ -269,6 +292,7 @@ const NAV_TREE: NavNode[] = [
       { href: "/update-api-key", label: "Update API Key", requires: "admin" },
     ],
   },
+  { href: "/investors", label: "Owners", requires: "owner", icon: Crown },
   { href: "/users-groups", label: "Users & Groups", requires: "admin", icon: ShieldCheck },
 ];
 
@@ -491,16 +515,24 @@ function NavTree({
   );
   return (
     <>
-      {visible.map((node) => (
-        <NavItem
-          key={node.label + (node.href ?? "")}
-          node={node}
-          depth={0}
-          pathname={pathname}
-          search={search}
-          onNavigate={onNavigate}
-        />
-      ))}
+      {visible.map((node, i) =>
+        node.divider ? (
+          // Plain unlabeled section break -- see the 2026-09 nav reorg note
+          // above NAV_TREE. Never gated itself; both dividers are placed
+          // directly above an always-visible node so there's no dangling
+          // rule with nothing below it.
+          <div key={`divider-${i}`} className="my-1 border-t border-white/10" />
+        ) : (
+          <NavItem
+            key={node.label + (node.href ?? "")}
+            node={node}
+            depth={0}
+            pathname={pathname}
+            search={search}
+            onNavigate={onNavigate}
+          />
+        )
+      )}
     </>
   );
 }
