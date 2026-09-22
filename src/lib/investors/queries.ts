@@ -62,6 +62,11 @@ export async function fetchProfileOptions(supabase: SupabaseClient): Promise<Pro
   return data as ProfileOption[];
 }
 
+// lockup_expires_on is deliberately absent here -- it's a DB-generated
+// column (GENERATED ALWAYS AS (acquired_on + 5 years) STORED), so Postgres
+// rejects an insert/update that supplies it at all, even a null. The form
+// used to include it and every save failed with "cannot insert a
+// non-DEFAULT value into column \"lockup_expires_on\"".
 export type CapTableEntryInput = {
   user_id: string;
   first_name: string;
@@ -73,7 +78,6 @@ export type CapTableEntryInput = {
   price_paid: number | null;
   currency: string | null;
   acquired_on: string | null;
-  lockup_expires_on: string | null;
   status: import("./types").EntryStatus;
   is_board_seat: boolean;
   notes: string | null;

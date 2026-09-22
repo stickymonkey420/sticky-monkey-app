@@ -7,6 +7,19 @@ import { ENTRY_TYPE_LABELS, STATUS_LABELS, type CapTableEntry, type EntryStatus,
 const FIELD_CLASS =
   "w-full rounded-md border border-card-border bg-[#0d0f17] px-2.5 py-2 text-sm text-text-primary outline-none";
 
+// lockup_expires_on is a DB-generated column (acquired_on + 5 years,
+// computed by Postgres itself) -- it can never be part of an insert/update
+// payload (Postgres rejects any explicit value, even null, for a
+// GENERATED ALWAYS column). This mirrors that same +5-years math purely
+// for an informational preview; the real value always comes from what the
+// database computed and stored on the row.
+function fmtLockupPreview(acquiredOn: string): string {
+  const d = new Date(`${acquiredOn}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return "--";
+  d.setFullYear(d.getFullYear() + 5);
+  return d.toLocaleDateString();
+}
+
 // App Director-only. Add/Edit for a single cap_table_entries row. Does NOT
 // re-implement check_cap_table_limits()'s validation client-side -- on
 // save it just submits and surfaces whatever error message Postgres
@@ -33,7 +46,6 @@ export default function EntryFormModal({
   const [pricePaid, setPricePaid] = useState(entry?.price_paid != null ? String(entry.price_paid) : "");
   const [currency, setCurrency] = useState(entry?.currency ?? "USD");
   const [acquiredOn, setAcquiredOn] = useState(entry?.acquired_on ?? "");
-  const [lockupExpiresOn, setLockupExpiresOn] = useState(entry?.lockup_expires_on ?? "");
   const [status, setStatus] = useState<EntryStatus>(entry?.status ?? "pending");
   const [isBoardSeat, setIsBoardSeat] = useState(entry?.is_board_seat ?? false);
   const [notes, setNotes] = useState(entry?.notes ?? "");
@@ -75,7 +87,6 @@ export default function EntryFormModal({
         price_paid: pricePaid ? Number(pricePaid) : null,
         currency: currency || null,
         acquired_on: acquiredOn || null,
-        lockup_expires_on: lockupExpiresOn || null,
         status,
         is_board_seat: isBoardSeat,
         notes: notes || null,
@@ -200,12 +211,9 @@ export default function EntryFormModal({
           </div>
           <div>
             <label className="mb-1.5 block text-xs text-text-muted">Lockup Expires</label>
-            <input
-              type="date"
-              value={lockupExpiresOn}
-              onChange={(e) => setLockupExpiresOn(e.target.value)}
-              className={FIELD_CLASS}
-            />
+            <div className={`${FIELD_CLASS} flex items-center text-text-muted`}>
+              {acquiredOn ? fmtLockupPreview(acquiredOn) : "Set once Acquired On is filled in"}
+            </div>
           </div>
         </div>
 
