@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useProfile } from "@/lib/profile/ProfileProvider";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
 import { HANDLE_HINT, isHandleTakenError, validateHandle } from "@/lib/profile/handle";
@@ -23,7 +24,7 @@ const FIELD_CLASS =
 // Only the columns this modal needs -- a subset of EditProfileModal's admin
 // PROFILE_COLUMNS, plus use_cases/onboarding_survey to seed a survey retake.
 const SELF_PROFILE_COLUMNS =
-  "id,name,email,username,date_of_birth,present_address,permanent_address,postal_code,avatar_url,account_types,use_cases,onboarding_survey,x_handle";
+  "id,name,email,username,date_of_birth,present_address,permanent_address,postal_code,avatar_url,account_types,use_cases,onboarding_survey,x_handle,is_demo";
 
 type SelfProfile = {
   id: string;
@@ -39,6 +40,7 @@ type SelfProfile = {
   use_cases: string[] | null;
   onboarding_survey: Record<string, unknown> | null;
   x_handle: string | null;
+  is_demo: boolean | null;
 };
 
 // Self-service counterpart to the admin-only EditProfileModal (Users &
@@ -51,9 +53,13 @@ type SelfProfile = {
 // signup) in its controlled/retake mode.
 export default function MyProfileModal({ onClose }: { onClose: () => void }) {
   const { refresh } = useProfile();
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<SelfProfile | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
+  const [clearingDemoData, setClearingDemoData] = useState(false);
+  const [clearDemoError, setClearDemoError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -104,6 +110,7 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
         setAvatarUrl(p.avatar_url ?? "");
         setAccountTypes(p.account_types ?? []);
         setXHandle(p.x_handle ?? "");
+        setIsDemo(p.is_demo ?? false);
       }
       setLoading(false);
     }
@@ -243,6 +250,41 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
     }
     setAvatarUrl("");
     await refresh();
+  }
+
+  // Self-service counterpart to the sign-in reset (reset_demo_data_if_needed):
+  // wipes the fabricated demo dataset and flips is_demo off server-side
+  // (clear_demo_data RPC), so the next sign-in never reseeds it back. A
+  // full reload afterward is deliberate -- every "core money views" page
+  // (Dashboard, Wallet, Card Center, Investments, Income, Options) is
+  // reading data this just deleted out from under it.
+  async function handleClearDemoData() {
+    if (!userId || clearingDemoData) return;
+    const ok = await confirm({
+      title: "Clear demo data?",
+      message:
+        "This permanently deletes all of the sample bank, card, investment, and options data on this account so you can start entering your own. This can't be undone.",
+      confirmLabel: "Clear Demo Data",
+      danger: true,
+    });
+    if (!ok) return;
+
+    setClearDemoError(null);
+    setClearingDemoData(true);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("clear_demo_data");
+    if (error) {
+      setClearingDemoData(false);
+      console.error("[My Profile] clear_demo_data failed", error);
+      setClearDemoError("Could not clear demo data. Please try again.");
+      return;
+    }
+    // Full reload rather than router.push -- every "core money views" page
+    // (this one included, if already on Dashboard) holds client-fetched
+    // state read from tables clear_demo_data just emptied, and a client
+    // navigation alone wouldn't force those to refetch.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign("/dashboard");
   }
 
   async function reloadAfterRetake() {
@@ -417,6 +459,28 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
                 Retake Survey
               </button>
             </div>
+
+            {isDemo && (
+              <>
+                <h3 className="mb-2.5 mt-5 text-xs font-bold uppercase tracking-wide text-text-muted">Demo Account</h3>
+                <div className="mb-2 flex items-center justify-between gap-3 rounded-xl border border-card-border p-3">
+                  <p className="text-xs text-text-muted">
+                    This account is loaded with sample bank, card, and investment data. Clear it to start entering
+                    your own -- it won&apos;t come back the next time you sign in.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleClearDemoData}
+                    disabled={clearingDemoData}
+                    className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                    style={{ backgroundColor: "#ff5c7a" }}
+                  >
+                    {clearingDemoData ? "Clearing…" : "Clear Demo Data"}
+                  </button>
+                </div>
+                {clearDemoError && <div className="mb-2 text-xs text-[#e05656]">{clearDemoError}</div>}
+              </>
+            )}
 
             {error && <div className="mt-3 text-xs text-[#e05656]">{error}</div>}
             {savedMessage && !error && <div className="mt-3 text-xs text-[#3ddc97]">{savedMessage}</div>}
