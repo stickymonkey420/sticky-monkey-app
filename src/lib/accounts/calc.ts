@@ -10,17 +10,24 @@ export const ACCOUNT_CATEGORY_COLORS: Record<AccountCategory, string> = Object.f
 ) as Record<AccountCategory, string>;
 
 export type AccountsSummary = {
-  totalAssets: number; // sum of balance, excluding credit_card
+  totalAssets: number; // sum of balance for bank_account/business_account only
   totalCreditCardBalance: number; // sum of balance where category = credit_card
 };
 
+// This page is titled "Banking" -- its top summary cards are meant to
+// reflect banking only (checking/savings/business accounts) net of credit
+// card balances, not the account holder's entire net worth. Brokerage,
+// retirement, and precious-metal accounts still show in their own
+// sections below via groupAccountsByCategory, they just don't feed this
+// summary -- that's what the Dashboard's own separate Net Worth card
+// (src/lib/dashboard/netWorth.ts) is for.
 export function computeAccountsSummary(accounts: ManualAccount[]): AccountsSummary {
   let totalAssets = 0;
   let totalCreditCardBalance = 0;
   accounts.forEach((a) => {
     const bal = Number(a.balance) || 0;
     if (a.category === "credit_card") totalCreditCardBalance += bal;
-    else totalAssets += bal;
+    else if (a.category === "bank_account" || a.category === "business_account") totalAssets += bal;
   });
   return { totalAssets, totalCreditCardBalance };
 }

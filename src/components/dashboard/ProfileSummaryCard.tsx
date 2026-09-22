@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { money } from "@/lib/dashboard/netWorth";
+import { money, summarizeNetWorth } from "@/lib/dashboard/netWorth";
 import { fetchManualAccounts, fetchPlaidTransactions } from "@/lib/wallet/queries";
 import { computeWalletOverview, type WalletOverview } from "@/lib/wallet/calc";
 import { useProfile } from "@/lib/profile/ProfileProvider";
@@ -29,6 +29,13 @@ const EMPTY_OVERVIEW: WalletOverview = {
 export default function ProfileSummaryCard() {
   const { profile } = useProfile();
   const [overview, setOverview] = useState<WalletOverview>(EMPTY_OVERVIEW);
+  // This card's headline number is meant to be the same "Net Worth" the
+  // Dashboard's own Net Worth card shows (src/components/dashboard/
+  // NetWorthCard.tsx / src/lib/dashboard/netWorth.ts) -- previously it
+  // showed computeWalletOverview's all-manual-accounts balance instead,
+  // which disagreed with that card (and with Banking's own Total Assets)
+  // any time a profile held brokerage/retirement/precious-metal accounts.
+  const [netWorth, setNetWorth] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,6 +58,7 @@ export default function ProfileSummaryCard() {
 
       if (cancelled) return;
       setOverview(computeWalletOverview(accounts, txs));
+      setNetWorth(summarizeNetWorth(accounts).netWorth);
       setLoading(false);
     }
 
@@ -89,10 +97,12 @@ export default function ProfileSummaryCard() {
         )}
       </div>
 
-      {/* Current Balance */}
+      {/* Net Worth -- same figure and definition as the Dashboard's own
+          Net Worth card (Cash & Bank + the few named investment buckets,
+          minus credit card balances), not a sum of every manual account. */}
       <div className="rounded-[30px] px-6 py-[30px] text-center" style={{ backgroundColor: "rgb(32,40,56)" }}>
-        <div className="text-sm text-text-muted">Current Balance</div>
-        <div className="mt-1 text-2xl font-bold text-text-primary">{loading ? "…" : money(overview.balance)}</div>
+        <div className="text-sm text-text-muted">Net Worth</div>
+        <div className="mt-1 text-2xl font-bold text-text-primary">{loading ? "…" : money(netWorth)}</div>
         <div className="mt-4 flex items-center justify-center gap-10 border-t border-white/[0.06] pt-4 text-sm">
           <div className="flex flex-col items-center gap-1">
             <span className="text-text-muted">Income</span>
