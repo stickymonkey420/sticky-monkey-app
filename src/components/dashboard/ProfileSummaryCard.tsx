@@ -1,41 +1,38 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { money, summarizeNetWorth } from "@/lib/dashboard/netWorth";
-import { fetchManualAccounts, fetchPlaidTransactions } from "@/lib/wallet/queries";
-import { computeWalletOverview, type WalletOverview } from "@/lib/wallet/calc";
+import { fetchManualAccounts } from "@/lib/wallet/queries";
 import { useProfile } from "@/lib/profile/ProfileProvider";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
+import type { NetWorthSummary } from "@/lib/types/dashboard";
 import InvestmentAlertCard from "./InvestmentAlertCard";
 import ScoreboardCard from "./ScoreboardCard";
 import QuickAccessCard from "./QuickAccessCard";
 
-const EMPTY_OVERVIEW: WalletOverview = {
-  balance: 0,
-  totalIncome: 0,
-  totalExpense: 0,
-  netThisMonth: 0,
-  monthIncome: 0,
-  monthExpense: 0,
+const EMPTY_SUMMARY: NetWorthSummary = {
+  categories: [],
+  totalAssets: 0,
+  totalLiabilities: 0,
+  netWorth: 0,
 };
 
 // Right-side profile panel for the Dashboard -- ported to match the live
 // Webflow site's actual chrome (solid rgb(21,27,40) outer card, 30px
-// radius, no border; a darker rgb(32,40,56) nested "Current Balance" box;
+// radius, no border; a darker rgb(32,40,56) nested "Net Worth" box;
 // Investment Alert and Quick Access nested inside the same panel) rather
 // than the earlier pass's invented green-border treatment.
+//
+// The Net Worth/Total Assets/Total Liabilities block below is the same
+// one the Dashboard's own NetWorthCard used to show inline in the main
+// column -- moved here per your call, so it sits under the profile
+// handle instead. The Income/Expense (Plaid transactions) row that used
+// to live in this box moved the other way, into NetWorthCard above its
+// Income table -- see that component.
 export default function ProfileSummaryCard() {
   const { profile } = useProfile();
-  const [overview, setOverview] = useState<WalletOverview>(EMPTY_OVERVIEW);
-  // This card's headline number is meant to be the same "Net Worth" the
-  // Dashboard's own Net Worth card shows (src/components/dashboard/
-  // NetWorthCard.tsx / src/lib/dashboard/netWorth.ts) -- previously it
-  // showed computeWalletOverview's all-manual-accounts balance instead,
-  // which disagreed with that card (and with Banking's own Total Assets)
-  // any time a profile held brokerage/retirement/precious-metal accounts.
-  const [netWorth, setNetWorth] = useState(0);
+  const [summary, setSummary] = useState<NetWorthSummary>(EMPTY_SUMMARY);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,14 +48,10 @@ export default function ProfileSummaryCard() {
         return;
       }
 
-      const [accounts, txs] = await Promise.all([
-        fetchManualAccounts(supabase, user.id),
-        fetchPlaidTransactions(supabase, user.id),
-      ]);
+      const accounts = await fetchManualAccounts(supabase, user.id);
 
       if (cancelled) return;
-      setOverview(computeWalletOverview(accounts, txs));
-      setNetWorth(summarizeNetWorth(accounts).netWorth);
+      setSummary(summarizeNetWorth(accounts));
       setLoading(false);
     }
 
@@ -100,23 +93,21 @@ export default function ProfileSummaryCard() {
       {/* Net Worth -- same figure and definition as the Dashboard's own
           Net Worth card (Cash & Bank + the few named investment buckets,
           minus credit card balances), not a sum of every manual account. */}
-      <div className="rounded-[30px] px-6 py-[30px] text-center" style={{ backgroundColor: "rgb(32,40,56)" }}>
+      <div className="rounded-[30px] p-[30px]" style={{ backgroundColor: "rgb(32,40,56)" }}>
         <div className="text-sm text-text-muted">Net Worth</div>
-        <div className="mt-1 text-2xl font-bold text-text-primary">{loading ? "…" : money(netWorth)}</div>
-        <div className="mt-4 flex items-center justify-center gap-10 border-t border-white/[0.06] pt-4 text-sm">
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-text-muted">Income</span>
-            <span className="flex items-center gap-1.5 font-medium text-text-primary">
-              <ArrowUpCircle size={16} style={{ color: "#4f8cff" }} />
-              {loading ? "…" : money(overview.monthIncome)}
-            </span>
+        <div className="mt-1 text-4xl font-bold text-text-primary">{loading ? "…" : money(summary.netWorth)}</div>
+        <div className="mt-4 flex items-center gap-10 text-sm">
+          <div>
+            <div className="text-text-muted">Total Assets</div>
+            <div className="mt-1 font-semibold" style={{ color: "#3ddc97" }}>
+              {loading ? "…" : money(summary.totalAssets)}
+            </div>
           </div>
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-text-muted">Expense</span>
-            <span className="flex items-center gap-1.5 font-medium text-text-primary">
-              <ArrowDownCircle size={16} style={{ color: "#4f8cff" }} />
-              {loading ? "…" : money(overview.monthExpense)}
-            </span>
+          <div>
+            <div className="text-text-muted">Total Liabilities</div>
+            <div className="mt-1 font-semibold" style={{ color: "#eb5757" }}>
+              {loading ? "…" : money(summary.totalLiabilities)}
+            </div>
           </div>
         </div>
       </div>

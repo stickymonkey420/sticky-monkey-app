@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { CATEGORY_COLORS, money, summarizeNetWorth } from "@/lib/dashboard/netWorth";
 import { computeIncomeTable, PROJECTED_ROW, type IncomeTableRow, type IncomeTableTrade } from "@/lib/dashboard/incomeTable";
+import { fetchPlaidTransactions } from "@/lib/wallet/queries";
+import { computeWalletOverview } from "@/lib/wallet/calc";
 import type { ManualAccount, NetWorthSummary } from "@/lib/types/dashboard";
 
 const EMPTY_SUMMARY: NetWorthSummary = {
@@ -38,6 +41,11 @@ const NW_CARD_CLASS = `${CARD_CLASS} min-w-0 flex-1`;
 export default function NetWorthCard() {
   const [summary, setSummary] = useState<NetWorthSummary>(EMPTY_SUMMARY);
   const [incomeRows, setIncomeRows] = useState<IncomeTableRow[]>([]);
+  // Plaid-derived month income/expense -- moved here from the Dashboard
+  // sidebar's profile panel per your call, so it now sits directly above
+  // this card's own Income (wheel-trade) table instead.
+  const [monthIncome, setMonthIncome] = useState(0);
+  const [monthExpense, setMonthExpense] = useState(0);
   const [loading, setLoading] = useState(true);
   // Whether there's anything behind this card at all -- any manual account
   // (feeds Asset Allocation/Net Worth) or any wheel trade (feeds the Income
@@ -66,6 +74,7 @@ export default function NetWorthCard() {
         { data: accountData, error: accountErr },
         { data: tradeData, error: tradeErr },
         { data: profileData },
+        txs,
       ] = await Promise.all([
         supabase.from("manual_accounts").select("category,account_name,balance").eq("user_id", user.id),
         supabase
@@ -73,11 +82,20 @@ export default function NetWorthCard() {
           .select("premium,contracts,status,account_type,entry_date,strike,trade_type")
           .eq("user_id", user.id),
         supabase.from("profiles").select("account_types").eq("id", user.id).maybeSingle(),
+        fetchPlaidTransactions(supabase, user.id),
       ]);
 
       if (cancelled) return;
       const accounts: ManualAccount[] = accountErr ? [] : accountData || [];
       setSummary(summarizeNetWorth(accounts));
+      // computeWalletOverview's month income/expense are derived purely
+      // from `txs` -- its `accounts` param only feeds the all-accounts
+      // "balance" figure this card doesn't use, so pass [] rather than
+      // `accounts` (whose narrower dashboard shape doesn't structurally
+      // match wallet's fuller ManualAccount type).
+      const walletOverview = computeWalletOverview([], txs);
+      setMonthIncome(walletOverview.monthIncome);
+      setMonthExpense(walletOverview.monthExpense);
       const trades: IncomeTableTrade[] = tradeErr ? [] : tradeData || [];
       // Only show Income rows for accounts the profile has actually enabled
       // (profiles.account_types) -- a profile with none of brokerage/
@@ -97,7 +115,7 @@ export default function NetWorthCard() {
 
   if (hasData === false) return null;
 
-  const { categories, totalAssets, totalLiabilities, netWorth } = summary;
+  const { categories, totalAssets } = summary;
 
   let gradient = "none";
   if (categories.length && totalAssets > 0) {
@@ -166,27 +184,22 @@ export default function NetWorthCard() {
         </div>
       </div>
 
-      {/* Net Worth card -- big number, Total Assets/Liabilities side by
-          side, and an embedded Income (Week/Month/YTD/Collateral) table,
-          matching the live site's layout exactly rather than stacking
-          Income as its own separate widget. */}
+      {/* Income card -- the Net Worth headline/Total Assets/Liabilities
+          that used to open this card moved to the Dashboard sidebar's
+          profile panel (ProfileSummaryCard) per your call; this card now
+          leads with the Plaid-derived Income/Expense row, then the
+          embedded Income (Week/Month/YTD/Collateral) table below it. */}
       <div id="nw-card" className={NW_CARD_CLASS} style={{ backgroundColor: CARD_BG }}>
-        <h3 className="mb-4 text-sm font-semibold text-text-primary">Net Worth</h3>
-        <div id="nw-net-worth-value" className="mb-4 text-4xl font-bold text-text-primary">
-          {loading ? "…" : money(netWorth)}
-        </div>
         <div className="flex items-center gap-10 text-sm">
-          <div>
-            <div className="text-text-muted">Total Assets</div>
-            <div id="nw-total-assets" className="mt-1 font-semibold" style={{ color: "#3ddc97" }}>
-              {loading ? "…" : money(totalAssets)}
-            </div>
+          <div className="flex items-center gap-1.5">
+            <ArrowUpCircle size={16} style={{ color: "#4f8cff" }} />
+            <span className="text-text-muted">Income</span>
+            <span className="font-medium text-text-primary">{loading ? "…" : money(monthIncome)}</span>
           </div>
-          <div>
-            <div className="text-text-muted">Total Liabilities</div>
-            <div id="nw-total-liabilities" className="mt-1 font-semibold" style={{ color: "#eb5757" }}>
-              {loading ? "…" : money(totalLiabilities)}
-            </div>
+          <div className="flex items-center gap-1.5">
+            <ArrowDownCircle size={16} style={{ color: "#4f8cff" }} />
+            <span className="text-text-muted">Expense</span>
+            <span className="font-medium text-text-primary">{loading ? "…" : money(monthExpense)}</span>
           </div>
         </div>
 
