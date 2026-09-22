@@ -43,8 +43,31 @@ export async function saveProfileRow(
   // status message shows, and the row's "Saving..." state can get stuck --
   // which reads exactly like "I clicked Save and nothing happened."
   try {
+    // The actual demo dataset is only ever fabricated by a seed routine --
+    // originally that only ran at the *target* account's own next sign-in
+    // (reset_demo_data_if_needed(), keyed off auth.uid()), so ticking Demo
+    // for someone else here and saving silently did nothing visible until
+    // they happened to log out and back in. Detect the false -> true
+    // transition and seed immediately via the admin-parameterized RPC
+    // instead, so Save is the moment the account actually gets data.
+    let seedTransition = false;
+    if (changes.is_demo === true) {
+      const { data: before } = await supabase.from("profiles").select("is_demo").eq("id", id).maybeSingle();
+      seedTransition = !(before as { is_demo?: boolean } | null)?.is_demo;
+    }
+
     const { error } = await supabase.from("profiles").update(changes).eq("id", id);
-    return { error: error ? error.message : null };
+    if (error) return { error: error.message };
+
+    if (seedTransition) {
+      const { error: seedError } = await supabase.rpc("admin_seed_demo_data", { target_id: id });
+      if (seedError) {
+        console.error("admin_seed_demo_data failed", seedError);
+        return { error: `Saved, but seeding demo data failed: ${seedError.message}` };
+      }
+    }
+
+    return { error: null };
   } catch (err) {
     console.error("saveProfileRow threw", err);
     return { error: err instanceof Error ? err.message : "Unexpected error saving changes." };
