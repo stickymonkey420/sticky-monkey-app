@@ -30,11 +30,24 @@ export default function SignInPage() {
     // own correct credentials afterward is a normal no-op re-login.)
     await supabase.auth.signOut();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       setError(error.message);
       return;
     }
+    // No-op for a normal account (the RPC checks profiles.is_demo itself
+    // and returns immediately if false). For a demo account, this wipes
+    // and reseeds its "core money views" data back to the fabricated
+    // baseline every time it signs in, so edits made last session never
+    // stick around. Fire-and-forget-ish: awaited so the dashboard never
+    // renders a half-reset demo account, but a failure here shouldn't
+    // block a real sign-in, so it's logged rather than surfaced as an
+    // error.
+    const { error: resetError } = await supabase.rpc("reset_demo_data_if_needed");
+    if (resetError) {
+      console.error("[sign-in] reset_demo_data_if_needed failed", resetError);
+    }
+    setLoading(false);
     router.push("/dashboard");
     router.refresh();
   }
