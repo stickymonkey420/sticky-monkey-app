@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
-import UserRow from "@/components/usersGroups/UserRow";
+import UserRow, { type UserRowHandle } from "@/components/usersGroups/UserRow";
 import EditProfileModal from "@/components/usersGroups/EditProfileModal";
 import SurveyModal from "@/components/usersGroups/SurveyModal";
 import { createClient } from "@/lib/supabase/client";
@@ -34,6 +34,15 @@ export default function UsersGroupsPage() {
   const [status, setStatus] = useState<{ text: string; isError: boolean } | null>(null);
   const [surveyProfile, setSurveyProfile] = useState<Profile | null>(null);
   const [editProfile, setEditProfile] = useState<Profile | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
+
+  // One handle per rendered row, keyed by profile id -- lets the top-right
+  // "Save All" button trigger every row's own save from a single click, as
+  // a workaround for whatever's stopping the per-row Save buttons from
+  // reaching the server (each row's individual Save button is untouched
+  // and still there; this is an additional way to trigger the exact same
+  // save logic, not a replacement for it).
+  const rowRefs = useRef<Record<string, UserRowHandle | null>>({});
 
   function showStatus(text: string, isError: boolean) {
     setStatus({ text, isError });
@@ -92,6 +101,19 @@ export default function UsersGroupsPage() {
     }
     setProfiles((rows) => rows.map((p) => (p.id === id ? { ...p, ...changes } : p)));
     showStatus("Saved.", false);
+  }
+
+  async function handleSaveAll() {
+    if (savingAll) return;
+    setSavingAll(true);
+    // Runs every currently-rendered row's own save in parallel -- each one
+    // already reports its own success/error via showStatus (handleSaveRow
+    // above), so this doesn't duplicate that; it just fires all of them at
+    // once instead of requiring a click per row.
+    await Promise.all(
+      profiles.map((p) => rowRefs.current[p.id]?.save() ?? Promise.resolve())
+    );
+    setSavingAll(false);
   }
 
   async function handleDelete(profile: Profile) {
@@ -169,35 +191,51 @@ export default function UsersGroupsPage() {
           {profiles.length === 0 ? (
             <div className="p-6 text-center text-sm text-text-muted">No accounts found.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[880px] border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-white/10 text-left text-xs font-medium uppercase text-text-muted">
-                    <th className="py-2 pr-3">Name</th>
-                    <th className="py-2 pr-3">Email</th>
-                    <th className="py-2 pr-3">Role</th>
-                    <th className="py-2 pr-3">Demo</th>
-                    <th className="py-2 pr-3">Created</th>
-                    <th className="py-2 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/10">
-                  {profiles.map((p) => (
-                    <UserRow
-                      key={p.id}
-                      profile={p}
-                      isSelf={p.id === userId}
-                      myRole={myRole}
-                      onSave={handleSaveRow}
-                      onOpenSurvey={setSurveyProfile}
-                      onOpenEdit={setEditProfile}
-                      onResetPassword={handleResetPassword}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <div className="mb-3 flex justify-end">
+                <button
+                  type="button"
+                  disabled={savingAll}
+                  onClick={handleSaveAll}
+                  className="rounded-md px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                  style={{ backgroundColor: "#4f8cff" }}
+                >
+                  {savingAll ? "Saving…" : "Save All"}
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[880px] border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10 text-left text-xs font-medium uppercase text-text-muted">
+                      <th className="py-2 pr-3">Name</th>
+                      <th className="py-2 pr-3">Email</th>
+                      <th className="py-2 pr-3">Role</th>
+                      <th className="py-2 pr-3">Demo</th>
+                      <th className="py-2 pr-3">Created</th>
+                      <th className="py-2 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/10">
+                    {profiles.map((p) => (
+                      <UserRow
+                        key={p.id}
+                        ref={(el) => {
+                          rowRefs.current[p.id] = el;
+                        }}
+                        profile={p}
+                        isSelf={p.id === userId}
+                        myRole={myRole}
+                        onSave={handleSaveRow}
+                        onOpenSurvey={setSurveyProfile}
+                        onOpenEdit={setEditProfile}
+                        onResetPassword={handleResetPassword}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}

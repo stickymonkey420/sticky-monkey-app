@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { ALL_ROLES, LIMITED_ROLES, ROLE_LABELS, type Profile, type Role } from "@/lib/usersGroups/types";
+
+// Lets the page-level "Save All" button (top-right of the table) trigger
+// every row's own save from one click, on top of each row's individual
+// Save button -- see UsersGroupsPage's rowRefs/handleSaveAll.
+export type UserRowHandle = { save: () => Promise<void> };
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "";
@@ -27,16 +32,10 @@ type UserRowProps = {
 // Support/Developer see a disabled role <select> limited to paid/free
 // (RLS enforces the same restriction server-side); App Director sees and
 // can assign every tier, and is the only one who gets a Delete button.
-export default function UserRow({
-  profile,
-  isSelf,
-  myRole,
-  onSave,
-  onOpenSurvey,
-  onOpenEdit,
-  onResetPassword,
-  onDelete,
-}: UserRowProps) {
+const UserRow = forwardRef<UserRowHandle, UserRowProps>(function UserRow(
+  { profile, isSelf, myRole, onSave, onOpenSurvey, onOpenEdit, onResetPassword, onDelete },
+  ref
+) {
   const confirm = useConfirm();
   const [name, setName] = useState(profile.name ?? "");
   const [role, setRole] = useState<Role>(profile.role);
@@ -59,6 +58,11 @@ export default function UserRow({
       setSaving(false);
     }
   }
+
+  // Exposes this row's own save to the page-level "Save All" button --
+  // same handleSave the row's own Save button calls, just triggerable from
+  // outside too.
+  useImperativeHandle(ref, () => ({ save: handleSave }));
 
   async function handleDelete() {
     if (
@@ -165,4 +169,6 @@ export default function UserRow({
       </td>
     </tr>
   );
-}
+});
+
+export default UserRow;
