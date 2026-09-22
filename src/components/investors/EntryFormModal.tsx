@@ -84,8 +84,11 @@ export default function EntryFormModal({
         relationship_to_founder: relationship || null,
         entry_type: entryType,
         equity_pct: pct,
-        price_paid: pricePaid ? Number(pricePaid) : null,
-        currency: currency || null,
+        // Board Grant entries have no purchase price -- the fields are
+        // hidden for this type below, and nulled here so a value left over
+        // from switching away from Purchase never gets saved silently.
+        price_paid: entryType === "board_grant" ? null : pricePaid ? Number(pricePaid) : null,
+        currency: entryType === "board_grant" ? null : currency || null,
         acquired_on: acquiredOn || null,
         status,
         is_board_seat: isBoardSeat,
@@ -193,16 +196,18 @@ export default function EntryFormModal({
           </div>
         </div>
 
-        <div className="mb-3 grid grid-cols-2 gap-2.5">
-          <div>
-            <label className="mb-1.5 block text-xs text-text-muted">Price Paid</label>
-            <input type="number" step="0.01" value={pricePaid} onChange={(e) => setPricePaid(e.target.value)} className={FIELD_CLASS} />
+        {entryType !== "board_grant" && (
+          <div className="mb-3 grid grid-cols-2 gap-2.5">
+            <div>
+              <label className="mb-1.5 block text-xs text-text-muted">Price Paid</label>
+              <input type="number" step="0.01" value={pricePaid} onChange={(e) => setPricePaid(e.target.value)} className={FIELD_CLASS} />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs text-text-muted">Currency</label>
+              <input type="text" value={currency} onChange={(e) => setCurrency(e.target.value)} className={FIELD_CLASS} />
+            </div>
           </div>
-          <div>
-            <label className="mb-1.5 block text-xs text-text-muted">Currency</label>
-            <input type="text" value={currency} onChange={(e) => setCurrency(e.target.value)} className={FIELD_CLASS} />
-          </div>
-        </div>
+        )}
 
         <div className="mb-3 grid grid-cols-2 gap-2.5">
           <div>
