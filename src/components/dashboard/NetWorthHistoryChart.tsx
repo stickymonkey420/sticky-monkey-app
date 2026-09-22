@@ -51,33 +51,50 @@ export default function NetWorthHistoryChart() {
   // approach as IncomeHistoryChart, so the canvas ref stays stable for
   // Chart.js.
   const [hasData, setHasData] = useState(false);
+  // Buckets are kept in state (rather than only living inside the fetch
+  // effect's closure) so the chart can be redrawn on a goal change alone,
+  // without re-fetching. Same fix as IncomeHistoryChart.tsx: handleSaveGoal
+  // used to call setGranularity((g) => g) to "nudge" a redraw, but since the
+  // value doesn't actually change, the effect below (keyed on [granularity])
+  // never re-ran -- the "Monthly Income Goal: $X" text updated instantly
+  // (separate state) while the chart itself, including the tooltip's
+  // beat/short-of-goal math and the dashed goal line, kept using the OLD
+  // goal from before the edit until the next full page load.
+  const [buckets, setBuckets] = useState<HistoryBucket[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
 
-    async function loadAndRender() {
+    async function load() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user || !canvasRef.current) return;
+      if (!user) return;
 
-      const buckets = buildBuckets(granularity);
-      const rangeStart = isoDate(buckets[0].start);
+      const newBuckets = buildBuckets(granularity);
+      const rangeStart = isoDate(newBuckets[0].start);
 
       const [goal] = await Promise.all([
         fetchMonthlyGoal(supabase, user.id),
-        fetchIncomePremium(supabase, user.id, buckets, rangeStart),
-        fetchIncomeBusiness(supabase, user.id, buckets),
-        fetchIncomeMarketGains(supabase, user.id, buckets),
-        fetchNetWorthSnapshots(supabase, user.id, buckets, rangeStart),
+        fetchIncomePremium(supabase, user.id, newBuckets, rangeStart),
+        fetchIncomeBusiness(supabase, user.id, newBuckets),
+        fetchIncomeMarketGains(supabase, user.id, newBuckets),
+        fetchNetWorthSnapshots(supabase, user.id, newBuckets, rangeStart),
       ]);
       if (cancelled) return;
       setGoalMonthly(goal);
-      setHasData(buckets.some((b) => b.income !== 0 || (b.netWorth !== null && b.netWorth !== 0)));
-      renderChart(buckets, goal);
+      setHasData(newBuckets.some((b) => b.income !== 0 || (b.netWorth !== null && b.netWorth !== 0)));
+      setBuckets(newBuckets);
     }
 
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [granularity]);
+
+  useEffect(() => {
     function renderChart(buckets: HistoryBucket[], goal: number) {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -226,15 +243,14 @@ export default function NetWorthHistoryChart() {
       });
     }
 
-    loadAndRender();
+    renderChart(buckets, goalMonthly);
     return () => {
-      cancelled = true;
       if (chartRef.current) {
         chartRef.current.destroy();
         chartRef.current = null;
       }
     };
-  }, [granularity]);
+  }, [buckets, goalMonthly]);
 
   async function handleSaveGoal() {
     const v = Math.max(0, Number(goalInput) || 0);
@@ -252,7 +268,6 @@ export default function NetWorthHistoryChart() {
     if (ok) {
       setGoalMonthly(v);
       setEditingGoal(false);
-      setGranularity((g) => g);
     } else {
       window.alert("Could not save your goal. Please try again.");
     }
