@@ -113,7 +113,7 @@ export function computeTopSpendingByAccount(
 // ---- Debit / Credit bar chart ----
 
 export type FlowBucket = { label: string; debit: number; credit: number };
-export type FlowGranularity = "monthly" | "weekly" | "alltime";
+export type FlowGranularity = "monthly" | "weekly" | "ytd" | "alltime";
 
 function isoWeekStart(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
@@ -139,6 +139,10 @@ const GRANULARITY_CONFIG: Record<
 > = {
   monthly: { keyFn: (d) => String(d).slice(0, 7), labelFn: monthLabel, max: 12 },
   weekly: { keyFn: isoWeekStart, labelFn: weekLabel, max: 12 },
+  // Same month-keyed buckets as "monthly", but scoped below to just the
+  // current calendar year (Jan through the current month) instead of
+  // "monthly"'s rolling trailing-12-months window.
+  ytd: { keyFn: (d) => String(d).slice(0, 7), labelFn: monthLabel, max: 12 },
   alltime: { keyFn: (d) => String(d).slice(0, 4), labelFn: (k) => k, max: 10 },
 };
 
@@ -150,8 +154,12 @@ export function computeFlowBuckets(
   granularity: FlowGranularity
 ): FlowBucket[] {
   const { keyFn, labelFn, max } = GRANULARITY_CONFIG[granularity];
+  const source =
+    granularity === "ytd"
+      ? txs.filter((t) => String(t.transaction_date).slice(0, 4) === String(new Date().getFullYear()))
+      : txs;
   const map = new Map<string, { debit: number; credit: number }>();
-  txs.forEach((t) => {
+  source.forEach((t) => {
     const key = keyFn(t.transaction_date);
     const entry = map.get(key) || { debit: 0, credit: 0 };
     const amt = Number(t.amount) || 0;

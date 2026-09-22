@@ -31,7 +31,7 @@ export default function TopSpendingDonut({ data, loading }: TopSpendingDonutProp
 
   return (
     <div className="flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-5">
-      <h3 className="mb-4 text-sm font-semibold text-text-primary">Top Spending by Account</h3>
+      <h3 className="mb-4 text-lg font-semibold text-text-primary">Top Spending by Account</h3>
       <div className="flex flex-1 items-center gap-6">
         <div className="relative h-24 w-24 shrink-0">
           <div
