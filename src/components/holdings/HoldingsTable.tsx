@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { createClient } from "@/lib/supabase/client";
 import { fetchHoldings } from "@/lib/holdings/queries";
 import { deleteHolding, updateHolding, type HoldingFormInput } from "@/lib/holdings/mutations";
@@ -44,6 +45,7 @@ function pctColor(n: number | null): string | undefined {
 // lib/holdings/mutations.ts the same way that table wires Edit/Delete to
 // lib/options/mutations.ts.
 export default function HoldingsTable({ accountType, accountOptions, refreshKey = 0, onChanged }: HoldingsTableProps) {
+  const confirm = useConfirm();
   const [holdings, setHoldings] = useState<HoldingWithDerived[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -111,7 +113,7 @@ export default function HoldingsTable({ accountType, accountOptions, refreshKey 
   );
 
   async function handleDelete(h: HoldingWithDerived) {
-    if (!window.confirm(`Remove ${h.ticker} from holdings? This cannot be undone.`)) return;
+    if (!(await confirm({ message: `Remove ${h.ticker} from holdings? This cannot be undone.`, danger: true }))) return;
     setActionError(null);
     const supabase = createClient();
     const { error } = await deleteHolding(supabase, h.id);

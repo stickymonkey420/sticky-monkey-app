@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import YourEquityTable from "@/components/investors/YourEquityTable";
 import PoolSummaryCards from "@/components/investors/PoolSummaryCards";
 import OwnersTable from "@/components/investors/OwnersTable";
@@ -34,6 +35,7 @@ import type { CapTableEntry } from "@/lib/investors/types";
 // cap_table_select_own_or_director only ever returns a non-director's own
 // rows.
 export default function InvestorsPage() {
+  const confirm = useConfirm();
   const [userId, setUserId] = useState<string | null>(null);
   const [myRole, setMyRole] = useState<string | null>(null);
   const [myEntries, setMyEntries] = useState<CapTableEntry[]>([]);
@@ -107,7 +109,7 @@ export default function InvestorsPage() {
   }
 
   async function handleDelete(entry: CapTableEntry) {
-    if (!window.confirm(`Delete this entry for ${entry.first_name || entry.email}?`)) return;
+    if (!(await confirm({ message: `Delete this entry for ${entry.first_name || entry.email}?`, danger: true }))) return;
     const supabase = createClient();
     const { error } = await deleteCapTableEntry(supabase, entry.id);
     if (error) {

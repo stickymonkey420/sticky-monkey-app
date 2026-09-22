@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { ALL_ROLES, LIMITED_ROLES, ROLE_LABELS, type Profile, type Role } from "@/lib/usersGroups/types";
 
 function fmtDate(iso: string | null): string {
@@ -36,6 +37,7 @@ export default function UserRow({
   onResetPassword,
   onDelete,
 }: UserRowProps) {
+  const confirm = useConfirm();
   const [name, setName] = useState(profile.name ?? "");
   const [role, setRole] = useState<Role>(profile.role);
   const [isDemo, setIsDemo] = useState(profile.is_demo);
@@ -54,9 +56,10 @@ export default function UserRow({
 
   async function handleDelete() {
     if (
-      !window.confirm(
-        `Permanently delete ${profile.name || profile.email || profile.id}'s account -- profile, trades, positions, LEAPs, and their ability to sign in? This cannot be undone.`
-      )
+      !(await confirm({
+        message: `Permanently delete ${profile.name || profile.email || profile.id}'s account -- profile, trades, positions, LEAPs, and their ability to sign in? This cannot be undone.`,
+        danger: true,
+      }))
     ) {
       return;
     }

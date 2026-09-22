@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { createClient } from "@/lib/supabase/client";
 import {
   daysToExpiration,
@@ -105,6 +106,7 @@ export default function OpenPositionsTable({
   refreshKey = 0,
   onChanged,
 }: OpenPositionsTableProps) {
+  const confirm = useConfirm();
   const [positions, setPositions] = useState<OpenPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -189,7 +191,7 @@ export default function OpenPositionsTable({
   }
 
   async function handleDelete(p: OpenPosition) {
-    if (!window.confirm("Remove this position? This cannot be undone.")) return;
+    if (!(await confirm({ message: "Remove this position? This cannot be undone.", danger: true }))) return;
     setActionError(null);
     const supabase = createClient();
     const { error } = await deleteTrade(supabase, p.source, p.id);
@@ -201,7 +203,13 @@ export default function OpenPositionsTable({
   }
 
   async function handleMarkExpired(p: OpenPosition) {
-    if (!window.confirm('Mark this position as "Expired worthless"? It will move out of Open Positions.')) return;
+    if (
+      !(await confirm({
+        message: 'Mark this position as "Expired worthless"? It will move out of Open Positions.',
+        danger: false,
+      }))
+    )
+      return;
     if (!userId) return;
     setActionError(null);
     const supabase = createClient();
@@ -227,7 +235,7 @@ export default function OpenPositionsTable({
           Number(p.strike) - Number(p.premium || 0)
         ).toFixed(2)}/sh (strike minus premium).`
       : ` This will remove ${shareQty} shares of ${p.ticker} from your holdings.`;
-    if (!window.confirm(`Mark this position as "${label}"?${detail}`)) return;
+    if (!(await confirm({ message: `Mark this position as "${label}"?${detail}`, danger: false }))) return;
     if (!userId) return;
     setActionError(null);
     const supabase = createClient();

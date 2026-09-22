@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, VT323, Chakra_Petch } from "next/font/google";
 import "./globals.css";
 import AbuChatWidget from "@/components/chat/AbuChatWidget";
+import ConfirmProvider from "@/components/ui/ConfirmProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,10 +44,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${vt323.variable} ${chakraPetch.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        {children}
-        {/* Site-wide, exactly like the Webflow footer script -- renders
-            nothing itself and only builds its DOM once a session exists. */}
-        <AbuChatWidget />
+        <ConfirmProvider>
+          {children}
+          {/* Site-wide, exactly like the Webflow footer script -- renders
+              nothing itself and only builds its DOM once a session exists. */}
+          <AbuChatWidget />
+        </ConfirmProvider>
       </body>
     </html>
   );

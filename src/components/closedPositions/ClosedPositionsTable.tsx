@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { createClient } from "@/lib/supabase/client";
 import { fmtDate, money } from "@/lib/options/queries";
 import { CLOSED_POSITION_TYPE_COLOR, statusLabel } from "@/lib/closedPositions/calc";
@@ -105,6 +106,7 @@ function PctCell({ pct }: { pct: number | null }) {
 // second, defense-in-depth check in case someone reaches the URL
 // directly.
 export default function ClosedPositionsTable() {
+  const confirm = useConfirm();
   const [positions, setPositions] = useState<ClosedPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -191,7 +193,8 @@ export default function ClosedPositionsTable() {
   const canDelete = role === "paid" || role === "app_director";
 
   async function handleDelete(p: ClosedPosition) {
-    if (!window.confirm(`Permanently delete this ${p.ticker} ${p.type} record? This can't be undone.`)) return;
+    if (!(await confirm({ message: `Permanently delete this ${p.ticker} ${p.type} record? This can't be undone.`, danger: true })))
+      return;
     setDeleteError(null);
     setDeletingId(p.id);
     const supabase = createClient();

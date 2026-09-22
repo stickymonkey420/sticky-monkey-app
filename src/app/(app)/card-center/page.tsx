@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import ManualAccountList from "@/components/accounts/ManualAccountList";
 import { createClient } from "@/lib/supabase/client";
 import { addManualAccount, deleteManualAccount, fetchManualAccounts, updateManualAccount } from "@/lib/accounts/queries";
@@ -55,6 +56,7 @@ function fromAccount(a: ManualAccount): FormState {
 // Categories-style pages already show inline rather than blocking the
 // whole page.
 export default function CardCenterPage() {
+  const confirm = useConfirm();
   const [userId, setUserId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [cards, setCards] = useState<ManualAccount[]>([]);
@@ -141,7 +143,7 @@ export default function CardCenterPage() {
   }
 
   async function handleDelete(a: ManualAccount) {
-    if (!window.confirm(`Remove "${a.account_name}"? This can't be undone.`)) return;
+    if (!(await confirm({ message: `Remove "${a.account_name}"? This can't be undone.`, danger: true }))) return;
     setDeletingId(a.id);
     const prev = cards;
     setCards((rows) => rows.filter((r) => r.id !== a.id));

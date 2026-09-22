@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { createClient } from "@/lib/supabase/client";
 import { descLine, formatPrice, relTime, titleLine } from "@/lib/dashboard/investmentAlerts";
 import type { InvestmentAlert } from "@/lib/types/dashboard";
@@ -24,6 +25,7 @@ const ALERT_COLUMNS = "id,title,description,ticker,action,price,message,triggere
 // TopBar can re-fetch its counts -- this component has no way to update
 // that badge itself.
 export default function NotificationsModal({ onClose, onChange }: { onClose: () => void; onChange?: () => void }) {
+  const confirm = useConfirm();
   const [alerts, setAlerts] = useState<InvestmentAlert[]>([]);
   const [invites, setInvites] = useState<ChallengeRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,7 +94,7 @@ export default function NotificationsModal({ onClose, onChange }: { onClose: () 
   }
 
   async function deleteAlert(id: string) {
-    if (!window.confirm("Delete this alert? This cannot be undone.")) return;
+    if (!(await confirm({ message: "Delete this alert? This cannot be undone.", danger: true }))) return;
     const supabase = createClient();
     const { error } = await supabase.from("investment_alerts").delete().eq("id", id);
     if (!error) {

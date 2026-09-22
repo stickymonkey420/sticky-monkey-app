@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { createClient } from "@/lib/supabase/client";
 import { CATEGORICAL_PALETTE } from "@/lib/palette";
 import {
@@ -43,6 +44,7 @@ function Swatch({ color, selected, onClick }: { color: string; selected: boolean
 // picker, matching the dataviz skill's fixed-hue-order rule used
 // everywhere else in the app.
 export default function EditCategoriesPage() {
+  const confirm = useConfirm();
   const [userId, setUserId] = useState<string | null>(null);
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -151,7 +153,12 @@ export default function EditCategoriesPage() {
   }
 
   async function handleDelete(c: CustomCategory) {
-    if (!window.confirm(`Delete the "${c.label}" category? Past transactions keep their tag but it can no longer be assigned.`)) {
+    if (
+      !(await confirm({
+        message: `Delete the "${c.label}" category? Past transactions keep their tag but it can no longer be assigned.`,
+        danger: true,
+      }))
+    ) {
       return;
     }
     setDeletingId(c.id);

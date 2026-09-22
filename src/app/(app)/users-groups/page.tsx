@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import UserRow from "@/components/usersGroups/UserRow";
 import EditProfileModal from "@/components/usersGroups/EditProfileModal";
 import SurveyModal from "@/components/usersGroups/SurveyModal";
@@ -24,6 +25,7 @@ import type { Profile, Role } from "@/lib/usersGroups/types";
 // accounts, so no client-side role filtering is needed beyond the gate
 // itself.
 export default function UsersGroupsPage() {
+  const confirm = useConfirm();
   const [userId, setUserId] = useState<string | null>(null);
   const [myRole, setMyRole] = useState<Role | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -98,7 +100,7 @@ export default function UsersGroupsPage() {
 
   async function handleResetPassword(profile: Profile) {
     if (!profile.email) return;
-    if (!window.confirm(`Send a password reset email to ${profile.email}?`)) return;
+    if (!(await confirm({ message: `Send a password reset email to ${profile.email}?`, danger: false }))) return;
     const supabase = createClient();
     const { error } = await sendPasswordReset(supabase, profile.email);
     if (error) {

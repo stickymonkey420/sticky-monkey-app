@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/dashboard/netWorth";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
@@ -48,6 +49,7 @@ type ScoreRow = {
 // invite).
 
 export default function ScoreboardCard() {
+  const confirm = useConfirm();
   const [rows, setRows] = useState<ScoreRow[]>([]);
   const [pendingReceived, setPendingReceived] = useState<ChallengeRow[]>([]);
   const [pendingSent, setPendingSent] = useState<ChallengeRow[]>([]);
@@ -118,7 +120,8 @@ export default function ScoreboardCard() {
   // the match's paper trade history along with it (see
   // game_afi_delete_challenge's cascade).
   async function handleDelete(id: string, opponentLabel: string) {
-    if (!window.confirm(`Delete this competition against ${opponentLabel}? This can't be undone.`)) return;
+    if (!(await confirm({ message: `Delete this competition against ${opponentLabel}? This can't be undone.`, danger: true })))
+      return;
     setActioningId(id);
     const supabase = createClient();
     await deleteChallenge(supabase, id);

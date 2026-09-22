@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import ManualAccountList from "@/components/accounts/ManualAccountList";
 import { createClient } from "@/lib/supabase/client";
 import { addManualAccount, deleteManualAccount, fetchManualAccounts, updateManualAccount } from "@/lib/accounts/queries";
@@ -181,6 +182,7 @@ const EMPTY_METAL_FORM: MetalFormState = { product_name: "", metal: "Gold", quan
 // paid-gated -- same as Portfolio/Taxable/Retirement/Vault, this page has
 // no separate in-page role check (matching that existing precedent).
 export default function InvestAccountsPage() {
+  const confirm = useConfirm();
   const [userId, setUserId] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<ManualAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -274,7 +276,7 @@ export default function InvestAccountsPage() {
   }
 
   async function handleDelete(a: ManualAccount) {
-    if (!window.confirm(`Remove "${a.account_name}"? This can't be undone.`)) return;
+    if (!(await confirm({ message: `Remove "${a.account_name}"? This can't be undone.`, danger: true }))) return;
     setDeletingId(a.id);
     const prev = accounts;
     setAccounts((rows) => rows.filter((r) => r.id !== a.id));

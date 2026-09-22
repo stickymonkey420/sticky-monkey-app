@@ -126,9 +126,14 @@ export default function QuickAccessCard() {
             if (!res2.ok) throw new Error("exchange_failed");
             setConnectLabel("Connected!");
             setTimeout(() => window.location.reload(), 900);
-          } catch {
-            setConnectLabel("Try again");
-            setTimeout(() => setConnectLabel("Connect Accounts"), 1800);
+          } catch (err) {
+            // No "Try again" flash here -- Plaid Link itself can take a moment
+            // to pop up, and a label that changes mid-wait reads as a failure
+            // even when nothing has gone wrong yet. Reset straight back to
+            // the resting label; the real error still lands in the console
+            // for debugging.
+            console.error("[Connect Accounts] token exchange failed", err);
+            setConnectLabel("Connect Accounts");
           }
         },
         onExit: () => {
@@ -138,9 +143,9 @@ export default function QuickAccessCard() {
       });
       handler.open();
       setConnectLabel("Connect Accounts");
-    } catch {
-      setConnectLabel("Try again");
-      setTimeout(() => setConnectLabel("Connect Accounts"), 1800);
+    } catch (err) {
+      console.error("[Connect Accounts] failed to start Plaid Link", err);
+      setConnectLabel("Connect Accounts");
     } finally {
       connectingRef.current = false;
     }

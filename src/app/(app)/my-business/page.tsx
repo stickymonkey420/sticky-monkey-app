@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { createClient } from "@/lib/supabase/client";
 import {
   addBusinessAppointment,
@@ -43,6 +44,7 @@ function fmtDateTime(iso: string): string {
 // business_jobs, business_appointments) carry a paid/app_director RLS
 // restriction, so this page has no role gating -- same as Side Gigs.
 export default function MyBusinessPage() {
+  const confirm = useConfirm();
   const [userId, setUserId] = useState<string | null>(null);
   const [businesses, setBusinesses] = useState<UserBusiness[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -150,7 +152,13 @@ export default function MyBusinessPage() {
   }
 
   async function handleDeleteBusiness(b: UserBusiness) {
-    if (!window.confirm(`Remove "${b.business_name ?? b.category_name}" and all its clients, jobs, and appointments? This can't be undone.`)) return;
+    if (
+      !(await confirm({
+        message: `Remove "${b.business_name ?? b.category_name}" and all its clients, jobs, and appointments? This can't be undone.`,
+        danger: true,
+      }))
+    )
+      return;
     const supabase = createClient();
     const { error } = await deleteUserBusiness(supabase, b.id);
     if (error) {
@@ -182,7 +190,7 @@ export default function MyBusinessPage() {
   }
 
   async function handleDeleteClient(c: BusinessClient) {
-    if (!window.confirm(`Remove client "${c.name}"?`)) return;
+    if (!(await confirm({ message: `Remove client "${c.name}"?`, danger: true }))) return;
     const supabase = createClient();
     const { error } = await deleteBusinessClient(supabase, c.id);
     if (error) {
@@ -224,7 +232,7 @@ export default function MyBusinessPage() {
   }
 
   async function handleDeleteJob(job: BusinessJob) {
-    if (!window.confirm(`Remove job "${job.title}"?`)) return;
+    if (!(await confirm({ message: `Remove job "${job.title}"?`, danger: true }))) return;
     const supabase = createClient();
     const { error } = await deleteBusinessJob(supabase, job.id);
     if (error) {
@@ -255,7 +263,7 @@ export default function MyBusinessPage() {
   }
 
   async function handleDeleteAppointment(a: BusinessAppointment) {
-    if (!window.confirm(`Remove appointment "${a.title}"?`)) return;
+    if (!(await confirm({ message: `Remove appointment "${a.title}"?`, danger: true }))) return;
     const supabase = createClient();
     const { error } = await deleteBusinessAppointment(supabase, a.id);
     if (error) {
