@@ -151,8 +151,33 @@ export default function QuickAccessCard() {
     }
   }
 
+  // Order per your call: Connect Accounts first (the one action most worth
+  // surfacing up top), then Add Option Trade, Challenge a Member, Invite
+  // Friend or Family last. Add Option Trade stays conditionally rendered
+  // (paid/admin only, per showAddTrade above) -- it just drops out of this
+  // fixed order for a free-tier viewer rather than leaving a gap.
   return (
     <div className="flex flex-col gap-3">
+      <button
+        type="button"
+        data-quick-action="connect-finance"
+        onClick={handleConnectFinance}
+        className="flex items-center gap-3 rounded-[10px] bg-[rgb(32,40,56)] px-5 py-[18px] text-left text-sm font-medium text-text-primary hover:bg-white/[0.06]"
+      >
+        <Repeat size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
+        <span className="quick-access-text-block">{connectLabel}</span>
+      </button>
+      {showAddTrade && (
+        <button
+          type="button"
+          data-quick-action="add-option-trade-modal"
+          onClick={handleAddTrade}
+          className="flex items-center gap-3 rounded-[10px] bg-[rgb(32,40,56)] px-5 py-[18px] text-left text-sm font-medium text-text-primary hover:bg-white/[0.06]"
+        >
+          <Repeat size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
+          Add Option Trade
+        </button>
+      )}
       <button
         type="button"
         data-quick-action="challenge-member-modal"
@@ -173,26 +198,6 @@ export default function QuickAccessCard() {
         Invite Friend or Family
       </button>
       {inviteOpen && <InviteFriendModal onClose={() => setInviteOpen(false)} />}
-      {showAddTrade && (
-        <button
-          type="button"
-          data-quick-action="add-option-trade-modal"
-          onClick={handleAddTrade}
-          className="flex items-center gap-3 rounded-[10px] bg-[rgb(32,40,56)] px-5 py-[18px] text-left text-sm font-medium text-text-primary hover:bg-white/[0.06]"
-        >
-          <Repeat size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
-          Add Option Trade
-        </button>
-      )}
-      <button
-        type="button"
-        data-quick-action="connect-finance"
-        onClick={handleConnectFinance}
-        className="flex items-center gap-3 rounded-[10px] bg-[rgb(32,40,56)] px-5 py-[18px] text-left text-sm font-medium text-text-primary hover:bg-white/[0.06]"
-      >
-        <Repeat size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
-        <span className="quick-access-text-block">{connectLabel}</span>
-      </button>
     </div>
   );
 }
