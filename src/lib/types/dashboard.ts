@@ -43,6 +43,7 @@ export type WheelTradeIncomeRow = {
   contracts: number | string | null;
   status: string | null;
   account_type: string | null;
+  close_price: number | string | null;
 };
 
 export type WheelIncomeBucket = {

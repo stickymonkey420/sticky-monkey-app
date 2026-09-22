@@ -33,9 +33,16 @@ export function summarizeWheelIncome(rows: WheelTradeIncomeRow[]): WheelIncomeSu
   (rows || []).forEach((r) => {
     const acct = r.account_type as WheelIncomeAccountType;
     if (!buckets[acct]) return;
-    const amt = (Number(r.premium) || 0) * (Number(r.contracts) || 0) * 100;
+    const contracts = Number(r.contracts) || 0;
+    const amt = (Number(r.premium) || 0) * contracts * 100;
     buckets[acct].total += amt;
-    if (r.status !== "open") buckets[acct].realized += amt;
+    if (r.status !== "open") {
+      // "closed"/"rolled" legs paid a buy-to-close cost -- net it out so a
+      // leg bought back at a loss doesn't still count as full profit.
+      const closeCost =
+        r.status === "closed" || r.status === "rolled" ? (Number(r.close_price) || 0) * contracts * 100 : 0;
+      buckets[acct].realized += amt - closeCost;
+    }
   });
 
   return buckets;

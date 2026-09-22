@@ -24,6 +24,17 @@ export type IncomeTableTrade = WheelTradeIncomeRow & {
   trade_type?: string | null;
 };
 
+// Standard cash-secured-put collateral (strike * contracts * 100) minus the
+// premium already collected -- this is the same "net cash at risk" formula
+// src/lib/options/queries.ts's computePremiumSummary() uses for its
+// "Capital at Risk" card. Previously this table showed the gross,
+// un-netted strike*contracts*100 figure, which could disagree with the
+// Options page's number for the exact same open position; now both read
+// the same way.
+function netCollateral(strike: number, premium: number, contracts: number): number {
+  return (strike - premium) * contracts * 100;
+}
+
 const ACCOUNT_ORDER: { key: string; label: string }[] = [
   { key: "brokerage", label: "Brokerage (Taxable)" },
   { key: "traditional", label: "Traditional IRA" },
@@ -51,8 +62,13 @@ export function computeIncomeTable(
 ): IncomeTableRow[] {
   const now = new Date();
   const weekStart = isoWeekStart(now);
-  const monthKey = now.toISOString().slice(0, 7);
-  const yearKey = now.toISOString().slice(0, 4);
+  // Local calendar month/year, not toISOString()'s UTC conversion -- a
+  // negative-UTC-offset user (all of the US) near midnight local time would
+  // otherwise get bucketed into the wrong month/year (see entryDate below
+  // for the matching fix on the other side of this comparison).
+  const pad2 = (n: number) => (n < 10 ? "0" + n : "" + n);
+  const monthKey = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
+  const yearKey = `${now.getFullYear()}`;
 
   const accountOrder = enabledAccountKeys
     ? ACCOUNT_ORDER.filter((a) => enabledAccountKeys.includes(a.key))
@@ -66,17 +82,32 @@ export function computeIncomeTable(
   trades.forEach((t) => {
     const acct = (t.account_type || "").toString().trim().toLowerCase();
     if (!buckets[acct]) return;
-    const income = (Number(t.premium) || 0) * (Number(t.contracts) || 0) * 100;
-    const entryDate = t.entry_date ? new Date(t.entry_date) : null;
+    const premium = Number(t.premium) || 0;
+    const contracts = Number(t.contracts) || 0;
+    const grossIncome = premium * contracts * 100;
+    // "closed"/"rolled" legs paid a buy-to-close cost -- net it out so a
+    // leg bought back at a loss doesn't still count as full profit here,
+    // matching the same fix applied to the Options page's own totals.
+    const closeCost =
+      t.status === "closed" || t.status === "rolled" ? (Number(t.close_price) || 0) * contracts * 100 : 0;
+    const income = grossIncome - closeCost;
+    // Force local-midnight parsing (matches historyCharts.ts's
+    // bucketIndexFor) instead of bare `new Date("YYYY-MM-DD")`, which
+    // parses as UTC midnight -- for a negative-UTC-offset user that pushed
+    // a boundary-day trade into the wrong week/month/year bucket.
+    const entryDate = t.entry_date ? new Date(t.entry_date + "T00:00:00") : null;
 
     if (entryDate && !Number.isNaN(entryDate.getTime())) {
+      const y = entryDate.getFullYear();
+      const m = entryDate.getMonth() + 1;
+      const entryMonthKey = `${y}-${m < 10 ? "0" + m : m}`;
       if (entryDate >= weekStart) buckets[acct].week += income;
-      if (entryDate.toISOString().slice(0, 7) === monthKey) buckets[acct].month += income;
-      if (entryDate.toISOString().slice(0, 4) === yearKey) buckets[acct].ytd += income;
+      if (entryMonthKey === monthKey) buckets[acct].month += income;
+      if (`${y}` === yearKey) buckets[acct].ytd += income;
     }
 
     if (t.status === "open" && (t.trade_type || "").toString().toUpperCase() === "CSP") {
-      buckets[acct].collateral += (Number(t.strike) || 0) * (Number(t.contracts) || 0) * 100;
+      buckets[acct].collateral += netCollateral(Number(t.strike) || 0, premium, contracts);
     }
   });
 

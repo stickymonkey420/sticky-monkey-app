@@ -79,7 +79,7 @@ export default function NetWorthCard() {
         supabase.from("manual_accounts").select("category,account_name,balance").eq("user_id", user.id),
         supabase
           .from("wheel_trades")
-          .select("premium,contracts,status,account_type,entry_date,strike,trade_type")
+          .select("premium,contracts,status,account_type,entry_date,strike,trade_type,close_price")
           .eq("user_id", user.id),
         supabase.from("profiles").select("account_types").eq("id", user.id).maybeSingle(),
         fetchPlaidTransactions(supabase, user.id),

@@ -47,7 +47,12 @@ export function computeWalletOverview(
   let totalExpense = 0;
   let monthIncome = 0;
   let monthExpense = 0;
-  const nowMonth = new Date().toISOString().slice(0, 7);
+  // Local calendar month, not toISOString()'s UTC conversion -- for a
+  // negative-UTC-offset user (all of the US), the last few hours of every
+  // local month would otherwise get attributed to the wrong month (UTC has
+  // already rolled over while the local date hasn't).
+  const now = new Date();
+  const nowMonth = `${now.getFullYear()}-${now.getMonth() + 1 < 10 ? "0" : ""}${now.getMonth() + 1}`;
   txs.forEach((t) => {
     const amt = Number(t.amount) || 0;
     const isCurMonth = String(t.transaction_date).slice(0, 7) === nowMonth;
@@ -120,13 +125,21 @@ function isoWeekStart(dateStr: string): string {
   const day = d.getDay();
   const diff = day === 0 ? 6 : day - 1;
   d.setDate(d.getDate() - diff);
-  return d.toISOString().slice(0, 10);
+  // Build the key from local date parts, not toISOString() -- that
+  // re-converts to UTC and shifts the date back a day for any
+  // positive-UTC-offset user (east of Greenwich), mislabeling the week.
+  const pad2 = (n: number) => (n < 10 ? "0" + n : "" + n);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
 function monthLabel(key: string): string {
   const year = Number(key.slice(0, 4));
   const month = Number(key.slice(5, 7)) - 1;
-  return new Date(year, month, 1).toLocaleDateString("en-US", { month: "short" });
+  const monthStr = new Date(year, month, 1).toLocaleDateString("en-US", { month: "short" });
+  // Include the 2-digit year (matches the quarterly label's own "Q1 '24"
+  // style) so two buckets more than a year apart (a real gap in
+  // transaction history) don't both render as the same bare "Jan".
+  return `${monthStr} '${String(year).slice(2)}`;
 }
 
 function weekLabel(key: string): string {

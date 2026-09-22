@@ -95,6 +95,7 @@ export type WheelPremiumSummaryRow = {
   trade_type: string | null;
   entry_date: string | null;
   close_date: string | null;
+  close_price: number | string | null;
 };
 
 export type PremiumSummary = {

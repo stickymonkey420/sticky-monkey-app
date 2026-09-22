@@ -75,7 +75,7 @@ export async function fetchPremiumSummaryRows(
 ): Promise<WheelPremiumSummaryRow[]> {
   const { data, error } = await supabase
     .from("wheel_trades")
-    .select("premium,contracts,status,strike,trade_type,entry_date,close_date")
+    .select("premium,contracts,status,strike,trade_type,entry_date,close_date,close_price")
     .eq("user_id", userId)
     .eq("account_type", accountType);
   return error ? [] : ((data as WheelPremiumSummaryRow[]) || []);
@@ -139,9 +139,13 @@ export function normalizeOpenPositions(
 //   - total: premium on trades ENTERED in the current calendar month/year.
 //     Not filtered by status -- premium is collected up front at trade
 //     entry for both CSP and CC, so it's correct to count immediately.
-//   - realized: premium on trades no longer "open" (expired/assigned/
+//   - realized: NET premium on trades no longer "open" (expired/assigned/
 //     closed/rolled) whose close_date (falling back to entry_date when
-//     close_date is null) falls in the current calendar year.
+//     close_date is null) falls in the current calendar year. "closed" and
+//     "rolled" legs had a buy-to-close cost (close_price) -- that's
+//     subtracted so a leg bought back at a loss doesn't still show as full
+//     profit. "expired"/"assigned" legs keep 100% of the premium since
+//     there was no buy-to-close.
 //   - open: premium collected on still-open trades -- "at risk" in the
 //     sense that the position could still move against the account before
 //     this number is locked in.
@@ -179,7 +183,12 @@ export function computePremiumSummary(rows: WheelPremiumSummaryRow[]): PremiumSu
       const realizedDateStr = r.close_date || r.entry_date;
       const realizedD = realizedDateStr ? new Date(realizedDateStr + "T00:00:00") : null;
       if (realizedD && !Number.isNaN(realizedD.getTime()) && realizedD.getFullYear() === curYear) {
-        summary.realized += amt;
+        // "closed"/"rolled" legs paid something to buy back the contract --
+        // net that cost out so a leg closed at a loss doesn't still count
+        // as full profit. "expired"/"assigned" legs have no close_price.
+        const closeCost =
+          r.status === "closed" || r.status === "rolled" ? (Number(r.close_price) || 0) * contracts * 100 : 0;
+        summary.realized += amt - closeCost;
       }
     }
   });

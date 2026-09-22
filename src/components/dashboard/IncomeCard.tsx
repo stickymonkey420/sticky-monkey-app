@@ -36,7 +36,7 @@ export default function IncomeCard() {
 
       const { data, error } = await supabase
         .from("wheel_trades")
-        .select("premium,contracts,status,account_type")
+        .select("premium,contracts,status,account_type,close_price")
         .eq("user_id", user.id);
 
       if (cancelled) return;

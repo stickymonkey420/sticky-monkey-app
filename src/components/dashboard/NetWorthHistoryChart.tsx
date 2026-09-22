@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   BarController,
   BarElement,
@@ -28,6 +28,7 @@ import {
   type Granularity,
   type HistoryBucket,
 } from "@/lib/dashboard/historyCharts";
+import { getSharedGoal, getSharedGoalServerSnapshot, setSharedGoal, subscribeSharedGoal } from "@/lib/dashboard/goalStore";
 
 Chart.register(BarController, LineController, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend);
 
@@ -41,7 +42,13 @@ export default function NetWorthHistoryChart() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
   const [granularity, setGranularity] = useState<Granularity>("weekly");
-  const [goalMonthly, setGoalMonthly] = useState(0);
+  // Read through the shared goal store (see goalStore.ts) instead of local
+  // state, so saving the goal on IncomeHistoryChart updates this chart
+  // immediately too, and vice versa -- previously each chart held its own
+  // independent goalMonthly state with no way to learn the other had
+  // changed it short of a reload.
+  const sharedGoal = useSyncExternalStore(subscribeSharedGoal, getSharedGoal, getSharedGoalServerSnapshot);
+  const goalMonthly = sharedGoal ?? 0;
   const [goalInput, setGoalInput] = useState("");
   const [editingGoal, setEditingGoal] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
@@ -83,7 +90,7 @@ export default function NetWorthHistoryChart() {
         fetchNetWorthSnapshots(supabase, user.id, newBuckets, rangeStart),
       ]);
       if (cancelled) return;
-      setGoalMonthly(goal);
+      setSharedGoal(goal);
       setHasData(newBuckets.some((b) => b.income !== 0 || (b.netWorth !== null && b.netWorth !== 0)));
       setBuckets(newBuckets);
     }
@@ -172,12 +179,20 @@ export default function NetWorthHistoryChart() {
                 label: (item) => {
                   if (item.raw === null || item.raw === undefined) return "";
                   if (item.dataset.label === "Net Worth") {
-                    let line = "Net Worth: " + money(Number(item.raw));
-                    if (bucketGoal > 0 && item.dataIndex === lastIdx) {
-                      const diff = buckets[lastIdx].income - bucketGoal;
-                      line += diff >= 0 ? `  (beat goal by ${money(diff)})` : `  (short of goal by ${money(-diff)})`;
-                    }
-                    return line;
+                    // No beat/short-of-goal clause here: `bucketGoal` is the
+                    // Monthly Income Goal, not a net worth target, so
+                    // diffing it against Net Worth ("beat goal by $500" next
+                    // to a $200,000 figure) read as nonsensical. That
+                    // comparison belongs on the Income bar below instead.
+                    return "Net Worth: " + money(Number(item.raw));
+                  }
+                  if (bucketGoal > 0 && item.dataIndex === lastIdx) {
+                    const diff = buckets[lastIdx].income - bucketGoal;
+                    return (
+                      "Income: " +
+                      money(Number(item.raw)) +
+                      (diff >= 0 ? `  (beat goal by ${money(diff)})` : `  (short of goal by ${money(-diff)})`)
+                    );
                   }
                   return "Income: " + money(Number(item.raw));
                 },
@@ -266,7 +281,7 @@ export default function NetWorthHistoryChart() {
     const ok = await saveMonthlyGoal(supabase, user.id, v);
     setSavingGoal(false);
     if (ok) {
-      setGoalMonthly(v);
+      setSharedGoal(v);
       setEditingGoal(false);
     } else {
       window.alert("Could not save your goal. Please try again.");

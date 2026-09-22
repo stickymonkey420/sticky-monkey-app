@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   BarController,
   BarElement,
@@ -28,6 +28,7 @@ import {
   type Granularity,
   type HistoryBucket,
 } from "@/lib/dashboard/historyCharts";
+import { getSharedGoal, getSharedGoalServerSnapshot, setSharedGoal, subscribeSharedGoal } from "@/lib/dashboard/goalStore";
 
 Chart.register(BarController, LineController, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend);
 
@@ -41,7 +42,13 @@ export default function IncomeHistoryChart() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
   const [granularity, setGranularity] = useState<Granularity>("weekly");
-  const [goalMonthly, setGoalMonthly] = useState(0);
+  // Read through the shared goal store (see goalStore.ts) instead of local
+  // state, so saving the goal on NetWorthHistoryChart updates this chart
+  // immediately too, and vice versa -- previously each chart held its own
+  // independent goalMonthly state with no way to learn the other had
+  // changed it short of a reload.
+  const sharedGoal = useSyncExternalStore(subscribeSharedGoal, getSharedGoal, getSharedGoalServerSnapshot);
+  const goalMonthly = sharedGoal ?? 0;
   const [goalInput, setGoalInput] = useState("");
   const [editingGoal, setEditingGoal] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
@@ -83,7 +90,7 @@ export default function IncomeHistoryChart() {
         fetchIncomeMarketGains(supabase, user.id, newBuckets),
       ]);
       if (cancelled) return;
-      setGoalMonthly(goal);
+      setSharedGoal(goal);
       setHasData(newBuckets.some((b) => b.income !== 0));
       setBuckets(newBuckets);
     }
@@ -179,7 +186,17 @@ export default function IncomeHistoryChart() {
                     }
                     return line;
                   }
-                  return "Income: " + money(Number(item.raw));
+                  const b = buckets[item.dataIndex];
+                  const unrealized = b ? b.unrealizedGains : 0;
+                  // Flag the unrealized (mark-to-market) portion instead of
+                  // silently mixing it into "Income" -- a paper gain can
+                  // otherwise flip a bar/tooltip from "miss" to "beat goal"
+                  // and then vanish if the position's price moves back.
+                  return (
+                    "Income: " +
+                    money(Number(item.raw)) +
+                    (unrealized !== 0 ? ` (incl. ${money(unrealized)} unrealized)` : "")
+                  );
                 },
               },
             },
@@ -259,7 +276,7 @@ export default function IncomeHistoryChart() {
     const ok = await saveMonthlyGoal(supabase, user.id, v);
     setSavingGoal(false);
     if (ok) {
-      setGoalMonthly(v);
+      setSharedGoal(v);
       setEditingGoal(false);
     } else {
       window.alert("Could not save your goal. Please try again.");

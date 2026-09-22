@@ -28,6 +28,11 @@ export type HistoryBucket = {
   months: number;
   income: number;
   netWorth: number | null;
+  // Portion of `income` that is unrealized mark-to-market gain (from
+  // fetchIncomeMarketGains) rather than realized premium/business income --
+  // tracked separately so the chart can label it instead of silently
+  // conflating "beat your income goal" with paper gains that could reverse.
+  unrealizedGains: number;
 };
 
 function startOfDay(d: Date): Date {
@@ -64,6 +69,7 @@ export function buildBuckets(granularity: Granularity): HistoryBucket[] {
         months: 12 / 52,
         income: 0,
         netWorth: null,
+        unrealizedGains: 0,
       });
     }
   } else if (granularity === "quarterly") {
@@ -80,6 +86,7 @@ export function buildBuckets(granularity: Granularity): HistoryBucket[] {
         months: 3,
         income: 0,
         netWorth: null,
+        unrealizedGains: 0,
       });
     }
   } else if (granularity === "ytd") {
@@ -92,6 +99,7 @@ export function buildBuckets(granularity: Granularity): HistoryBucket[] {
         months: 1,
         income: 0,
         netWorth: null,
+        unrealizedGains: 0,
       });
     }
   } else {
@@ -105,6 +113,7 @@ export function buildBuckets(granularity: Granularity): HistoryBucket[] {
         months: 1,
         income: 0,
         netWorth: null,
+        unrealizedGains: 0,
       });
     }
   }
@@ -122,7 +131,13 @@ export function bucketIndexFor(buckets: HistoryBucket[], dateStr: string | null 
   return -1;
 }
 
-type WheelPremiumRow = { premium: number | string | null; contracts: number | string | null; entry_date: string | null };
+type WheelPremiumRow = {
+  premium: number | string | null;
+  contracts: number | string | null;
+  entry_date: string | null;
+  status: string | null;
+  close_price: number | string | null;
+};
 type BusinessJobRow = { amount: number | string | null; due_date: string | null; created_at: string | null };
 type PositionRow = { price: number | string | null; cost_basis: number | string | null; shares: number | string | null };
 type NetWorthSnapshotRow = { snapshot_date: string | null; total_balance: number | string | null };
@@ -135,13 +150,19 @@ export async function fetchIncomePremium(
 ): Promise<void> {
   const { data } = await supabase
     .from("wheel_trades")
-    .select("premium,contracts,entry_date")
+    .select("premium,contracts,entry_date,status,close_price")
     .eq("user_id", userId)
     .gte("entry_date", rangeStart);
   ((data as WheelPremiumRow[]) || []).forEach((r) => {
     const idx = bucketIndexFor(buckets, r.entry_date);
     if (idx === -1) return;
-    buckets[idx].income += (Number(r.premium) || 0) * (Number(r.contracts) || 0) * 100;
+    const contracts = Number(r.contracts) || 0;
+    const grossAmt = (Number(r.premium) || 0) * contracts * 100;
+    // "closed"/"rolled" legs paid a buy-to-close cost -- net it out so a
+    // leg bought back at a loss doesn't still inflate this chart's Income.
+    const closeCost =
+      r.status === "closed" || r.status === "rolled" ? (Number(r.close_price) || 0) * contracts * 100 : 0;
+    buckets[idx].income += grossAmt - closeCost;
   });
 }
 
@@ -177,7 +198,13 @@ export async function fetchIncomeMarketGains(
     if (r.price === null || r.price === undefined || r.cost_basis === null || r.cost_basis === undefined) return;
     gain += (Number(r.price) - Number(r.cost_basis)) * (Number(r.shares) || 0);
   });
-  if (buckets.length) buckets[buckets.length - 1].income += gain; // as-of-now only
+  if (buckets.length) {
+    // as-of-now only. Tracked separately in unrealizedGains too so the
+    // chart can label this out as unrealized rather than mixing it
+    // silently into "beat your income goal" alongside realized income.
+    buckets[buckets.length - 1].income += gain;
+    buckets[buckets.length - 1].unrealizedGains += gain;
+  }
 }
 
 export async function fetchNetWorthSnapshots(
