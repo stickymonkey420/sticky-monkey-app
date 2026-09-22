@@ -21,6 +21,12 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const FIELD_CLASS =
   "w-full rounded-md border border-card-border bg-[#0d0f17] px-2.5 py-2 text-sm text-text-primary outline-none";
 
+// Hidden per your call (2026-09-22) -- the field, its state, and the
+// save-time validation are all left in place (so an existing x_handle
+// value keeps round-tripping through Save Changes unchanged), just not
+// shown. Flip back to true to bring the input back.
+const SHOW_X_HANDLE_FIELD = false;
+
 // Only the columns this modal needs -- a subset of EditProfileModal's admin
 // PROFILE_COLUMNS, plus use_cases/onboarding_survey to seed a survey retake.
 const SELF_PROFILE_COLUMNS =
@@ -380,19 +386,21 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
                 your name.
               </p>
             </div>
-            <div className="mb-3">
-              <label className="mb-1.5 block text-xs text-text-muted">X (Twitter) Handle</label>
-              <input
-                type="text"
-                value={xHandle}
-                onChange={(e) => setXHandle(e.target.value)}
-                placeholder="e.g. sandmonkey15"
-                className={FIELD_CLASS}
-              />
-              <p className="mt-1 text-[11px] text-text-muted">
-                {X_HANDLE_HINT} Optional -- lets &ldquo;Share to X&rdquo; links on Trade Off @mention you directly.
-              </p>
-            </div>
+            {SHOW_X_HANDLE_FIELD && (
+              <div className="mb-3">
+                <label className="mb-1.5 block text-xs text-text-muted">X (Twitter) Handle</label>
+                <input
+                  type="text"
+                  value={xHandle}
+                  onChange={(e) => setXHandle(e.target.value)}
+                  placeholder="e.g. sandmonkey15"
+                  className={FIELD_CLASS}
+                />
+                <p className="mt-1 text-[11px] text-text-muted">
+                  {X_HANDLE_HINT} Optional -- lets &ldquo;Share to X&rdquo; links on Trade Off @mention you directly.
+                </p>
+              </div>
+            )}
             <div className="mb-3">
               <label className="mb-1.5 block text-xs text-text-muted">Email</label>
               <input type="text" value={email} onChange={(e) => setEmail(e.target.value)} className={FIELD_CLASS} />
