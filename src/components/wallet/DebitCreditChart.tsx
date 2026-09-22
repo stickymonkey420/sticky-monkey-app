@@ -14,7 +14,6 @@ type DebitCreditChartProps = {
 const TABS: { key: FlowGranularity; label: string }[] = [
   { key: "weekly", label: "Weekly" },
   { key: "monthly", label: "Monthly" },
-  { key: "ytd", label: "YTD" },
   { key: "alltime", label: "All-time" },
 ];
 
