@@ -20,6 +20,7 @@ export type IncomeTableRow = {
 
 export type IncomeTableTrade = WheelTradeIncomeRow & {
   entry_date?: string | null;
+  close_date?: string | null;
   strike?: number | string | null;
   trade_type?: string | null;
 };
@@ -79,31 +80,41 @@ export function computeIncomeTable(
     buckets[a.key] = { week: 0, month: 0, ytd: 0, collateral: 0 };
   });
 
+  // Adds `amount` to whichever of week/month/YTD the given local date falls in.
+  const addOnDate = (acct: string, dateStr: string | null | undefined, amount: number) => {
+    if (!dateStr || !amount) return;
+    // Force local-midnight parsing (matches historyCharts.ts's
+    // bucketIndexFor) instead of bare `new Date("YYYY-MM-DD")`, which
+    // parses as UTC midnight -- for a negative-UTC-offset user that pushed
+    // a boundary-day trade into the wrong week/month/year bucket.
+    const d = new Date(dateStr + "T00:00:00");
+    if (Number.isNaN(d.getTime())) return;
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const dMonthKey = `${y}-${m < 10 ? "0" + m : m}`;
+    if (d >= weekStart) buckets[acct].week += amount;
+    if (dMonthKey === monthKey) buckets[acct].month += amount;
+    if (`${y}` === yearKey) buckets[acct].ytd += amount;
+  };
+
   trades.forEach((t) => {
     const acct = (t.account_type || "").toString().trim().toLowerCase();
     if (!buckets[acct]) return;
     const premium = Number(t.premium) || 0;
     const contracts = Number(t.contracts) || 0;
-    const grossIncome = premium * contracts * 100;
-    // "closed"/"rolled" legs paid a buy-to-close cost -- net it out so a
-    // leg bought back at a loss doesn't still count as full profit here,
-    // matching the same fix applied to the Options page's own totals.
-    const closeCost =
-      t.status === "closed" || t.status === "rolled" ? (Number(t.close_price) || 0) * contracts * 100 : 0;
-    const income = grossIncome - closeCost;
-    // Force local-midnight parsing (matches historyCharts.ts's
-    // bucketIndexFor) instead of bare `new Date("YYYY-MM-DD")`, which
-    // parses as UTC midnight -- for a negative-UTC-offset user that pushed
-    // a boundary-day trade into the wrong week/month/year bucket.
-    const entryDate = t.entry_date ? new Date(t.entry_date + "T00:00:00") : null;
 
-    if (entryDate && !Number.isNaN(entryDate.getTime())) {
-      const y = entryDate.getFullYear();
-      const m = entryDate.getMonth() + 1;
-      const entryMonthKey = `${y}-${m < 10 ? "0" + m : m}`;
-      if (entryDate >= weekStart) buckets[acct].week += income;
-      if (entryMonthKey === monthKey) buckets[acct].month += income;
-      if (`${y}` === yearKey) buckets[acct].ytd += income;
+    // Cash basis: premium counts on the day it was collected (entry_date);
+    // a buy-to-close cost ("closed"/"rolled" legs) counts on the day it was
+    // paid (close_date). Previously the close cost was netted against the
+    // leg's ENTRY date, so rolling an old position put the new leg's full
+    // premium in this week while its buy-back cost landed weeks/months
+    // earlier -- overstating Week/Month by the whole buy-back amount
+    // instead of showing the roll's net credit/debit. Falls back to
+    // entry_date only if close_date is missing (legacy rows).
+    addOnDate(acct, t.entry_date, premium * contracts * 100);
+    if (t.status === "closed" || t.status === "rolled") {
+      const closeCost = (Number(t.close_price) || 0) * contracts * 100;
+      addOnDate(acct, t.close_date || t.entry_date, -closeCost);
     }
 
     if (t.status === "open" && (t.trade_type || "").toString().toUpperCase() === "CSP") {

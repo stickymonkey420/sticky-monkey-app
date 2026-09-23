@@ -137,6 +137,7 @@ type WheelPremiumRow = {
   entry_date: string | null;
   status: string | null;
   close_price: number | string | null;
+  close_date: string | null;
 };
 type BusinessJobRow = { amount: number | string | null; due_date: string | null; created_at: string | null };
 type PositionRow = { price: number | string | null; cost_basis: number | string | null; shares: number | string | null };
@@ -148,21 +149,24 @@ export async function fetchIncomePremium(
   buckets: HistoryBucket[],
   rangeStart: string
 ): Promise<void> {
+  // Legs entered in range, plus older legs bought back in range (their
+  // buy-to-close cost belongs to the close_date bucket).
   const { data } = await supabase
     .from("wheel_trades")
-    .select("premium,contracts,entry_date,status,close_price")
+    .select("premium,contracts,entry_date,status,close_price,close_date")
     .eq("user_id", userId)
-    .gte("entry_date", rangeStart);
+    .or(`entry_date.gte.${rangeStart},close_date.gte.${rangeStart}`);
   ((data as WheelPremiumRow[]) || []).forEach((r) => {
-    const idx = bucketIndexFor(buckets, r.entry_date);
-    if (idx === -1) return;
     const contracts = Number(r.contracts) || 0;
-    const grossAmt = (Number(r.premium) || 0) * contracts * 100;
-    // "closed"/"rolled" legs paid a buy-to-close cost -- net it out so a
-    // leg bought back at a loss doesn't still inflate this chart's Income.
-    const closeCost =
-      r.status === "closed" || r.status === "rolled" ? (Number(r.close_price) || 0) * contracts * 100 : 0;
-    buckets[idx].income += grossAmt - closeCost;
+    // Cash basis, same as incomeTable.ts: premium on entry_date, buy-to-close
+    // cost ("closed"/"rolled") on close_date -- so a roll shows its net
+    // credit/debit in the period it happened, not the new leg's gross premium.
+    const entryIdx = bucketIndexFor(buckets, r.entry_date);
+    if (entryIdx !== -1) buckets[entryIdx].income += (Number(r.premium) || 0) * contracts * 100;
+    if (r.status === "closed" || r.status === "rolled") {
+      const closeIdx = bucketIndexFor(buckets, r.close_date || r.entry_date);
+      if (closeIdx !== -1) buckets[closeIdx].income -= (Number(r.close_price) || 0) * contracts * 100;
+    }
   });
 }
 
