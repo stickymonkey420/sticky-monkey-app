@@ -18,7 +18,7 @@ function fmtDate(iso: string | null): string {
 // Port of the live Webflow "Update API Key" admin page (page id
 // 6a8473633590940db9b55561). Thin UI over the list-app-secrets /
 // update-app-secret edge functions, which already enforce the
-// app_director/support/developer role gate and never expose a stored
+// app_director-only role gate (2026-09-23) and never expose a stored
 // value once saved -- "write-only" is a server guarantee here, not just a
 // UI convention, so this page never has a value to display or lose.
 export default function UpdateApiKeyPage() {

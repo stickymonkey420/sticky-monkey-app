@@ -289,7 +289,7 @@ const NAV_TREE: NavNode[] = [
     icon: Wrench,
     children: [
       { href: "/edit-categories", label: "Edit Categories" },
-      { href: "/update-api-key", label: "Update API Key", requires: "admin" },
+      { href: "/update-api-key", label: "Update API Key", requires: "owner" }, // App Director only (2026-09-23)
     ],
   },
   { href: "/investors", label: "Owners", requires: "owner", icon: Crown },
