@@ -6,6 +6,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // real validation; this just avoids a wasted round trip on obvious typos.
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Per-member invite caps (App Director exempt). Day = rolling 24h,
+// month = calendar month (UTC).
+const INVITE_LIMIT_PER_DAY = 3;
+const INVITE_LIMIT_PER_MONTH = 10;
+
 // Sends a Supabase Auth invite to a friend/family member, from the
 // Dashboard's "Invite Friend or Family" Quick Access button -- any signed-in
 // member can invite (not app_director-only, unlike delete-account), since
@@ -53,9 +58,48 @@ async function handleInvite(request: Request): Promise<NextResponse> {
   if (!caller) {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   }
-  const { data: callerProfile } = await supabase.from("profiles").select("name").eq("id", caller.id).maybeSingle();
+  const { data: callerProfile } = await supabase
+    .from("profiles")
+    .select("name, role")
+    .eq("id", caller.id)
+    .maybeSingle();
 
   const admin = createAdminClient();
+
+  // Per-member invite cap (security audit 2026-09-23 #6). Blocks invite
+  // spam/email-bombing and protects Supabase's built-in auth email quota,
+  // which is shared project-wide -- burning it would also block every
+  // other member's password-reset and signup-confirmation emails.
+  // App Director is unlimited. Counts come from public.invite_log
+  // (service-role only: RLS on, zero policies), written after each
+  // successful send below.
+  if (callerProfile?.role !== "app_director") {
+    const now = new Date();
+    const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+
+    const [{ count: dayCount, error: dayErr }, { count: monthCount, error: monthErr }] = await Promise.all([
+      admin.from("invite_log").select("id", { count: "exact", head: true }).eq("inviter_id", caller.id).gte("created_at", dayAgo),
+      admin.from("invite_log").select("id", { count: "exact", head: true }).eq("inviter_id", caller.id).gte("created_at", monthStart),
+    ]);
+    if (dayErr || monthErr) {
+      // Fail closed: if the limit can't be checked, don't send.
+      return NextResponse.json({ error: "Invites are temporarily unavailable. Try again later." }, { status: 503 });
+    }
+    if ((dayCount ?? 0) >= INVITE_LIMIT_PER_DAY) {
+      return NextResponse.json(
+        { error: `You've reached today's limit of ${INVITE_LIMIT_PER_DAY} invites. Try again tomorrow.` },
+        { status: 429 }
+      );
+    }
+    if ((monthCount ?? 0) >= INVITE_LIMIT_PER_MONTH) {
+      return NextResponse.json(
+        { error: `You've reached this month's limit of ${INVITE_LIMIT_PER_MONTH} invites.` },
+        { status: 429 }
+      );
+    }
+  }
+
   const { error } = await admin.auth.admin.inviteUserByEmail(email, {
     data: {
       name: firstName,
@@ -70,6 +114,11 @@ async function handleInvite(request: Request): Promise<NextResponse> {
       : error.message;
     return NextResponse.json({ error: message }, { status: 400 });
   }
+
+  // Record the successful send for the cap above. A logging failure doesn't
+  // un-send the email, so it's not surfaced to the member.
+  const { error: logErr } = await admin.from("invite_log").insert({ inviter_id: caller.id, invitee_email: email });
+  if (logErr) console.error("invite_log insert failed", logErr.message);
 
   return NextResponse.json({ success: true });
 }
