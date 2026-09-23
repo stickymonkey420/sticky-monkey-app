@@ -38,8 +38,8 @@ export default function DashboardPage() {
       <div className="flex min-w-0 w-full flex-col gap-6">
         <NetWorthCard />
         <ExpenseCategoriesCard />
-        <IncomeHistoryChart />
         <NetWorthHistoryChart />
+        <IncomeHistoryChart />
         <LastTransactionsCard />
         <GameAfiMirrorCard />
       </div>
