@@ -70,7 +70,7 @@ export default function WalletPage() {
         <h1 className="text-xl font-semibold text-text-primary">My Wallet</h1>
       </div>
       <div className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 gap-6 auto-rows-fr lg:grid-cols-2">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
           <WalletOverviewCards overview={overview} loading={loading} />
           <TopSpendingDonut data={topSpending} loading={loading} />
         </div>

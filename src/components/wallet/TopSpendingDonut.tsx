@@ -7,13 +7,13 @@ type TopSpendingDonutProps = {
 };
 
 // SVG ring donut: thin stroke, small gaps between segments, solid center.
-// Center shows the leading account's SHARE of spend plus its name -- this
+// Compact layout. Center shows the leading account's SHARE of spend -- this
 // card is about concentration ("how much of my spending is one account").
-const SIZE = 112;
-const STROKE = 10;
+const SIZE = 64;
+const STROKE = 7;
 const R = (SIZE - STROKE) / 2;
 const C = 2 * Math.PI * R;
-const GAP = 3; // px of arc between segments
+const GAP = 2; // px of arc between segments
 
 export default function TopSpendingDonut({ data, loading }: TopSpendingDonutProps) {
   const { slices } = data;
@@ -41,9 +41,9 @@ export default function TopSpendingDonut({ data, loading }: TopSpendingDonutProp
   const leadPct = total > 0 && lead ? Math.round((lead.value / total) * 100) : 0;
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-5">
-      <h3 className="mb-4 text-lg font-semibold text-text-primary">Top Spending by Account</h3>
-      <div className="flex flex-1 items-center gap-6">
+    <div className="flex flex-col rounded-2xl border border-card-border bg-card-bg px-5 py-4">
+      <h3 className="mb-2 text-base font-semibold text-text-primary">Top Spending by Account</h3>
+      <div className="flex items-center gap-5">
         <div className="relative shrink-0" style={{ width: SIZE, height: SIZE }}>
           <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="-rotate-90">
             <circle
@@ -71,14 +71,11 @@ export default function TopSpendingDonut({ data, loading }: TopSpendingDonutProp
               </circle>
             ))}
           </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
+          <div className="absolute inset-0 flex items-center justify-center text-center">
             {loading ? (
               <span className="text-sm text-text-muted">…</span>
             ) : total > 0 && lead ? (
-              <>
-                <span className="text-xl font-semibold leading-none text-text-primary">{leadPct}%</span>
-                <span className="mt-1 max-w-full truncate text-[10px] text-text-muted">{lead.name}</span>
-              </>
+              <span className="text-sm font-semibold text-text-primary" title={lead.name}>{leadPct}%</span>
             ) : (
               <span className="text-xs text-text-muted">—</span>
             )}
@@ -93,7 +90,7 @@ export default function TopSpendingDonut({ data, loading }: TopSpendingDonutProp
             slices.map((s) => {
               const pct = total > 0 ? (s.value / total) * 100 : 0;
               return (
-                <div key={s.name} className="flex items-center justify-between gap-3 py-1.5">
+                <div key={s.name} className="flex items-center justify-between gap-3 py-0.5">
                   <div className="flex min-w-0 items-center gap-2">
                     <span
                       className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
