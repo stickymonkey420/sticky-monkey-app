@@ -1,16 +1,15 @@
 import NetWorthCard from "@/components/dashboard/NetWorthCard";
 import ExpenseCategoriesCard from "@/components/dashboard/ExpenseCategoriesCard";
-import IncomeHistoryChart from "@/components/dashboard/IncomeHistoryChart";
+import NetWorthHistoryChart from "@/components/dashboard/NetWorthHistoryChart";
 import LastTransactionsCard from "@/components/dashboard/LastTransactionsCard";
 import GameAfiMirrorCard from "@/components/dashboard/GameAfiMirrorCard";
 import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
 
-// Asset Allocation sits alongside a right-hand column that stacks the Net
-// Worth History chart above the Income week/month/YTD/collateral card, per
-// your call moving NetWorthHistoryChart out of its own full-width row
-// further down the page (see NetWorthCard.tsx) -- both now live inside
-// NetWorthCard itself. Income History comes next, full-width, per your
-// call above Expense Categories.
+// Asset Allocation sits alongside a right-hand column that stacks the
+// Income History chart above the Income week/month/YTD/collateral card
+// (see NetWorthCard.tsx). Net Worth History comes next, full-width, above
+// Expense Categories -- per your call swapping the two charts' positions
+// from their prior arrangement.
 // The profile panel (avatar, Current Balance,
 // Investment Alert, Quick Access) is no longer part of this page -- it now
 // lives in AppShell itself, same as the left sidebar, so it's present on
@@ -39,7 +38,7 @@ export default function DashboardPage() {
       <h1 className="mb-6 text-xl font-semibold text-text-primary">Dashboard</h1>
       <div className="flex min-w-0 w-full flex-col gap-6">
         <NetWorthCard />
-        <IncomeHistoryChart />
+        <NetWorthHistoryChart />
         <ExpenseCategoriesCard />
         <LastTransactionsCard />
         <GameAfiMirrorCard />

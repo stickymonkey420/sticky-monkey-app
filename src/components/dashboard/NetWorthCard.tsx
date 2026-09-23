@@ -8,7 +8,7 @@ import { computeIncomeTable, PROJECTED_ROW, type IncomeTableRow, type IncomeTabl
 import { fetchPlaidTransactions } from "@/lib/wallet/queries";
 import { computeWalletOverview } from "@/lib/wallet/calc";
 import type { ManualAccount, NetWorthSummary } from "@/lib/types/dashboard";
-import NetWorthHistoryChart from "@/components/dashboard/NetWorthHistoryChart";
+import IncomeHistoryChart from "@/components/dashboard/IncomeHistoryChart";
 
 const EMPTY_SUMMARY: NetWorthSummary = {
   categories: [],
@@ -188,13 +188,14 @@ export default function NetWorthCard() {
         </div>
       </div>
 
-      {/* Right column: Net Worth History chart stacked above the Income
-          card, per your call -- previously the chart lived further down
-          the page as its own full-width block; it now sits to the right
-          of Asset Allocation instead, directly above this row's unnamed
-          Income/Expense card. */}
+      {/* Right column: Income History chart stacked above the Income card,
+          per your call swapping it with Net Worth History -- Net Worth
+          History now lives full-width further down the page instead (see
+          dashboard/page.tsx), and this chart sits to the right of Asset
+          Allocation, directly above this row's unnamed Income/Expense
+          card. */}
       <div className="flex min-w-0 flex-1 flex-col gap-6">
-        <NetWorthHistoryChart />
+        <IncomeHistoryChart />
 
         {/* Income card -- the Net Worth headline/Total Assets/Liabilities
             that used to open this card moved to the Dashboard sidebar's
