@@ -113,7 +113,27 @@ export async function GET(request: NextRequest) {
   return renderInterstitial({ token_hash, type, next });
 }
 
+// Login-CSRF guard (security audit 2026-09-23 #13): the interstitial form
+// always posts from this same origin, so a cross-site POST here can only be
+// another site trying to sign the visitor into an account of the
+// attacker's choosing. Browsers send Origin on cross-site form POSTs; a
+// missing or opaque ("null") Origin is let through rather than risk
+// breaking real sign-ins from privacy-hardened browsers (the one-time
+// token_hash is still required either way).
+function isCrossSite(request: NextRequest): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin || origin === "null") return false;
+  try {
+    return new URL(origin).host !== request.nextUrl.host;
+  } catch {
+    return true;
+  }
+}
+
 export async function POST(request: NextRequest) {
+  if (isCrossSite(request)) {
+    return NextResponse.redirect(new URL("/auth/auth-code-error", request.url), 303);
+  }
   const formData = await request.formData();
   const token_hash = formData.get("token_hash");
   const type = formData.get("type");
