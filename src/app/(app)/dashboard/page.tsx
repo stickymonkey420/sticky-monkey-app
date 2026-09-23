@@ -9,7 +9,8 @@ import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
 // Worth History chart above the Income week/month/YTD/collateral card, per
 // your call moving NetWorthHistoryChart out of its own full-width row
 // further down the page (see NetWorthCard.tsx) -- both now live inside
-// NetWorthCard itself. Expense Categories comes next, full-width below.
+// NetWorthCard itself. Income History comes next, full-width, per your
+// call above Expense Categories.
 // The profile panel (avatar, Current Balance,
 // Investment Alert, Quick Access) is no longer part of this page -- it now
 // lives in AppShell itself, same as the left sidebar, so it's present on
@@ -38,8 +39,8 @@ export default function DashboardPage() {
       <h1 className="mb-6 text-xl font-semibold text-text-primary">Dashboard</h1>
       <div className="flex min-w-0 w-full flex-col gap-6">
         <NetWorthCard />
-        <ExpenseCategoriesCard />
         <IncomeHistoryChart />
+        <ExpenseCategoriesCard />
         <LastTransactionsCard />
         <GameAfiMirrorCard />
       </div>
