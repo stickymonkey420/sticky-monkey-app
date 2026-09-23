@@ -8,6 +8,7 @@ import { computeIncomeTable, PROJECTED_ROW, type IncomeTableRow, type IncomeTabl
 import { fetchPlaidTransactions } from "@/lib/wallet/queries";
 import { computeWalletOverview } from "@/lib/wallet/calc";
 import type { ManualAccount, NetWorthSummary } from "@/lib/types/dashboard";
+import NetWorthHistoryChart from "@/components/dashboard/NetWorthHistoryChart";
 
 const EMPTY_SUMMARY: NetWorthSummary = {
   categories: [],
@@ -36,7 +37,10 @@ const CARD_BG = "#151b28";
 // Asset Allocation stays full-width on mobile and caps at that width from
 // md up; Net Worth keeps flex-1 to fill whatever's left.
 const PIE_CARD_CLASS = `${CARD_CLASS} w-full shrink-0 md:w-[341px]`;
-const NW_CARD_CLASS = `${CARD_CLASS} min-w-0 flex-1`;
+// No longer a flex-row sibling of Asset Allocation directly -- it's now
+// stacked below NetWorthHistoryChart inside their own column, so this only
+// needs to fill that column's width, not flex-grow against a row sibling.
+const NW_CARD_CLASS = `${CARD_CLASS} min-w-0 w-full`;
 
 export default function NetWorthCard() {
   const [summary, setSummary] = useState<NetWorthSummary>(EMPTY_SUMMARY);
@@ -184,67 +188,76 @@ export default function NetWorthCard() {
         </div>
       </div>
 
-      {/* Income card -- the Net Worth headline/Total Assets/Liabilities
-          that used to open this card moved to the Dashboard sidebar's
-          profile panel (ProfileSummaryCard) per your call; this card now
-          leads with the Plaid-derived Income/Expense row, then the
-          embedded Income (Week/Month/YTD/Collateral) table below it. */}
-      <div id="nw-card" className={NW_CARD_CLASS} style={{ backgroundColor: CARD_BG }}>
-        <div className="flex items-center gap-10 text-sm">
-          <div className="flex items-center gap-1.5">
-            <ArrowUpCircle size={16} style={{ color: "#4f8cff" }} />
-            <span className="text-text-muted">Income</span>
-            <span className="font-medium text-text-primary">{loading ? "…" : money(monthIncome)}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <ArrowDownCircle size={16} style={{ color: "#4f8cff" }} />
-            <span className="text-text-muted">Expense</span>
-            <span className="font-medium text-text-primary">{loading ? "…" : money(monthExpense)}</span>
-          </div>
-        </div>
+      {/* Right column: Net Worth History chart stacked above the Income
+          card, per your call -- previously the chart lived further down
+          the page as its own full-width block; it now sits to the right
+          of Asset Allocation instead, directly above this row's unnamed
+          Income/Expense card. */}
+      <div className="flex min-w-0 flex-1 flex-col gap-6">
+        <NetWorthHistoryChart />
 
-        {/* Hidden entirely (loading excepted) when the profile has no
-            wheel-eligible account enabled -- a lone "Projected" placeholder
-            row with nothing above it to project isn't useful on its own. */}
-        {(loading || incomeRows.length > 0) && (
-          <div className="mt-6">
-            <h4 className="mb-3 text-sm font-semibold text-text-primary">Income</h4>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                    <th className="pb-2 pr-3 font-semibold">Account</th>
-                    <th className="pb-2 pr-3 font-semibold">Week</th>
-                    <th className="pb-2 pr-3 font-semibold">Month</th>
-                    <th className="pb-2 pr-3 font-semibold">YTD</th>
-                    <th className="pb-2 font-semibold">Collateral</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...incomeRows, PROJECTED_ROW].map((row) => (
-                    <tr key={row.account} className="border-t border-white/[0.06]">
-                      <td className={`py-2 pr-3 ${row.account === "Projected" ? "italic text-text-muted" : "font-medium text-text-primary"}`}>
-                        {row.account}
-                      </td>
-                      <td className="py-2 pr-3" style={{ color: "#3ddc97" }}>
-                        {loading ? "…" : money2(row.week)}
-                      </td>
-                      <td className="py-2 pr-3" style={{ color: "#3ddc97" }}>
-                        {loading ? "…" : money2(row.month)}
-                      </td>
-                      <td className="py-2 pr-3" style={{ color: "#f2c14e" }}>
-                        {loading ? "…" : Number.isNaN(row.ytd) ? "—" : money2(row.ytd)}
-                      </td>
-                      <td className="py-2" style={{ color: "#eb5757" }}>
-                        {loading ? "…" : row.collateral === null ? "—" : money2(row.collateral)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* Income card -- the Net Worth headline/Total Assets/Liabilities
+            that used to open this card moved to the Dashboard sidebar's
+            profile panel (ProfileSummaryCard) per your call; this card now
+            leads with the Plaid-derived Income/Expense row, then the
+            embedded Income (Week/Month/YTD/Collateral) table below it. */}
+        <div id="nw-card" className={NW_CARD_CLASS} style={{ backgroundColor: CARD_BG }}>
+          <div className="flex items-center gap-10 text-sm">
+            <div className="flex items-center gap-1.5">
+              <ArrowUpCircle size={16} style={{ color: "#4f8cff" }} />
+              <span className="text-text-muted">Income</span>
+              <span className="font-medium text-text-primary">{loading ? "…" : money(monthIncome)}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <ArrowDownCircle size={16} style={{ color: "#4f8cff" }} />
+              <span className="text-text-muted">Expense</span>
+              <span className="font-medium text-text-primary">{loading ? "…" : money(monthExpense)}</span>
             </div>
           </div>
-        )}
+
+          {/* Hidden entirely (loading excepted) when the profile has no
+              wheel-eligible account enabled -- a lone "Projected" placeholder
+              row with nothing above it to project isn't useful on its own. */}
+          {(loading || incomeRows.length > 0) && (
+            <div className="mt-6">
+              <h4 className="mb-3 text-sm font-semibold text-text-primary">Income</h4>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                      <th className="pb-2 pr-3 font-semibold">Account</th>
+                      <th className="pb-2 pr-3 font-semibold">Week</th>
+                      <th className="pb-2 pr-3 font-semibold">Month</th>
+                      <th className="pb-2 pr-3 font-semibold">YTD</th>
+                      <th className="pb-2 font-semibold">Collateral</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...incomeRows, PROJECTED_ROW].map((row) => (
+                      <tr key={row.account} className="border-t border-white/[0.06]">
+                        <td className={`py-2 pr-3 ${row.account === "Projected" ? "italic text-text-muted" : "font-medium text-text-primary"}`}>
+                          {row.account}
+                        </td>
+                        <td className="py-2 pr-3" style={{ color: "#3ddc97" }}>
+                          {loading ? "…" : money2(row.week)}
+                        </td>
+                        <td className="py-2 pr-3" style={{ color: "#3ddc97" }}>
+                          {loading ? "…" : money2(row.month)}
+                        </td>
+                        <td className="py-2 pr-3" style={{ color: "#f2c14e" }}>
+                          {loading ? "…" : Number.isNaN(row.ytd) ? "—" : money2(row.ytd)}
+                        </td>
+                        <td className="py-2" style={{ color: "#eb5757" }}>
+                          {loading ? "…" : row.collateral === null ? "—" : money2(row.collateral)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
