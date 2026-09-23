@@ -12,7 +12,8 @@ import type { NextConfig } from "next";
 //   plus Plaid Link's own API calls.
 // - img-src allows any https host: avatars/institution logos come from
 //   user data and Webflow's S3 asset bucket; images can't execute code.
-// - media-src data: is required for Abu's base64 MP3 voice replies.
+// - media-src data: is required for Abu's base64 MP3 voice replies; the S3
+//   Webflow asset bucket serves the SMU intro video (AbuIntro.mp4).
 // - frame-ancestors 'none' + X-Frame-Options DENY stop clickjacking.
 // - microphone=(self) is kept for Abu's voice input (SpeechRecognition).
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://gxxjxslnsjgsuonnxxgq.supabase.co";
@@ -26,7 +27,7 @@ const csp = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseUrl} ${supabaseWss} https://*.plaid.com`,
-  "media-src 'self' data: blob:",
+  "media-src 'self' data: blob: https://s3.amazonaws.com/webflow-prod-assets/",
   "frame-src https://cdn.plaid.com https://*.plaid.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
@@ -36,10 +37,10 @@ const csp = [
   "upgrade-insecure-requests",
 ].join("; ");
 
-// Rollout: ship CSP as Report-Only first (logs violations to the browser
-// console, blocks nothing), verify every page on production, then flip this
-// to true. The other headers below are enforced immediately.
-const CSP_ENFORCE = false;
+// Rollout: shipped Report-Only first (1c688db); all 22 app routes were checked
+// on production with zero violations except the SMU video (now allowed), so
+// CSP is enforced. Set false to fall back to Report-Only if something breaks. The other headers below are enforced immediately.
+const CSP_ENFORCE = true;
 
 const securityHeaders = [
   { key: CSP_ENFORCE ? "Content-Security-Policy" : "Content-Security-Policy-Report-Only", value: csp },
