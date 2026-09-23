@@ -91,7 +91,11 @@ export default function NetWorthHistoryChart() {
       ]);
       if (cancelled) return;
       setSharedGoal(goal);
-      setHasData(newBuckets.some((b) => b.income !== 0 || (b.netWorth !== null && b.netWorth !== 0)));
+      setHasData(
+        newBuckets.some(
+          (b) => b.income !== 0 || b.unrealizedGains !== 0 || (b.netWorth !== null && b.netWorth !== 0)
+        )
+      );
       setBuckets(newBuckets);
     }
 
@@ -186,15 +190,25 @@ export default function NetWorthHistoryChart() {
                     // comparison belongs on the Income bar below instead.
                     return "Net Worth: " + money(Number(item.raw));
                   }
+                  // `item.raw` here is realized income only -- unrealized
+                  // (mark-to-market) position gains are excluded from the
+                  // bar/goal comparison (see fetchIncomeMarketGains) since
+                  // a paper gain can reverse before it's ever realized, and
+                  // are noted separately below instead.
+                  const b = buckets[item.dataIndex];
+                  const unrealized = b ? b.unrealizedGains : 0;
+                  const unrealizedNote =
+                    unrealized !== 0 ? `  |  +${money(unrealized)} unrealized (not counted toward goal)` : "";
                   if (bucketGoal > 0 && item.dataIndex === lastIdx) {
                     const diff = buckets[lastIdx].income - bucketGoal;
                     return (
-                      "Income: " +
+                      "Income (realized): " +
                       money(Number(item.raw)) +
-                      (diff >= 0 ? `  (beat goal by ${money(diff)})` : `  (short of goal by ${money(-diff)})`)
+                      (diff >= 0 ? `  (beat goal by ${money(diff)})` : `  (short of goal by ${money(-diff)})`) +
+                      unrealizedNote
                     );
                   }
-                  return "Income: " + money(Number(item.raw));
+                  return "Income (realized): " + money(Number(item.raw)) + unrealizedNote;
                 },
               },
             },

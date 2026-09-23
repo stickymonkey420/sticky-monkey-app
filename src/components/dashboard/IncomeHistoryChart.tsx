@@ -91,7 +91,7 @@ export default function IncomeHistoryChart() {
       ]);
       if (cancelled) return;
       setSharedGoal(goal);
-      setHasData(newBuckets.some((b) => b.income !== 0));
+      setHasData(newBuckets.some((b) => b.income !== 0 || b.unrealizedGains !== 0));
       setBuckets(newBuckets);
     }
 
@@ -188,14 +188,14 @@ export default function IncomeHistoryChart() {
                   }
                   const b = buckets[item.dataIndex];
                   const unrealized = b ? b.unrealizedGains : 0;
-                  // Flag the unrealized (mark-to-market) portion instead of
-                  // silently mixing it into "Income" -- a paper gain can
-                  // otherwise flip a bar/tooltip from "miss" to "beat goal"
-                  // and then vanish if the position's price moves back.
+                  // Realized income only -- unrealized (mark-to-market)
+                  // gains are noted separately rather than folded in, since
+                  // a paper gain can otherwise inflate this bar and the
+                  // goal comparison, then vanish if the price moves back.
                   return (
-                    "Income: " +
+                    "Income (realized): " +
                     money(Number(item.raw)) +
-                    (unrealized !== 0 ? ` (incl. ${money(unrealized)} unrealized)` : "")
+                    (unrealized !== 0 ? `  |  +${money(unrealized)} unrealized (not counted toward goal)` : "")
                   );
                 },
               },

@@ -26,12 +26,12 @@ export type HistoryBucket = {
   end: Date;
   label: string;
   months: number;
-  income: number;
+  income: number; // realized only: wheel premium + completed business jobs
   netWorth: number | null;
-  // Portion of `income` that is unrealized mark-to-market gain (from
-  // fetchIncomeMarketGains) rather than realized premium/business income --
-  // tracked separately so the chart can label it instead of silently
-  // conflating "beat your income goal" with paper gains that could reverse.
+  // Unrealized (mark-to-market) position gains, tracked separately from
+  // `income` -- NOT included in it or in the goal beat/miss comparison,
+  // since a paper gain can reverse before it's ever realized. Surfaced as
+  // an informational note in the tooltip instead.
   unrealizedGains: number;
 };
 
@@ -199,10 +199,14 @@ export async function fetchIncomeMarketGains(
     gain += (Number(r.price) - Number(r.cost_basis)) * (Number(r.shares) || 0);
   });
   if (buckets.length) {
-    // as-of-now only. Tracked separately in unrealizedGains too so the
-    // chart can label this out as unrealized rather than mixing it
-    // silently into "beat your income goal" alongside realized income.
-    buckets[buckets.length - 1].income += gain;
+    // Tracked in unrealizedGains only -- NOT added to `income`. Unrealized
+    // mark-to-market gains can reverse before ever being realized (a stock
+    // that's up today can be down tomorrow), so they no longer inflate the
+    // Income bar or the goal beat/miss comparison; a real position with a
+    // large paper gain could otherwise make a user look like they'd
+    // massively beaten their income goal for the month when their actual
+    // realized income (premium + business) was a small fraction of that.
+    // Still surfaced separately in the tooltip so it isn't hidden.
     buckets[buckets.length - 1].unrealizedGains += gain;
   }
 }
