@@ -6,43 +6,82 @@ type TopSpendingDonutProps = {
   loading: boolean;
 };
 
-// Same conic-gradient donut card as Invest's PortfolioDonutCard, but the
-// center shows the leading account's SHARE of spend (matching the live
-// page's "us-center-pct" element) instead of a dollar total -- this card
-// is about concentration ("how much of my spending is one account"), not
-// a portfolio's total value.
+// SVG ring donut: thin stroke, small gaps between segments, solid center.
+// Center shows the leading account's SHARE of spend plus its name -- this
+// card is about concentration ("how much of my spending is one account").
+const SIZE = 112;
+const STROKE = 10;
+const R = (SIZE - STROKE) / 2;
+const C = 2 * Math.PI * R;
+const GAP = 3; // px of arc between segments
+
 export default function TopSpendingDonut({ data, loading }: TopSpendingDonutProps) {
   const { slices } = data;
   const total = slices.reduce((s, x) => s + x.value, 0);
+  const drawn = slices.filter((s) => s.value > 0);
+  const gap = drawn.length > 1 ? GAP : 0;
 
-  let gradient = "none";
-  if (slices.length && total > 0) {
-    const parts: string[] = [];
-    let cursor = 0;
-    slices.forEach((s) => {
-      const pct = (s.value / total) * 100;
-      const start = cursor;
-      const end = cursor + pct;
-      parts.push(`${s.color} ${start.toFixed(2)}% ${end.toFixed(2)}%`);
-      cursor = end;
-    });
-    gradient = `conic-gradient(${parts.join(", ")})`;
-  }
+  let offset = 0;
+  const arcs = total > 0
+    ? drawn.map((s) => {
+        const len = (s.value / total) * C;
+        const arc = {
+          key: s.name,
+          color: s.color,
+          dash: `${Math.max(len - gap, 0.5)} ${C}`,
+          offset: -offset,
+          title: `${s.name}: ${money(s.value)} (${((s.value / total) * 100).toFixed(0)}%)`,
+        };
+        offset += len;
+        return arc;
+      })
+    : [];
+
+  const lead = slices[0];
+  const leadPct = total > 0 && lead ? Math.round((lead.value / total) * 100) : 0;
 
   return (
     <div className="flex h-full flex-col rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-4 text-lg font-semibold text-text-primary">Top Spending by Account</h3>
       <div className="flex flex-1 items-center gap-6">
-        <div className="relative h-24 w-24 shrink-0">
-          <div
-            className="h-24 w-24 rounded-full"
-            style={{ backgroundColor: "hsla(224.6,17.97%,42.55%,0.15)", backgroundImage: gradient }}
-          />
-          <div
-            className="absolute left-1/2 top-1/2 flex h-[76px] w-[76px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full p-1.5 text-center text-xs font-medium text-text-primary"
-            style={{ backgroundColor: "hsla(221.05, 31.15%, 11.96%, 0.92)" }}
-          >
-            {loading ? "…" : `${Math.round(total > 0 ? (slices[0]?.value ?? 0) / total * 100 : 0)}%`}
+        <div className="relative shrink-0" style={{ width: SIZE, height: SIZE }}>
+          <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="-rotate-90">
+            <circle
+              cx={SIZE / 2}
+              cy={SIZE / 2}
+              r={R}
+              fill="none"
+              stroke="hsla(224.6,17.97%,42.55%,0.18)"
+              strokeWidth={STROKE}
+            />
+            {arcs.map((a) => (
+              <circle
+                key={a.key}
+                cx={SIZE / 2}
+                cy={SIZE / 2}
+                r={R}
+                fill="none"
+                stroke={a.color}
+                strokeWidth={STROKE}
+                strokeDasharray={a.dash}
+                strokeDashoffset={a.offset}
+                className="transition-opacity hover:opacity-80"
+              >
+                <title>{a.title}</title>
+              </circle>
+            ))}
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
+            {loading ? (
+              <span className="text-sm text-text-muted">…</span>
+            ) : total > 0 && lead ? (
+              <>
+                <span className="text-xl font-semibold leading-none text-text-primary">{leadPct}%</span>
+                <span className="mt-1 max-w-full truncate text-[10px] text-text-muted">{lead.name}</span>
+              </>
+            ) : (
+              <span className="text-xs text-text-muted">—</span>
+            )}
           </div>
         </div>
         <div className="min-w-0 flex-1">
