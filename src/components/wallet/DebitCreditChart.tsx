@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CATEGORICAL_PALETTE } from "@/lib/palette";
 import { money } from "@/lib/options/queries";
 import { computeFlowBuckets, type FlowGranularity } from "@/lib/wallet/calc";
@@ -25,8 +25,10 @@ const TABS: { key: FlowGranularity; label: string }[] = [
 const DEBIT_COLOR = CATEGORICAL_PALETTE[0];
 const CREDIT_COLOR = CATEGORICAL_PALETTE[1];
 
-const CHART_W = 560;
-const CHART_H = 150;
+// Drawn at real pixel size (viewBox width = measured container width) so
+// axis text stays at its stated px size instead of scaling with the card.
+const DEFAULT_W = 560;
+const CHART_H = 240;
 const PAD_TOP = 16;
 const PAD_BOTTOM = 36;
 const PAD_LEFT = 52;
@@ -39,6 +41,22 @@ const PAD_RIGHT = 12;
 export default function DebitCreditChart({ txs, loading }: DebitCreditChartProps) {
   const [tab, setTab] = useState<FlowGranularity>("monthly");
   const [hover, setHover] = useState<number | null>(null);
+  const [CHART_W, setChartW] = useState(DEFAULT_W);
+  const [wrapEl, setWrapEl] = useState<HTMLDivElement | null>(null);
+
+  // Callback-ref element in state so the observer re-attaches whenever the
+  // chart wrapper remounts (loading/empty states unmount it).
+  useEffect(() => {
+    if (!wrapEl) return;
+    const measure = () => {
+      const w = Math.round(wrapEl.clientWidth);
+      if (w > 0) setChartW(w);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrapEl);
+    return () => ro.disconnect();
+  }, [wrapEl]);
 
   const buckets = computeFlowBuckets(txs, tab);
   const innerW = CHART_W - PAD_LEFT - PAD_RIGHT;
@@ -47,7 +65,7 @@ export default function DebitCreditChart({ txs, loading }: DebitCreditChartProps
   const max = (maxRaw <= 0 ? 1 : maxRaw) * 1.15;
   const n = buckets.length;
   const slot = n > 0 ? innerW / n : innerW;
-  const barW = Math.min(16, slot * 0.28);
+  const barW = Math.min(20, slot * 0.28);
   const gap = 6;
 
   const gridLines = [0, 1, 2, 3, 4].map((g) => {
@@ -103,8 +121,13 @@ export default function DebitCreditChart({ txs, loading }: DebitCreditChartProps
           No transaction history yet. Connect a bank via Plaid to see your debit &amp; credit activity.
         </div>
       ) : (
-        <div className="relative">
-          <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} className="block w-full" style={{ height: "auto" }}>
+        <div ref={setWrapEl} className="relative">
+          <svg
+            viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+            width={CHART_W}
+            height={CHART_H}
+            className="block w-full"
+          >
             {gridLines.map((g, i) => (
               <g key={i}>
                 <line
