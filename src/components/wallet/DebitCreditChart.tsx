@@ -26,7 +26,7 @@ const DEBIT_COLOR = CATEGORICAL_PALETTE[0];
 const CREDIT_COLOR = CATEGORICAL_PALETTE[1];
 
 const CHART_W = 560;
-const CHART_H = 300;
+const CHART_H = 150;
 const PAD_TOP = 16;
 const PAD_BOTTOM = 36;
 const PAD_LEFT = 52;
