@@ -38,6 +38,9 @@ export default function TickerQuoteCard({
     }
   }
 
+  const hasPriceFcf =
+    result.priceToFreeCashFlow !== null && result.priceToFreeCashFlow !== undefined && result.priceToFreeCashFlow > 0;
+
   const change = changeColored(result.change, result.changePct);
   const extendedChange = result.extended ? changeColored(result.extended.change, result.extended.changePct) : null;
 
@@ -75,12 +78,9 @@ export default function TickerQuoteCard({
             )}
           </div>
 
-          {/* Buy/Sell Option buttons, the Score card, and the reserved card
-              are one right-aligned group (lg:ml-auto) instead of being
-              spread across the row -- the left column no longer grows to
-              fill the gap between them. Reserved is now a thin stripe
-              (w-16) rather than matching the Score card's width, since it
-              holds nothing yet. */}
+          {/* Buy/Sell Option buttons, the Score card, and the Price/FCF
+              gauge are one right-aligned group (lg:ml-auto); the left quote
+              column (flex-1, min-w-0) shrinks to make room for them. */}
           <div className="flex w-full flex-col items-stretch gap-4 sm:w-auto sm:flex-row lg:ml-auto lg:flex-row">
             <div className="flex shrink-0 flex-col justify-end gap-2">
               {userId && <BuyButton ticker={result.symbol} userId={userId} />}
@@ -91,11 +91,18 @@ export default function TickerQuoteCard({
               <StickyMonkeyScoreCard result={result} />
             )}
 
-            {/* Reserved for a future feature -- thinned to a stripe since
-                it holds nothing yet. h-full so it stretches to match the
-                row's full height instead of stopping at its own
-                min-height. */}
-            <div className="h-full min-h-[180px] w-full shrink-0 rounded-2xl border border-white/[0.12] bg-white/[0.04] p-4 sm:w-16" />
+            {/* Price/Free Cash Flow gauge, moved up from the gauge grid
+                below into the slot that used to be a reserved placeholder
+                card. The left quote column (flex-1) gives up the width. */}
+            <div className="flex w-full shrink-0 sm:w-[300px] [&>div]:flex [&>div]:w-full [&>div]:flex-col [&>div]:justify-center">
+              {hasPriceFcf ? (
+                <Gauge value={result.priceToFreeCashFlow as number} config={PRICE_FCF_GAUGE_CONFIG} />
+              ) : (
+                <div className="rounded-[14px] border border-white/[0.12] bg-white/[0.03] p-5 text-center text-sm text-text-muted opacity-60">
+                  Price/Free Cash Flow not available for this ticker.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -119,11 +126,6 @@ export default function TickerQuoteCard({
         {result.netProfitMargin !== null && result.netProfitMargin !== undefined && (
           <Gauge value={result.netProfitMargin} config={NET_PROFIT_MARGIN_GAUGE_CONFIG} />
         )}
-        {result.priceToFreeCashFlow !== null &&
-          result.priceToFreeCashFlow !== undefined &&
-          result.priceToFreeCashFlow > 0 && (
-            <Gauge value={result.priceToFreeCashFlow} config={PRICE_FCF_GAUGE_CONFIG} />
-          )}
       </div>
     </div>
   );
