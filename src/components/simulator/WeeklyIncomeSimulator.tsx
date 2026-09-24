@@ -28,7 +28,20 @@ type FieldProps = {
   onChange: (v: number) => void;
 };
 
+// Keeps the raw typed text locally so a field can be fully cleared: an empty
+// box shows a faded "0" placeholder (and still counts as 0 in the math)
+// instead of a hard 0 that Backspace can't remove. If the value changes from
+// outside (e.g. "Use my CSP trade history"), the display follows it.
 function Field({ id, label, value, step, onChange }: FieldProps) {
+  const [text, setText] = useState(Number.isFinite(value) && value !== 0 ? String(value) : "");
+  const textAsNumber = text === "" ? 0 : Number(text);
+  const display =
+    textAsNumber === value || (text !== "" && Number.isNaN(textAsNumber))
+      ? text
+      : Number.isFinite(value) && value !== 0
+        ? String(value)
+        : "";
+
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-text-muted">
@@ -37,10 +50,17 @@ function Field({ id, label, value, step, onChange }: FieldProps) {
       <input
         id={id}
         type="number"
+        inputMode="decimal"
         step={step}
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(e) => onChange(e.target.value === "" ? 0 : Number(e.target.value))}
-        className="w-full rounded-[10px] border border-white/10 bg-[#0d0f17] px-2.5 py-2 text-sm text-text-primary outline-none focus:border-[#4f8cff]"
+        placeholder="0"
+        value={display}
+        onChange={(e) => {
+          const raw = e.target.value;
+          setText(raw);
+          const n = raw === "" ? 0 : Number(raw);
+          if (Number.isFinite(n)) onChange(n);
+        }}
+        className="w-full rounded-[10px] border border-white/10 bg-[#0d0f17] px-2.5 py-2 text-sm text-text-primary outline-none placeholder:text-text-muted/40 focus:border-[#4f8cff]"
       />
     </div>
   );
