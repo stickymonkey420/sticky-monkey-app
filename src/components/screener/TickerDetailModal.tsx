@@ -73,7 +73,7 @@ export default function TickerDetailModal({ ticker, onClose }: { ticker: string;
         </div>
 
         {status && <div className="text-sm text-text-muted">{status}</div>}
-        {result && <TickerQuoteCard result={result} userId={userId} role={role} />}
+        {result && <TickerQuoteCard result={result} userId={userId} role={role} compact />}
       </div>
     </div>
   );

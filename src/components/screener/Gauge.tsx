@@ -1,11 +1,16 @@
 import { GAUGE_GEOMETRY, polar, type GaugeConfig } from "@/lib/screener/gauge";
 
 const CARD_CLASS = "rounded-[14px] border border-white/[0.12] bg-white/[0.03] p-5 text-center";
+const COMPACT_CARD_CLASS = "rounded-[14px] border border-white/[0.12] bg-white/[0.03] p-2.5 text-center";
 
 // Semicircle valuation gauge -- ported 1:1 from the live script's
 // buildGauge() (arc geometry, tick placement, needle rotation, and
 // off-scale note) as an SVG React component.
-export default function Gauge({ value, config }: { value: number; config: GaugeConfig }) {
+// `compact` shrinks the card (smaller max width, tighter padding) for the
+// ticker detail pop-up, where all 6 grid gauges need to fit in one row. Text
+// sizes are bumped in SVG units so they stay readable once the SVG is scaled
+// down (~0.6x) to fit the narrower card.
+export default function Gauge({ value, config, compact = false }: { value: number; config: GaugeConfig; compact?: boolean }) {
   const { cx, cy, r, thickness, needleLen } = GAUGE_GEOMETRY;
   const { maxV, stops, ticks, label, decimals = 2, gradId } = config;
   const clamped = Math.max(0, Math.min(value, maxV));
@@ -17,8 +22,11 @@ export default function Gauge({ value, config }: { value: number; config: GaugeC
   const offScale = value > maxV;
 
   return (
-    <div className={CARD_CLASS}>
-      <svg viewBox="0 0 300 210" style={{ width: "100%", maxWidth: 300, display: "block", margin: "0 auto" }}>
+    <div className={compact ? COMPACT_CARD_CLASS : CARD_CLASS}>
+      <svg
+        viewBox="0 0 300 210"
+        style={{ width: "100%", maxWidth: compact ? 200 : 300, display: "block", margin: "0 auto" }}
+      >
         <defs>
           <linearGradient id={gradId} x1={cx - r} y1={cy} x2={cx + r} y2={cy} gradientUnits="userSpaceOnUse">
             {stops.map((s, i) => (
@@ -41,7 +49,7 @@ export default function Gauge({ value, config }: { value: number; config: GaugeC
               key={i}
               x={p.x.toFixed(1)}
               y={p.y.toFixed(1)}
-              fontSize={12}
+              fontSize={compact ? 17 : 12}
               fill="hsla(223.9,28.67%,71.96%,1)"
               textAnchor="middle"
               dominantBaseline="middle"
@@ -61,16 +69,16 @@ export default function Gauge({ value, config }: { value: number; config: GaugeC
           transform={`rotate(${rotation.toFixed(1)} ${cx} ${cy})`}
         />
         <circle cx={cx} cy={cy} r={7} fill="#8b95a7" />
-        <text x={cx} y={cy + 34} fontSize={26} fontWeight={700} fill="currentColor" textAnchor="middle">
+        <text x={cx} y={cy + 34} fontSize={compact ? 32 : 26} fontWeight={700} fill="currentColor" textAnchor="middle">
           {valueDisplay}
           {offScale && (
-            <tspan fontSize={12} fill="hsla(223.9,28.67%,71.96%,1)">
+            <tspan fontSize={compact ? 16 : 12} fill="hsla(223.9,28.67%,71.96%,1)">
               {" "}
               (off scale)
             </tspan>
           )}
         </text>
-        <text x={cx} y={cy + 56} fontSize={13} fill="hsla(223.9,28.67%,71.96%,1)" textAnchor="middle">
+        <text x={cx} y={cy + 56} fontSize={compact ? 18 : 13} fill="hsla(223.9,28.67%,71.96%,1)" textAnchor="middle">
           {label}
         </text>
       </svg>

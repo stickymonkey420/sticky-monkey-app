@@ -24,10 +24,14 @@ export default function TickerQuoteCard({
   result,
   userId,
   role,
+  compact = false,
 }: {
   result: TickerQuoteResult;
   userId: string | null;
   role: Role | null;
+  // Pop-up mode (TickerDetailModal): the 6 grid gauges render smaller and in
+  // a single row on wide screens so everything fits without scrolling.
+  compact?: boolean;
 }) {
   let quoteTimeStr = "—";
   if (result.quoteTime) {
@@ -128,26 +132,32 @@ export default function TickerQuoteCard({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div
+        className={
+          compact
+            ? "grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6"
+            : "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+        }
+      >
         {result.pegRatio !== null && result.pegRatio !== undefined && result.pegRatio > 0 ? (
-          <Gauge value={result.pegRatio} config={PEG_GAUGE_CONFIG} />
+          <Gauge value={result.pegRatio} config={PEG_GAUGE_CONFIG} compact={compact} />
         ) : (
-          result.pegNote && <NotMeaningfulCard label="PEG Ratio" note={result.pegNote} />
+          result.pegNote && <NotMeaningfulCard label="PEG Ratio" note={result.pegNote} compact={compact} />
         )}
         {result.debtToEquity !== null && result.debtToEquity !== undefined && (
-          <Gauge value={result.debtToEquity} config={DEBT_EQUITY_GAUGE_CONFIG} />
+          <Gauge value={result.debtToEquity} config={DEBT_EQUITY_GAUGE_CONFIG} compact={compact} />
         )}
         {result.returnOnEquity !== null && result.returnOnEquity !== undefined && (
-          <Gauge value={result.returnOnEquity} config={ROE_GAUGE_CONFIG} />
+          <Gauge value={result.returnOnEquity} config={ROE_GAUGE_CONFIG} compact={compact} />
         )}
         {result.returnOnAssets !== null && result.returnOnAssets !== undefined && (
-          <Gauge value={result.returnOnAssets} config={ROA_GAUGE_CONFIG} />
+          <Gauge value={result.returnOnAssets} config={ROA_GAUGE_CONFIG} compact={compact} />
         )}
         {result.currentRatio !== null && result.currentRatio !== undefined && (
-          <Gauge value={result.currentRatio} config={CURRENT_RATIO_GAUGE_CONFIG} />
+          <Gauge value={result.currentRatio} config={CURRENT_RATIO_GAUGE_CONFIG} compact={compact} />
         )}
         {result.netProfitMargin !== null && result.netProfitMargin !== undefined && (
-          <Gauge value={result.netProfitMargin} config={NET_PROFIT_MARGIN_GAUGE_CONFIG} />
+          <Gauge value={result.netProfitMargin} config={NET_PROFIT_MARGIN_GAUGE_CONFIG} compact={compact} />
         )}
       </div>
     </div>
@@ -225,9 +235,11 @@ function StickyMonkeyScoreCard({ result }: { result: TickerQuoteResult }) {
 
 // Stands in for a gauge whose value exists but isn't meaningful (e.g. a PEG
 // computed off near-zero earnings), so the metric doesn't just silently vanish.
-function NotMeaningfulCard({ label, note }: { label: string; note: string }) {
+function NotMeaningfulCard({ label, note, compact = false }: { label: string; note: string; compact?: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-[14px] border border-white/[0.12] bg-white/[0.03] p-5 text-center">
+    <div
+      className={`flex flex-col items-center justify-center rounded-[14px] border border-white/[0.12] bg-white/[0.03] text-center ${compact ? "p-2.5" : "p-5"}`}
+    >
       <div className="text-2xl font-bold text-text-muted">N/M</div>
       <div className="mt-1 text-sm font-medium text-text-primary">{label}</div>
       <div className="mt-2 max-w-[240px] text-xs leading-snug text-text-muted">{note}</div>
