@@ -11,7 +11,7 @@ import TickerQuoteCard from "./TickerQuoteCard";
 // Monkey Score/gauges card TickerLookup's search box renders, just fetched
 // automatically for the clicked ticker instead of typed in. Follows the
 // same overlay pattern as BuyPaperTradeModal/EntryFormModal (click the
-// backdrop to close). Wider than those two (max-w-4xl) since this card's
+// backdrop to close). Wider than those two (max-w-[1280px], about the main Screener page width) since this card's
 // gauge grid and side-by-side Score/Buy columns need the room -- on
 // TickerLookup's own page it just runs the page's full width instead.
 export default function TickerDetailModal({ ticker, onClose }: { ticker: string; onClose: () => void }) {
@@ -59,7 +59,7 @@ export default function TickerDetailModal({ ticker, onClose }: { ticker: string;
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-card-bg p-7 shadow-2xl">
+      <div className="max-h-[92vh] w-full max-w-[1280px] overflow-y-auto rounded-3xl bg-card-bg p-6 shadow-2xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-bold text-text-primary">{ticker}</h2>
           <button
