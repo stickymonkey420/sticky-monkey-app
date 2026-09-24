@@ -77,6 +77,10 @@ export type TickerQuoteResult = {
   peRatio: number | null;
   pegRatio: number | null;
   pegSource: "trailing" | "forward" | "estimated" | null;
+  // Why pegRatio is null when a PEG existed but was rejected as not
+  // meaningful (earnings growth off a near-zero base, or distorted by a
+  // one-time tax benefit). Null when PEG is shown or simply unavailable.
+  pegNote?: string | null;
   debtToEquity: number | null;
   returnOnEquity: number | null; // Finnhub roeTTM/roeRfy, as a percent (e.g. 24.5 = 24.5%)
   currentRatio: number | null; // Finnhub currentRatioQuarterly/currentRatioAnnual
@@ -92,6 +96,20 @@ export type TickerQuoteResult = {
   intrinsicValueMethod: "graham" | null;
   intrinsicValueNote: string | null; // why intrinsicValue is null, when it is
   industry: IndustryComparison | null;
+  // Present when reported earnings were boosted by a one-time tax benefit
+  // (after-tax margin above before-tax margin). Net margin, ROE, ROA, P/E and
+  // the Graham Number in this result are already re-based on a normal tax rate.
+  taxAdjustment?: TaxAdjustment | null;
+};
+
+export type TaxAdjustment = {
+  applied: boolean;
+  reportedNetMargin: number | null;
+  pretaxMargin: number | null;
+  adjustedNetMargin: number | null;
+  normalTaxRatePct: number;
+  reportedPeRatio: number | null;
+  note: string;
 };
 
 export type TickerLookupError = "invalid_symbol" | "not_found" | "failed";

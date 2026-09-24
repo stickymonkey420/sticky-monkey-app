@@ -109,9 +109,30 @@ export default function TickerQuoteCard({
         </div>
       </div>
 
+      {result.taxAdjustment?.applied && (
+        <div className="rounded-[14px] border border-[#f5c542]/30 bg-[#f5c542]/[0.06] px-4 py-3 text-sm">
+          <span className="font-semibold text-[#f5c542]">Adjusted for a one-time tax benefit.</span>{" "}
+          <span className="text-text-muted">
+            {result.symbol}&apos;s reported earnings were boosted by a tax benefit (after-tax margin{" "}
+            {result.taxAdjustment.reportedNetMargin}% vs. {result.taxAdjustment.pretaxMargin}% before tax), so the
+            earnings-based gauges, score, and Graham Number below use a normal{" "}
+            {result.taxAdjustment.normalTaxRatePct}% tax rate instead.
+            {result.taxAdjustment.reportedPeRatio !== null && result.peRatio !== null && (
+              <>
+                {" "}
+                P/E: {result.peRatio.toFixed(1)} adjusted ({result.taxAdjustment.reportedPeRatio.toFixed(1)} as
+                reported).
+              </>
+            )}
+          </span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {result.pegRatio !== null && result.pegRatio !== undefined && result.pegRatio > 0 && (
+        {result.pegRatio !== null && result.pegRatio !== undefined && result.pegRatio > 0 ? (
           <Gauge value={result.pegRatio} config={PEG_GAUGE_CONFIG} />
+        ) : (
+          result.pegNote && <NotMeaningfulCard label="PEG Ratio" note={result.pegNote} />
         )}
         {result.debtToEquity !== null && result.debtToEquity !== undefined && (
           <Gauge value={result.debtToEquity} config={DEBT_EQUITY_GAUGE_CONFIG} />
@@ -148,7 +169,12 @@ function StickyMonkeyScoreCard({ result }: { result: TickerQuoteResult }) {
 
   return (
     <div className="h-full w-full shrink-0 rounded-2xl border border-white/[0.12] bg-white/[0.04] p-4 sm:w-[260px]">
-      <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Sticky Monkey Score</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+        Sticky Monkey Score
+        {result.taxAdjustment?.applied && (
+          <span className="ml-1.5 normal-case tracking-normal text-[#f5c542]">(tax-adjusted)</span>
+        )}
+      </div>
       <div className="mt-1.5 flex items-baseline gap-2">
         <span className="text-3xl font-bold" style={{ color: band.color }}>
           {score}
@@ -193,6 +219,18 @@ function StickyMonkeyScoreCard({ result }: { result: TickerQuoteResult }) {
       <div className="mt-3 text-[11px] leading-snug text-text-muted/70">
         Tallies the 7 gauges below plus peer/book-value data. Informational only -- not investment advice.
       </div>
+    </div>
+  );
+}
+
+// Stands in for a gauge whose value exists but isn't meaningful (e.g. a PEG
+// computed off near-zero earnings), so the metric doesn't just silently vanish.
+function NotMeaningfulCard({ label, note }: { label: string; note: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-[14px] border border-white/[0.12] bg-white/[0.03] p-5 text-center">
+      <div className="text-2xl font-bold text-text-muted">N/M</div>
+      <div className="mt-1 text-sm font-medium text-text-primary">{label}</div>
+      <div className="mt-2 max-w-[240px] text-xs leading-snug text-text-muted">{note}</div>
     </div>
   );
 }
