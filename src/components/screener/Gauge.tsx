@@ -7,9 +7,9 @@ const COMPACT_CARD_CLASS = "rounded-[14px] border border-white/[0.12] bg-white/[
 // buildGauge() (arc geometry, tick placement, needle rotation, and
 // off-scale note) as an SVG React component.
 // `compact` shrinks the card (smaller max width, tighter padding) for the
-// ticker detail pop-up, where all 6 grid gauges need to fit in one row. Text
-// sizes are bumped in SVG units so they stay readable once the SVG is scaled
-// down (~0.6x) to fit the narrower card.
+// ticker detail pop-up, so both rows of the 3-across gauge grid fit without
+// scrolling. Text sizes are nudged up in SVG units to stay readable at the
+// slightly smaller (~0.73x) scale.
 export default function Gauge({ value, config, compact = false }: { value: number; config: GaugeConfig; compact?: boolean }) {
   const { cx, cy, r, thickness, needleLen } = GAUGE_GEOMETRY;
   const { maxV, stops, ticks, label, decimals = 2, gradId } = config;
@@ -25,7 +25,7 @@ export default function Gauge({ value, config, compact = false }: { value: numbe
     <div className={compact ? COMPACT_CARD_CLASS : CARD_CLASS}>
       <svg
         viewBox="0 0 300 210"
-        style={{ width: "100%", maxWidth: compact ? 200 : 300, display: "block", margin: "0 auto" }}
+        style={{ width: "100%", maxWidth: compact ? 220 : 300, display: "block", margin: "0 auto" }}
       >
         <defs>
           <linearGradient id={gradId} x1={cx - r} y1={cy} x2={cx + r} y2={cy} gradientUnits="userSpaceOnUse">
@@ -49,7 +49,7 @@ export default function Gauge({ value, config, compact = false }: { value: numbe
               key={i}
               x={p.x.toFixed(1)}
               y={p.y.toFixed(1)}
-              fontSize={compact ? 17 : 12}
+              fontSize={compact ? 14 : 12}
               fill="hsla(223.9,28.67%,71.96%,1)"
               textAnchor="middle"
               dominantBaseline="middle"
@@ -69,16 +69,16 @@ export default function Gauge({ value, config, compact = false }: { value: numbe
           transform={`rotate(${rotation.toFixed(1)} ${cx} ${cy})`}
         />
         <circle cx={cx} cy={cy} r={7} fill="#8b95a7" />
-        <text x={cx} y={cy + 34} fontSize={compact ? 32 : 26} fontWeight={700} fill="currentColor" textAnchor="middle">
+        <text x={cx} y={cy + 34} fontSize={compact ? 29 : 26} fontWeight={700} fill="currentColor" textAnchor="middle">
           {valueDisplay}
           {offScale && (
-            <tspan fontSize={compact ? 16 : 12} fill="hsla(223.9,28.67%,71.96%,1)">
+            <tspan fontSize={compact ? 14 : 12} fill="hsla(223.9,28.67%,71.96%,1)">
               {" "}
               (off scale)
             </tspan>
           )}
         </text>
-        <text x={cx} y={cy + 56} fontSize={compact ? 18 : 13} fill="hsla(223.9,28.67%,71.96%,1)" textAnchor="middle">
+        <text x={cx} y={cy + 56} fontSize={compact ? 15 : 13} fill="hsla(223.9,28.67%,71.96%,1)" textAnchor="middle">
           {label}
         </text>
       </svg>

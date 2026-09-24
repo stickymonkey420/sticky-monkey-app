@@ -29,8 +29,8 @@ export default function TickerQuoteCard({
   result: TickerQuoteResult;
   userId: string | null;
   role: Role | null;
-  // Pop-up mode (TickerDetailModal): the 6 grid gauges render smaller and in
-  // a single row on wide screens so everything fits without scrolling.
+  // Pop-up mode (TickerDetailModal): same 3-per-row layout as the main page,
+  // just with slightly smaller gauge cards so both rows fit without scrolling.
   compact?: boolean;
 }) {
   let quoteTimeStr = "—";
@@ -135,7 +135,7 @@ export default function TickerQuoteCard({
       <div
         className={
           compact
-            ? "grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6"
+            ? "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
             : "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
         }
       >
