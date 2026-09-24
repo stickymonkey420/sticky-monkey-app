@@ -48,7 +48,7 @@ export default function TickerQuoteCard({
     <div className="flex flex-col gap-4">
       <div className="rounded-[14px] border border-white/[0.12] bg-white/[0.03] p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
-          <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-1 flex-col">
             <div className="text-lg font-bold text-text-primary">{result.symbol}</div>
             {result.companyName && <div className="mt-0.5 text-base text-text-muted">{result.companyName}</div>}
             <div className="mt-1.5 text-xl">
@@ -70,9 +70,11 @@ export default function TickerQuoteCard({
             )}
 
             {/* Average Cost Owned: left-justified under the quote time,
-                same column as the price info above it. */}
+                same column as the price info above it. flex-1 stretches it
+                down so its bottom edge lines up with the buttons, Score
+                card, and gauge card to its right. */}
             {userId && (
-              <div className="mt-4">
+              <div className="mt-4 flex flex-1">
                 <AverageCostOwnedCard key={result.symbol} ticker={result.symbol} userId={userId} role={role} />
               </div>
             )}
