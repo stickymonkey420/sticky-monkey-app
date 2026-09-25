@@ -89,7 +89,7 @@ const GLOBAL_CARDS: Record<string, CardLocator> = {
 };
 
 // Verbatim from the Webflow footer script's injected <style> block.
-const ABU_CSS = `.abu-figure{width:100%;height:100%;display:block;overflow:visible;}.abu-eyelid{transform:scaleY(0);}.abu-mouth-open{opacity:0;}.abu-mouth-closed{opacity:1;}.abu-laser-dot{opacity:0;filter:drop-shadow(0 0 4px #ff3b3b);transition:opacity .2s ease;}.abu-thinking-dots ellipse{opacity:0;}.abu-arm-r-rest{opacity:1;transition:opacity .25s ease;}.abu-arm-r-point{opacity:0;transition:opacity .25s ease;}#abu-launcher .abu-eyelid,#abu-stage .abu-eyelid{animation:abuBlink 4.6s infinite;}#abu-launcher .abu-body-group,#abu-stage .abu-body-group{animation:abuBreathe 3.2s ease-in-out infinite;}@keyframes abuBlink{0%,90%,100%{transform:scaleY(0);}94%{transform:scaleY(1);}}@keyframes abuBreathe{0%,100%{transform:translateY(0);}50%{transform:translateY(-1.5px);}}#abu-stage.state-talking .abu-mouth-open{animation:abuTalk .24s steps(1) infinite;}#abu-stage.state-talking .abu-mouth-closed{animation:abuTalkInv .24s steps(1) infinite;}@keyframes abuTalk{0%,100%{opacity:0;}50%{opacity:1;}}@keyframes abuTalkInv{0%,100%{opacity:1;}50%{opacity:0;}}#abu-stage.state-thinking .abu-head-group{animation:abuThink 1.6s ease-in-out infinite;}@keyframes abuThink{0%,100%{transform:rotate(0deg);}50%{transform:rotate(3deg);}}#abu-stage.state-thinking .abu-thinking-dots ellipse{animation:abuDots 1.4s infinite;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(2){animation-delay:.2s;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(3){animation-delay:.4s;}#abu-stage.state-pointing .abu-arm-r-point{opacity:1;}#abu-stage.state-pointing .abu-arm-r-rest{opacity:0;}#abu-stage.state-pointing .abu-laser-dot{opacity:1;animation:abuLaser .9s ease-in-out infinite;}@keyframes abuLaser{0%,100%{opacity:.6;}50%{opacity:1;}}#abu-stage.state-entering .abu-figure{animation:abuEnter .6s cubic-bezier(.34,1.56,.64,1) both;}@keyframes abuEnter{0%{transform:translateY(70px) scale(.7);opacity:0;}60%{transform:translateY(-8px) scale(1.05);opacity:1;}100%{transform:translateY(0) scale(1);}}#abu-stage-wrap{width:100%;height:132px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:center;background:radial-gradient(ellipse at center 85%, rgba(245,208,32,0.08), transparent 70%);border-bottom:1px solid rgba(255,255,255,0.08);}#abu-stage{width:150px;height:150px;margin-bottom:-14px;}#abu-launcher .abu-figure{transform:scale(1.9) translateY(6px);}.abu-icon-btn{cursor:pointer;color:#8a90a8;font-size:15px;line-height:1;padding:4px 6px;border-radius:6px;user-select:none;}.abu-icon-btn:hover{background:rgba(255,255,255,0.08);color:#eef0f7;}.abu-icon-btn.active{color:#f5d020;}@keyframes abuMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,59,0.5);}50%{box-shadow:0 0 0 6px rgba(255,59,59,0);}}#abu-mic.listening{background:#ff3b3b !important;color:#fff !important;animation:abuMicPulse 1s infinite;}@keyframes abuCardPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,208,32,.65),0 0 0 0 rgba(245,208,32,.35);}50%{box-shadow:0 0 0 6px rgba(245,208,32,.45),0 0 26px 10px rgba(245,208,32,.25);}}.abu-card-glow{animation:abuCardPulse 1.3s ease-in-out 2;border-radius:12px;position:relative;z-index:5;}#abu-launcher.abu-dragging{cursor:grabbing !important;}#abu-stage-wrap{height:192px;}#abu-stage{width:128px;height:188px;margin-bottom:0;}.abu-bust{position:relative;transform-origin:50% 90%;}#abu-stage-img{width:100%;height:100%;object-fit:contain;display:block;user-select:none;pointer-events:none;}.abu-bust .abu-thinking-dots{position:absolute;top:-2px;right:-30px;width:40px;height:34px;overflow:visible;}#abu-stage.state-talking .abu-bust{animation:abuTalkBob .36s ease-in-out infinite;}@keyframes abuTalkBob{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-2px) scale(1.015);}}#abu-stage.state-thinking .abu-bust{animation:abuThink 1.6s ease-in-out infinite;}@keyframes abuDots{0%,100%{opacity:.15;}50%{opacity:1;}}#abu-stage.state-pointing .abu-bust{filter:drop-shadow(0 0 10px rgba(245,208,32,.55));}`;
+const ABU_CSS = `.abu-figure{width:100%;height:100%;display:block;overflow:visible;}.abu-eyelid{transform:scaleY(0);}.abu-mouth-open{opacity:0;}.abu-mouth-closed{opacity:1;}.abu-laser-dot{opacity:0;filter:drop-shadow(0 0 4px #ff3b3b);transition:opacity .2s ease;}.abu-thinking-dots ellipse{opacity:0;}.abu-arm-r-rest{opacity:1;transition:opacity .25s ease;}.abu-arm-r-point{opacity:0;transition:opacity .25s ease;}#abu-launcher .abu-eyelid,#abu-stage .abu-eyelid{animation:abuBlink 4.6s infinite;}#abu-launcher .abu-body-group,#abu-stage .abu-body-group{animation:abuBreathe 3.2s ease-in-out infinite;}@keyframes abuBlink{0%,90%,100%{transform:scaleY(0);}94%{transform:scaleY(1);}}@keyframes abuBreathe{0%,100%{transform:translateY(0);}50%{transform:translateY(-1.5px);}}#abu-stage.state-talking .abu-mouth-open{animation:abuTalk .24s steps(1) infinite;}#abu-stage.state-talking .abu-mouth-closed{animation:abuTalkInv .24s steps(1) infinite;}@keyframes abuTalk{0%,100%{opacity:0;}50%{opacity:1;}}@keyframes abuTalkInv{0%,100%{opacity:1;}50%{opacity:0;}}#abu-stage.state-thinking .abu-head-group{animation:abuThink 1.6s ease-in-out infinite;}@keyframes abuThink{0%,100%{transform:rotate(0deg);}50%{transform:rotate(3deg);}}#abu-stage.state-thinking .abu-thinking-dots ellipse{animation:abuDots 1.4s infinite;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(2){animation-delay:.2s;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(3){animation-delay:.4s;}#abu-stage.state-pointing .abu-arm-r-point{opacity:1;}#abu-stage.state-pointing .abu-arm-r-rest{opacity:0;}#abu-stage.state-pointing .abu-laser-dot{opacity:1;animation:abuLaser .9s ease-in-out infinite;}@keyframes abuLaser{0%,100%{opacity:.6;}50%{opacity:1;}}#abu-stage.state-entering .abu-figure{animation:abuEnter .6s cubic-bezier(.34,1.56,.64,1) both;}@keyframes abuEnter{0%{transform:translateY(70px) scale(.7);opacity:0;}60%{transform:translateY(-8px) scale(1.05);opacity:1;}100%{transform:translateY(0) scale(1);}}#abu-stage-wrap{width:100%;height:132px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:center;background:radial-gradient(ellipse at center 85%, rgba(245,208,32,0.08), transparent 70%);border-bottom:1px solid rgba(255,255,255,0.08);}#abu-stage{width:150px;height:150px;margin-bottom:-14px;}#abu-launcher .abu-figure{transform:scale(1.9) translateY(6px);}.abu-icon-btn{cursor:pointer;color:#8a90a8;font-size:15px;line-height:1;padding:4px 6px;border-radius:6px;user-select:none;}.abu-icon-btn:hover{background:rgba(255,255,255,0.08);color:#eef0f7;}.abu-icon-btn.active{color:#f5d020;}@keyframes abuMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,59,0.5);}50%{box-shadow:0 0 0 6px rgba(255,59,59,0);}}#abu-mic.listening{background:#ff3b3b !important;color:#fff !important;animation:abuMicPulse 1s infinite;}@keyframes abuCardPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,208,32,.65),0 0 0 0 rgba(245,208,32,.35);}50%{box-shadow:0 0 0 6px rgba(245,208,32,.45),0 0 26px 10px rgba(245,208,32,.25);}}.abu-card-glow{animation:abuCardPulse 1.3s ease-in-out 2;border-radius:12px;position:relative;z-index:5;}#abu-launcher.abu-dragging{cursor:grabbing !important;}#abu-stage-wrap{height:146px;}#abu-stage{width:96px;height:141px;margin-bottom:0;}#abu-stage-img-closed{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;user-select:none;}.abu-blink-frame{opacity:0;}.abu-blinking .abu-blink-frame{opacity:1;}.abu-thinking-dots{display:none !important;}.abu-bust{position:relative;transform-origin:50% 90%;}#abu-stage-img{width:100%;height:100%;object-fit:contain;display:block;user-select:none;pointer-events:none;}.abu-bust .abu-thinking-dots{position:absolute;top:-2px;right:-30px;width:40px;height:34px;overflow:visible;}#abu-stage.state-talking .abu-bust{animation:abuTalkBob .36s ease-in-out infinite;}@keyframes abuTalkBob{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-2px) scale(1.015);}}#abu-stage.state-thinking .abu-bust{animation:abuThink 1.6s ease-in-out infinite;}@keyframes abuDots{0%,100%{opacity:.15;}50%{opacity:1;}}#abu-stage.state-pointing .abu-bust{filter:drop-shadow(0 0 10px rgba(245,208,32,.55));}`;
 
 // The two "clean" illustrated Abu-face stills the user had made in Webflow
 // (open-eyed / closed-eyed), hosted permanently on Webflow's own asset CDN
@@ -115,7 +115,7 @@ const ABU_EYES_CLOSED_URL =
 const ABU_BUST_OPEN_URL = "/images/abu/abu-bust-open.png?v=2";
 const ABU_BUST_CLOSED_URL = "/images/abu/abu-bust-closed.png?v=2";
 
-const ABU_PANEL_HTML = `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.08);"><div style="flex:1;font-size:14px;font-weight:700;color:#eef0f7;">Abu</div><div id="abu-mute" class="abu-icon-btn" title="Toggle Abu's voice">🔊</div><div id="abu-close" class="abu-icon-btn" style="font-size:18px;">&times;</div></div><div id="abu-stage-wrap"><div id="abu-stage"><div class="abu-figure abu-bust"><img id="abu-stage-img" src="${ABU_BUST_OPEN_URL}" alt="Abu" draggable="false" /><svg class="abu-thinking-dots" viewBox="0 0 60 50"><ellipse cx="14" cy="40" rx="5" ry="5" fill="#eef0f7"/><ellipse cx="32" cy="26" rx="4.2" ry="4.2" fill="#eef0f7"/><ellipse cx="48" cy="12" rx="3.4" ry="3.4" fill="#eef0f7"/></svg></div></div></div><div id="abu-messages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;"></div><form id="abu-form" style="display:flex;gap:6px;padding:12px;border-top:1px solid rgba(255,255,255,0.08);"><input id="abu-input" type="text" placeholder="Ask Abu..." autocomplete="off" style="flex:1;min-width:0;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:#0d0f17;color:#eef0f7;font-size:13.5px;" /><div id="abu-mic" class="abu-icon-btn" title="Ask by voice" style="border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:9px 10px;display:none;">🎤</div><button type="submit" style="padding:9px 14px;border-radius:8px;border:none;background:#4f8cff;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Send</button></form>`;
+const ABU_PANEL_HTML = `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.08);"><div style="flex:1;font-size:14px;font-weight:700;color:#eef0f7;">Abu</div><div id="abu-mute" class="abu-icon-btn" title="Toggle Abu's voice">🔊</div><div id="abu-close" class="abu-icon-btn" style="font-size:18px;">&times;</div></div><div id="abu-stage-wrap"><div id="abu-stage"><div class="abu-figure abu-bust"><img id="abu-stage-img" src="${ABU_BUST_OPEN_URL}" alt="Abu" draggable="false" /><img id="abu-stage-img-closed" class="abu-blink-frame" src="${ABU_BUST_CLOSED_URL}" alt="" draggable="false" /></div></div></div><div id="abu-messages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;"></div><form id="abu-form" style="display:flex;gap:6px;padding:12px;border-top:1px solid rgba(255,255,255,0.08);"><input id="abu-input" type="text" placeholder="Ask Abu..." autocomplete="off" style="flex:1;min-width:0;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:#0d0f17;color:#eef0f7;font-size:13.5px;" /><div id="abu-mic" class="abu-icon-btn" title="Ask by voice" style="border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:9px 10px;display:none;">🎤</div><button type="submit" style="padding:9px 14px;border-radius:8px;border:none;background:#4f8cff;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Send</button></form>`;
 
 type SpeechRecognitionResultLike = { results: { [i: number]: { [j: number]: { transcript: string } } } };
 type SpeechRecognitionLike = {
@@ -500,10 +500,7 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
   launcher.title = "Double-click to summon Abu";
   launcher.style.cssText =
     "position:fixed;right:24px;bottom:24px;width:60px;height:60px;border-radius:50%;background:#161925;border:2px solid #f5d020;box-shadow:0 4px 16px rgba(0,0,0,0.4);cursor:pointer;z-index:99998;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:transform .15s ease;";
-  launcher.innerHTML = `<img id="abu-launcher-img" src="${ABU_EYES_OPEN_URL}" alt="Abu" draggable="false" style="width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none;" />`;
-  // Preload the closed-eyes frame so the first blink swap is instant.
-  new Image().src = ABU_EYES_CLOSED_URL;
-  new Image().src = ABU_BUST_CLOSED_URL;
+  launcher.innerHTML = `<img id="abu-launcher-img" src="${ABU_EYES_OPEN_URL}" alt="Abu" draggable="false" style="width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none;" /><img class="abu-blink-frame" src="${ABU_EYES_CLOSED_URL}" alt="" draggable="false" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none;" />`;
 
   const panel = document.createElement("div");
   panel.id = "abu-panel";
@@ -542,18 +539,18 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
 
   // Blink loop for the launcher's photo icon: same 4.6s cadence as the old
   // vector eyelid animation, briefly swapping to the closed-eyes frame.
-  const launcherImg = launcher.querySelector<HTMLImageElement>("#abu-launcher-img")!;
+  // Both frames stay in the DOM and the closed one is just shown/hidden with a
+  // class. Swapping img.src re-requested the file each time (public/ assets
+  // revalidate), so the 180ms closed frame often never painted -- no blink.
   const BLINK_CYCLE_MS = 4600;
   const BLINK_DURATION_MS = 180;
-  // The chat panel's stage uses the same two frames (see ABU_PANEL_HTML), so
-  // it blinks on the same timer as the launcher.
-  const stageImg = panel.querySelector<HTMLImageElement>("#abu-stage-img");
+  const stageFigure = panel.querySelector<HTMLDivElement>(".abu-bust");
   const blinkInterval = window.setInterval(() => {
-    launcherImg.src = ABU_EYES_CLOSED_URL;
-    if (stageImg) stageImg.src = ABU_BUST_CLOSED_URL;
+    launcher.classList.add("abu-blinking");
+    stageFigure?.classList.add("abu-blinking");
     window.setTimeout(() => {
-      launcherImg.src = ABU_EYES_OPEN_URL;
-      if (stageImg) stageImg.src = ABU_BUST_OPEN_URL;
+      launcher.classList.remove("abu-blinking");
+      stageFigure?.classList.remove("abu-blinking");
     }, BLINK_DURATION_MS);
   }, BLINK_CYCLE_MS);
 
@@ -610,6 +607,7 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
       micEl.classList.remove("listening");
     };
     micEl.addEventListener("click", () => {
+      unlockAudio();
       if (listening) {
         recognizer!.stop();
       } else {
@@ -642,6 +640,36 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
     messagesEl.appendChild(row);
     messagesEl.scrollTop = messagesEl.scrollHeight;
     return row;
+  }
+
+  // Browsers (Safari especially) only allow audio that starts inside a user
+  // gesture. Abu's reply arrives seconds after the click, so play() was being
+  // rejected and the browser-voice fallback was blocked the same way -- no
+  // voice at all. Fix: one reusable <audio> element that gets "unlocked" by a
+  // silent clip during the click/Enter itself; later replies play on that
+  // same already-approved element. Speech synthesis is primed the same way.
+  const player = new Audio();
+  let audioUnlocked = false;
+  function unlockAudio() {
+    if (audioUnlocked || muted) return;
+    audioUnlocked = true;
+    try {
+      player.src = "data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==";
+      player.play().catch(() => {
+        audioUnlocked = false;
+      });
+    } catch {
+      audioUnlocked = false;
+    }
+    try {
+      if (window.speechSynthesis) {
+        const primer = new SpeechSynthesisUtterance("");
+        primer.volume = 0;
+        window.speechSynthesis.speak(primer);
+      }
+    } catch {
+      // ignore
+    }
   }
 
   function speakBrowser(text: string) {
@@ -695,7 +723,11 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
     }
     if (base64) {
       try {
-        const audio = new Audio("data:audio/mp3;base64," + base64);
+        const audio = player;
+        audio.onplay = null;
+        audio.onended = null;
+        audio.onerror = null;
+        audio.src = "data:audio/mp3;base64," + base64;
         currentAudio = audio;
         audio.onplay = () => {
           setStage("state-talking state-pointing");
@@ -784,6 +816,7 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
   muteEl.addEventListener("click", () => {
     muted = !muted;
     muteEl.textContent = muted ? "\ud83d\udd07" : "\ud83d\udd0a";
+    if (!muted) unlockAudio();
     try {
       window.localStorage.setItem(MUTE_STORAGE_KEY, muted ? "1" : "0");
     } catch {
@@ -830,6 +863,7 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
 
   launcher.addEventListener("dblclick", () => {
     if (launcherDrag.justDragged) return;
+    unlockAudio();
     launcher.style.transform = "scale(0.9)";
     setTimeout(() => {
       launcher.style.transform = "";
@@ -844,6 +878,7 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
   closeEl.addEventListener("click", closePanel);
   formEl.addEventListener("submit", (e) => {
     e.preventDefault();
+    unlockAudio();
     sendMessage(inputEl.value);
   });
 
