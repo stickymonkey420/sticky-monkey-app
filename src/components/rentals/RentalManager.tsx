@@ -330,6 +330,57 @@ export default function RentalManager({
     memo: "",
   });
   const [ledgerFilter, setLedgerFilter] = useState("");
+  // Inline edit of one ledger row (date, tenant, amount, method, memo).
+  // Type stays fixed: rent/late fees belong to a month, and switching a
+  // payment into a charge would silently flip the balance.
+  const [editEntry, setEditEntry] = useState<{
+    id: string;
+    lease_id: string;
+    entry_date: string;
+    amount: string;
+    method: PaymentMethod | "";
+    memo: string;
+  } | null>(null);
+
+  async function saveEntry() {
+    if (!editEntry || busy) return;
+    const amount = optNum(editEntry.amount);
+    if (!editEntry.entry_date || !(amount != null && amount > 0)) {
+      flash("Enter a date and an amount above 0.", false);
+      return;
+    }
+    const orig = data.ledger.find((x) => x.id === editEntry.id);
+    if (!orig) return;
+    setBusy(true);
+    const { row, error } = await updateRow<RentalLedgerEntry>(
+      createClient(),
+      "rental_ledger",
+      editEntry.id,
+      {
+        lease_id: editEntry.lease_id,
+        entry_date: editEntry.entry_date,
+        amount,
+        method: orig.kind === "payment" ? editEntry.method || null : null,
+        memo: editEntry.memo.trim() || null,
+      },
+    );
+    setBusy(false);
+    if (error || !row) {
+      flash(
+        error && /duplicate|unique/i.test(error)
+          ? "That tenant already has this month's rent or late fee -- edit that entry instead."
+          : "Could not save that entry. Please try again.",
+        false,
+      );
+      return;
+    }
+    setData((d) => ({
+      ...d,
+      ledger: d.ledger.map((x) => (x.id === row.id ? row : x)),
+    }));
+    setEditEntry(null);
+    flash("Entry updated.");
+  }
   const [maintForm, setMaintForm] = useState({
     unit_id: "",
     title: "",
@@ -1576,41 +1627,142 @@ export default function RentalManager({
                               {rows.map((e) => {
                                 const charge = CHARGE_KINDS.includes(e.kind);
                                 const lease = idx.leaseById.get(e.lease_id);
+                                const td = "border-b border-white/5 py-2 pr-3";
+                                const cellInput =
+                                  "w-full rounded border border-card-border bg-[#0f131c] px-1.5 py-1 text-xs text-text-primary outline-none";
+                                if (editEntry && editEntry.id === e.id) {
+                                  const amountInput = (
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={editEntry.amount}
+                                      onChange={(ev) =>
+                                        setEditEntry((x) => x && { ...x, amount: ev.target.value })
+                                      }
+                                      className={cellInput + " text-right"}
+                                    />
+                                  );
+                                  return (
+                                    <tr key={e.id} className="bg-white/5">
+                                      <td className={td}>
+                                        <input
+                                          type="date"
+                                          value={editEntry.entry_date}
+                                          onChange={(ev) =>
+                                            setEditEntry((x) => x && { ...x, entry_date: ev.target.value })
+                                          }
+                                          className={cellInput}
+                                        />
+                                      </td>
+                                      <td className={td}>
+                                        <select
+                                          value={editEntry.lease_id}
+                                          onChange={(ev) =>
+                                            setEditEntry((x) => x && { ...x, lease_id: ev.target.value })
+                                          }
+                                          className={cellInput}
+                                        >
+                                          {data.leases.map((l) => (
+                                            <option key={l.id} value={l.id}>
+                                              {l.tenant_name}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </td>
+                                      <td className={td + " text-text-muted"}>
+                                        {LEDGER_KIND_LABELS[e.kind]}
+                                        {e.kind === "payment" && (
+                                          <select
+                                            value={editEntry.method}
+                                            onChange={(ev) =>
+                                              setEditEntry(
+                                                (x) => x && { ...x, method: ev.target.value as PaymentMethod | "" },
+                                              )
+                                            }
+                                            className={cellInput + " mt-1"}
+                                          >
+                                            <option value="">No method</option>
+                                            {PAYMENT_METHODS.map((m) => (
+                                              <option key={m} value={m}>
+                                                {PAYMENT_METHOD_LABELS[m]}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        )}
+                                      </td>
+                                      <td className={td}>
+                                        <input
+                                          value={editEntry.memo}
+                                          maxLength={240}
+                                          onChange={(ev) =>
+                                            setEditEntry((x) => x && { ...x, memo: ev.target.value })
+                                          }
+                                          onKeyDown={(ev) => {
+                                            if (ev.key === "Enter") saveEntry();
+                                            if (ev.key === "Escape") setEditEntry(null);
+                                          }}
+                                          className={cellInput}
+                                        />
+                                      </td>
+                                      <td className={td}>{charge ? amountInput : null}</td>
+                                      <td className={td}>{charge ? null : amountInput}</td>
+                                      <td className="whitespace-nowrap border-b border-white/5 py-2 text-right text-xs">
+                                        <button
+                                          type="button"
+                                          disabled={busy}
+                                          onClick={saveEntry}
+                                          className="font-semibold text-[#3ddc97] hover:underline disabled:opacity-60"
+                                        >
+                                          Save
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditEntry(null)}
+                                          className="ml-2 text-text-muted hover:underline"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                }
                                 return (
                                   <tr key={e.id}>
-                                    <td className="border-b border-white/5 py-2 pr-3 text-text-primary">
-                                      {e.entry_date}
-                                    </td>
-                                    <td className="border-b border-white/5 py-2 pr-3 text-text-primary">
-                                      {lease?.tenant_name ?? "--"}
-                                    </td>
-                                    <td className="border-b border-white/5 py-2 pr-3 text-text-muted">
+                                    <td className={td + " text-text-primary"}>{e.entry_date}</td>
+                                    <td className={td + " text-text-primary"}>{lease?.tenant_name ?? "--"}</td>
+                                    <td className={td + " text-text-muted"}>
                                       {LEDGER_KIND_LABELS[e.kind]}
-                                      {e.method
-                                        ? ` · ${PAYMENT_METHOD_LABELS[e.method]}`
-                                        : ""}
+                                      {e.method ? ` · ${PAYMENT_METHOD_LABELS[e.method]}` : ""}
                                     </td>
-                                    <td className="border-b border-white/5 py-2 pr-3 text-text-muted">
-                                      {e.memo ?? ""}
-                                    </td>
-                                    <td className="border-b border-white/5 py-2 pr-3 text-right text-text-primary">
+                                    <td className={td + " text-text-muted"}>{e.memo ?? ""}</td>
+                                    <td className={td + " text-right text-text-primary"}>
                                       {charge ? money(num(e.amount)) : ""}
                                     </td>
-                                    <td className="border-b border-white/5 py-2 pr-3 text-right text-[#3ddc97]">
+                                    <td className={td + " text-right text-[#3ddc97]"}>
                                       {charge ? "" : money(num(e.amount))}
                                     </td>
-                                    <td className="border-b border-white/5 py-2 text-right">
+                                    <td className="whitespace-nowrap border-b border-white/5 py-2 text-right text-xs">
                                       <button
                                         type="button"
                                         onClick={() =>
-                                          remove(
-                                            "rental_ledger",
-                                            e.id,
-                                            "ledger",
-                                            "this ledger entry",
-                                          )
+                                          setEditEntry({
+                                            id: e.id,
+                                            lease_id: e.lease_id,
+                                            entry_date: e.entry_date,
+                                            amount: String(num(e.amount)),
+                                            method: e.method ?? "",
+                                            memo: e.memo ?? "",
+                                          })
                                         }
-                                        className={removeBtn}
+                                        className="font-semibold text-[#4f8cff] hover:underline"
+                                      >
+                                        Edit
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => remove("rental_ledger", e.id, "ledger", "this ledger entry")}
+                                        className={removeBtn + " ml-2.5"}
                                       >
                                         ×
                                       </button>
