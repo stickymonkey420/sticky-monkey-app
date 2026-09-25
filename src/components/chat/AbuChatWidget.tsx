@@ -56,6 +56,12 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 const MUTE_STORAGE_KEY = "abu_voice_muted";
+const SNAP_NOTICE_KEY = "abu_snapshot_notice_seen";
+// Snapshot sizing: longest side is capped so each image costs roughly
+// 600-1,400 input tokens on Claude Haiku (~$0.001) -- see abu-chat.
+const SNAP_MAX_SIDE = 1024;
+const SNAP_JPEG_QUALITY = 0.8;
+const SNAP_MIN_DRAG = 12;
 
 type CardLocator = () => HTMLElement | null;
 
@@ -89,7 +95,7 @@ const GLOBAL_CARDS: Record<string, CardLocator> = {
 };
 
 // Verbatim from the Webflow footer script's injected <style> block.
-const ABU_CSS = `.abu-figure{width:100%;height:100%;display:block;overflow:visible;}.abu-eyelid{transform:scaleY(0);}.abu-mouth-open{opacity:0;}.abu-mouth-closed{opacity:1;}.abu-laser-dot{opacity:0;filter:drop-shadow(0 0 4px #ff3b3b);transition:opacity .2s ease;}.abu-thinking-dots ellipse{opacity:0;}.abu-arm-r-rest{opacity:1;transition:opacity .25s ease;}.abu-arm-r-point{opacity:0;transition:opacity .25s ease;}#abu-launcher .abu-eyelid,#abu-stage .abu-eyelid{animation:abuBlink 4.6s infinite;}#abu-launcher .abu-body-group,#abu-stage .abu-body-group{animation:abuBreathe 3.2s ease-in-out infinite;}@keyframes abuBlink{0%,90%,100%{transform:scaleY(0);}94%{transform:scaleY(1);}}@keyframes abuBreathe{0%,100%{transform:translateY(0);}50%{transform:translateY(-1.5px);}}#abu-stage.state-talking .abu-mouth-open{animation:abuTalk .24s steps(1) infinite;}#abu-stage.state-talking .abu-mouth-closed{animation:abuTalkInv .24s steps(1) infinite;}@keyframes abuTalk{0%,100%{opacity:0;}50%{opacity:1;}}@keyframes abuTalkInv{0%,100%{opacity:1;}50%{opacity:0;}}#abu-stage.state-thinking .abu-head-group{animation:abuThink 1.6s ease-in-out infinite;}@keyframes abuThink{0%,100%{transform:rotate(0deg);}50%{transform:rotate(3deg);}}#abu-stage.state-thinking .abu-thinking-dots ellipse{animation:abuDots 1.4s infinite;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(2){animation-delay:.2s;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(3){animation-delay:.4s;}#abu-stage.state-pointing .abu-arm-r-point{opacity:1;}#abu-stage.state-pointing .abu-arm-r-rest{opacity:0;}#abu-stage.state-pointing .abu-laser-dot{opacity:1;animation:abuLaser .9s ease-in-out infinite;}@keyframes abuLaser{0%,100%{opacity:.6;}50%{opacity:1;}}#abu-stage.state-entering .abu-figure{animation:abuEnter .6s cubic-bezier(.34,1.56,.64,1) both;}@keyframes abuEnter{0%{transform:translateY(70px) scale(.7);opacity:0;}60%{transform:translateY(-8px) scale(1.05);opacity:1;}100%{transform:translateY(0) scale(1);}}#abu-stage-wrap{width:100%;height:132px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:center;background:radial-gradient(ellipse at center 85%, rgba(245,208,32,0.08), transparent 70%);border-bottom:1px solid rgba(255,255,255,0.08);}#abu-stage{width:150px;height:150px;margin-bottom:-14px;}#abu-launcher .abu-figure{transform:scale(1.9) translateY(6px);}.abu-icon-btn{cursor:pointer;color:#8a90a8;font-size:15px;line-height:1;padding:4px 6px;border-radius:6px;user-select:none;}.abu-icon-btn:hover{background:rgba(255,255,255,0.08);color:#eef0f7;}.abu-icon-btn.active{color:#f5d020;}@keyframes abuMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,59,0.5);}50%{box-shadow:0 0 0 6px rgba(255,59,59,0);}}#abu-mic.listening{background:#ff3b3b !important;color:#fff !important;animation:abuMicPulse 1s infinite;}@keyframes abuCardPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,208,32,.65),0 0 0 0 rgba(245,208,32,.35);}50%{box-shadow:0 0 0 6px rgba(245,208,32,.45),0 0 26px 10px rgba(245,208,32,.25);}}.abu-card-glow{animation:abuCardPulse 1.3s ease-in-out 2;border-radius:12px;position:relative;z-index:5;}#abu-launcher.abu-dragging{cursor:grabbing !important;}#abu-stage-wrap{height:146px;}#abu-stage{width:96px;height:141px;margin-bottom:0;}#abu-stage-img-closed{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;user-select:none;}.abu-blink-frame{opacity:0;}.abu-blinking .abu-blink-frame{opacity:1;}.abu-thinking-dots{display:none !important;}.abu-bust{position:relative;transform-origin:50% 90%;}#abu-stage-img{width:100%;height:100%;object-fit:contain;display:block;user-select:none;pointer-events:none;}.abu-bust .abu-thinking-dots{position:absolute;top:-2px;right:-30px;width:40px;height:34px;overflow:visible;}#abu-stage.state-talking .abu-bust{animation:abuTalkBob .36s ease-in-out infinite;}@keyframes abuTalkBob{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-2px) scale(1.015);}}#abu-stage.state-thinking .abu-bust{animation:abuThink 1.6s ease-in-out infinite;}@keyframes abuDots{0%,100%{opacity:.15;}50%{opacity:1;}}#abu-stage.state-pointing .abu-bust{filter:drop-shadow(0 0 10px rgba(245,208,32,.55));}`;
+const ABU_CSS = `.abu-figure{width:100%;height:100%;display:block;overflow:visible;}.abu-eyelid{transform:scaleY(0);}.abu-mouth-open{opacity:0;}.abu-mouth-closed{opacity:1;}.abu-laser-dot{opacity:0;filter:drop-shadow(0 0 4px #ff3b3b);transition:opacity .2s ease;}.abu-thinking-dots ellipse{opacity:0;}.abu-arm-r-rest{opacity:1;transition:opacity .25s ease;}.abu-arm-r-point{opacity:0;transition:opacity .25s ease;}#abu-launcher .abu-eyelid,#abu-stage .abu-eyelid{animation:abuBlink 4.6s infinite;}#abu-launcher .abu-body-group,#abu-stage .abu-body-group{animation:abuBreathe 3.2s ease-in-out infinite;}@keyframes abuBlink{0%,90%,100%{transform:scaleY(0);}94%{transform:scaleY(1);}}@keyframes abuBreathe{0%,100%{transform:translateY(0);}50%{transform:translateY(-1.5px);}}#abu-stage.state-talking .abu-mouth-open{animation:abuTalk .24s steps(1) infinite;}#abu-stage.state-talking .abu-mouth-closed{animation:abuTalkInv .24s steps(1) infinite;}@keyframes abuTalk{0%,100%{opacity:0;}50%{opacity:1;}}@keyframes abuTalkInv{0%,100%{opacity:1;}50%{opacity:0;}}#abu-stage.state-thinking .abu-head-group{animation:abuThink 1.6s ease-in-out infinite;}@keyframes abuThink{0%,100%{transform:rotate(0deg);}50%{transform:rotate(3deg);}}#abu-stage.state-thinking .abu-thinking-dots ellipse{animation:abuDots 1.4s infinite;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(2){animation-delay:.2s;}#abu-stage.state-thinking .abu-thinking-dots ellipse:nth-child(3){animation-delay:.4s;}#abu-stage.state-pointing .abu-arm-r-point{opacity:1;}#abu-stage.state-pointing .abu-arm-r-rest{opacity:0;}#abu-stage.state-pointing .abu-laser-dot{opacity:1;animation:abuLaser .9s ease-in-out infinite;}@keyframes abuLaser{0%,100%{opacity:.6;}50%{opacity:1;}}#abu-stage.state-entering .abu-figure{animation:abuEnter .6s cubic-bezier(.34,1.56,.64,1) both;}@keyframes abuEnter{0%{transform:translateY(70px) scale(.7);opacity:0;}60%{transform:translateY(-8px) scale(1.05);opacity:1;}100%{transform:translateY(0) scale(1);}}#abu-stage-wrap{width:100%;height:132px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:center;background:radial-gradient(ellipse at center 85%, rgba(245,208,32,0.08), transparent 70%);border-bottom:1px solid rgba(255,255,255,0.08);}#abu-stage{width:150px;height:150px;margin-bottom:-14px;}#abu-launcher .abu-figure{transform:scale(1.9) translateY(6px);}.abu-icon-btn{cursor:pointer;color:#8a90a8;font-size:15px;line-height:1;padding:4px 6px;border-radius:6px;user-select:none;}.abu-icon-btn:hover{background:rgba(255,255,255,0.08);color:#eef0f7;}.abu-icon-btn.active{color:#f5d020;}@keyframes abuMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,59,0.5);}50%{box-shadow:0 0 0 6px rgba(255,59,59,0);}}#abu-mic.listening{background:#ff3b3b !important;color:#fff !important;animation:abuMicPulse 1s infinite;}@keyframes abuCardPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,208,32,.65),0 0 0 0 rgba(245,208,32,.35);}50%{box-shadow:0 0 0 6px rgba(245,208,32,.45),0 0 26px 10px rgba(245,208,32,.25);}}.abu-card-glow{animation:abuCardPulse 1.3s ease-in-out 2;border-radius:12px;position:relative;z-index:5;}#abu-launcher.abu-dragging{cursor:grabbing !important;}#abu-stage-wrap{height:146px;}#abu-snap-overlay{position:fixed;inset:0;z-index:100000;cursor:crosshair;background:rgba(0,0,0,0.35);user-select:none;touch-action:none;}#abu-snap-box{position:fixed;border:2px dashed #f5d020;background:rgba(245,208,32,0.08);box-shadow:0 0 0 9999px rgba(0,0,0,0.35);display:none;pointer-events:none;}#abu-snap-hint{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#161925;color:#eef0f7;border:1px solid rgba(245,208,32,.6);border-radius:10px;padding:8px 14px;font:600 13px system-ui,sans-serif;pointer-events:none;}#abu-attach{display:none;align-items:center;gap:8px;padding:8px 12px 0;}#abu-attach img{height:44px;max-width:120px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,.15);}#abu-attach span{flex:1;font-size:12px;color:#9aa3b8;}.abu-msg-snap{display:block;max-width:100%;max-height:120px;border-radius:8px;margin-bottom:6px;}.abu-capturing [data-abu-private],.abu-capturing input[type=password]{filter:blur(7px)!important;}#abu-stage{width:96px;height:141px;margin-bottom:0;}#abu-stage-img-closed{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;user-select:none;}.abu-blink-frame{opacity:0;}.abu-blinking .abu-blink-frame{opacity:1;}.abu-thinking-dots{display:none !important;}.abu-bust{position:relative;transform-origin:50% 90%;}#abu-stage-img{width:100%;height:100%;object-fit:contain;display:block;user-select:none;pointer-events:none;}.abu-bust .abu-thinking-dots{position:absolute;top:-2px;right:-30px;width:40px;height:34px;overflow:visible;}#abu-stage.state-talking .abu-bust{animation:abuTalkBob .36s ease-in-out infinite;}@keyframes abuTalkBob{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-2px) scale(1.015);}}#abu-stage.state-thinking .abu-bust{animation:abuThink 1.6s ease-in-out infinite;}@keyframes abuDots{0%,100%{opacity:.15;}50%{opacity:1;}}#abu-stage.state-pointing .abu-bust{filter:drop-shadow(0 0 10px rgba(245,208,32,.55));}`;
 
 // The two "clean" illustrated Abu-face stills the user had made in Webflow
 // (open-eyed / closed-eyed), hosted permanently on Webflow's own asset CDN
@@ -115,7 +121,7 @@ const ABU_EYES_CLOSED_URL =
 const ABU_BUST_OPEN_URL = "/images/abu/abu-bust-open.png?v=2";
 const ABU_BUST_CLOSED_URL = "/images/abu/abu-bust-closed.png?v=2";
 
-const ABU_PANEL_HTML = `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.08);"><div style="flex:1;font-size:14px;font-weight:700;color:#eef0f7;">Abu</div><div id="abu-mute" class="abu-icon-btn" title="Toggle Abu's voice">🔊</div><div id="abu-close" class="abu-icon-btn" style="font-size:18px;">&times;</div></div><div id="abu-stage-wrap"><div id="abu-stage"><div class="abu-figure abu-bust"><img id="abu-stage-img" src="${ABU_BUST_OPEN_URL}" alt="Abu" draggable="false" /><img id="abu-stage-img-closed" class="abu-blink-frame" src="${ABU_BUST_CLOSED_URL}" alt="" draggable="false" /></div></div></div><div id="abu-messages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;"></div><form id="abu-form" style="display:flex;gap:6px;padding:12px;border-top:1px solid rgba(255,255,255,0.08);"><input id="abu-input" type="text" placeholder="Ask Abu..." autocomplete="off" style="flex:1;min-width:0;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:#0d0f17;color:#eef0f7;font-size:13.5px;" /><div id="abu-mic" class="abu-icon-btn" title="Ask by voice" style="border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:9px 10px;display:none;">🎤</div><button type="submit" style="padding:9px 14px;border-radius:8px;border:none;background:#4f8cff;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Send</button></form>`;
+const ABU_PANEL_HTML = `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.08);"><div style="flex:1;font-size:14px;font-weight:700;color:#eef0f7;">Abu</div><div id="abu-mute" class="abu-icon-btn" title="Toggle Abu's voice">🔊</div><div id="abu-close" class="abu-icon-btn" style="font-size:18px;">&times;</div></div><div id="abu-stage-wrap"><div id="abu-stage"><div class="abu-figure abu-bust"><img id="abu-stage-img" src="${ABU_BUST_OPEN_URL}" alt="Abu" draggable="false" /><img id="abu-stage-img-closed" class="abu-blink-frame" src="${ABU_BUST_CLOSED_URL}" alt="" draggable="false" /></div></div></div><div id="abu-messages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;"></div><div id="abu-attach"><img id="abu-attach-img" alt="Snapshot" /><span>Snapshot attached</span><div id="abu-attach-x" class="abu-icon-btn" title="Remove snapshot">&times;</div></div><form id="abu-form" style="display:flex;gap:6px;padding:12px;border-top:1px solid rgba(255,255,255,0.08);"><input id="abu-input" type="text" placeholder="Ask Abu..." autocomplete="off" style="flex:1;min-width:0;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:#0d0f17;color:#eef0f7;font-size:13.5px;" /><div id="abu-snap" class="abu-icon-btn" title="Show Abu part of your screen" style="border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:9px 10px;display:flex;align-items:center;">📷</div><div id="abu-mic" class="abu-icon-btn" title="Ask by voice" style="border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:9px 10px;display:none;">🎤</div><button type="submit" style="padding:9px 14px;border-radius:8px;border:none;background:#4f8cff;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Send</button></form>`;
 
 type SpeechRecognitionResultLike = { results: { [i: number]: { [j: number]: { transcript: string } } } };
 type SpeechRecognitionLike = {
@@ -627,7 +633,7 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
     stageEl.className = className || "";
   }
 
-  function addMessage(role: "user" | "assistant", text: string): HTMLDivElement {
+  function addMessage(role: "user" | "assistant", text: string, imageUrl?: string): HTMLDivElement {
     const isUser = role === "user";
     const row = document.createElement("div");
     row.style.cssText = "display:flex;" + (isUser ? "justify-content:flex-end;" : "justify-content:flex-start;");
@@ -635,7 +641,16 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
     bubble.style.cssText =
       "max-width:80%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.4;white-space:pre-wrap;" +
       (isUser ? "background:#4f8cff;color:#fff;" : "background:#0d0f17;color:#eef0f7;border:1px solid rgba(255,255,255,0.08);");
-    bubble.textContent = text;
+    if (imageUrl) {
+      const img = document.createElement("img");
+      img.className = "abu-msg-snap";
+      img.src = imageUrl;
+      img.alt = "Snapshot";
+      bubble.appendChild(img);
+      bubble.appendChild(document.createTextNode(text));
+    } else {
+      bubble.textContent = text;
+    }
     row.appendChild(bubble);
     messagesEl.appendChild(row);
     messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -774,12 +789,182 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
     setStage("");
   }
 
+  // ---- Screen snapshot ("show Abu") -------------------------------------
+  // Privacy: this renders ONLY this app's own page (DOM -> canvas via
+  // modern-screenshot, loaded on demand), never the user's screen, other
+  // tabs or apps, so there's no browser screen-share prompt. Password
+  // fields and anything tagged data-abu-private are blurred during capture.
+  // The user sees the preview and nothing leaves the browser until they hit
+  // Send. abu-chat forwards it to Claude for that one answer and stores
+  // nothing but the token count.
+  const snapBtn = panel.querySelector<HTMLDivElement>("#abu-snap")!;
+  const attachEl = panel.querySelector<HTMLDivElement>("#abu-attach")!;
+  const attachImg = panel.querySelector<HTMLImageElement>("#abu-attach-img")!;
+  const attachX = panel.querySelector<HTMLDivElement>("#abu-attach-x")!;
+  let pendingSnapshot: string | null = null;
+  let snapping = false;
+
+  function clearSnapshot() {
+    pendingSnapshot = null;
+    attachImg.removeAttribute("src");
+    attachEl.style.display = "none";
+  }
+
+  function selectRegion(): Promise<{ x: number; y: number; w: number; h: number } | null> {
+    return new Promise((resolve) => {
+      const overlay = document.createElement("div");
+      overlay.id = "abu-snap-overlay";
+      overlay.innerHTML =
+        '<div id="abu-snap-hint">Drag to select what to show Abu &middot; Esc to cancel</div><div id="abu-snap-box"></div>';
+      document.body.appendChild(overlay);
+      const box = overlay.querySelector<HTMLDivElement>("#abu-snap-box")!;
+      let sx = 0;
+      let sy = 0;
+      let dragging = false;
+      const finish = (r: { x: number; y: number; w: number; h: number } | null) => {
+        document.removeEventListener("keydown", onKey, true);
+        overlay.remove();
+        resolve(r);
+      };
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          finish(null);
+        }
+      };
+      document.addEventListener("keydown", onKey, true);
+      overlay.addEventListener("pointerdown", (e) => {
+        dragging = true;
+        sx = e.clientX;
+        sy = e.clientY;
+        overlay.setPointerCapture(e.pointerId);
+        overlay.style.background = "transparent";
+        box.style.display = "block";
+        box.style.left = sx + "px";
+        box.style.top = sy + "px";
+        box.style.width = "0px";
+        box.style.height = "0px";
+      });
+      overlay.addEventListener("pointermove", (e) => {
+        if (!dragging) return;
+        box.style.left = Math.min(sx, e.clientX) + "px";
+        box.style.top = Math.min(sy, e.clientY) + "px";
+        box.style.width = Math.abs(e.clientX - sx) + "px";
+        box.style.height = Math.abs(e.clientY - sy) + "px";
+      });
+      overlay.addEventListener("pointerup", (e) => {
+        if (!dragging) return;
+        dragging = false;
+        const x = Math.max(0, Math.min(sx, e.clientX));
+        const y = Math.max(0, Math.min(sy, e.clientY));
+        const w = Math.min(window.innerWidth, Math.max(sx, e.clientX)) - x;
+        const h = Math.min(window.innerHeight, Math.max(sy, e.clientY)) - y;
+        finish(w >= SNAP_MIN_DRAG && h >= SNAP_MIN_DRAG ? { x, y, w, h } : null);
+      });
+    });
+  }
+
+  async function captureRegion(r: { x: number; y: number; w: number; h: number }): Promise<string | null> {
+    const { domToCanvas } = await import("modern-screenshot");
+    const root = document.documentElement;
+    const scale = Math.min(window.devicePixelRatio || 1, 2);
+    root.classList.add("abu-capturing");
+    try {
+      // width/height = viewport + restoreScrollPosition renders exactly what
+      // is on screen (window and inner scroll offsets applied), so the drag
+      // rectangle's viewport coordinates map straight onto the canvas.
+      const full = await domToCanvas(root, {
+        scale,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        backgroundColor: getComputedStyle(document.body).backgroundColor || "#0d0f17",
+        features: { restoreScrollPosition: true },
+        timeout: 8000,
+        filter: (node) => {
+          const el = node as HTMLElement;
+          return !(el && (el.id === "abu-launcher" || el.id === "abu-panel" || el.id === "abu-snap-overlay"));
+        },
+      });
+      const fit = Math.min(1, SNAP_MAX_SIDE / Math.max(r.w * scale, r.h * scale));
+      const outW = Math.max(1, Math.round(r.w * scale * fit));
+      const outH = Math.max(1, Math.round(r.h * scale * fit));
+      const out = document.createElement("canvas");
+      out.width = outW;
+      out.height = outH;
+      const ctx = out.getContext("2d");
+      if (!ctx) return null;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(full, r.x * scale, r.y * scale, r.w * scale, r.h * scale, 0, 0, outW, outH);
+      return out.toDataURL("image/jpeg", SNAP_JPEG_QUALITY).split(",")[1] || null;
+    } finally {
+      root.classList.remove("abu-capturing");
+    }
+  }
+
+  async function takeSnapshot() {
+    if (snapping || waiting) return;
+    snapping = true;
+    const prevPanel = panel.style.display;
+    const prevLauncher = launcher.style.display;
+    panel.style.display = "none";
+    launcher.style.display = "none";
+    let data: string | null = null;
+    let failed = false;
+    try {
+      const region = await selectRegion();
+      if (region) {
+        // Let the overlay's removal paint before rendering the page.
+        await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+        data = await captureRegion(region);
+        if (!data) failed = true;
+      }
+    } catch {
+      failed = true;
+    } finally {
+      panel.style.display = prevPanel;
+      launcher.style.display = prevLauncher;
+      snapping = false;
+    }
+    if (failed) {
+      addMessage("assistant", "I couldn't grab that snapshot -- mind trying again?");
+      return;
+    }
+    if (!data) return;
+    pendingSnapshot = data;
+    attachImg.src = "data:image/jpeg;base64," + data;
+    attachEl.style.display = "flex";
+    let seen = false;
+    try {
+      seen = window.localStorage.getItem(SNAP_NOTICE_KEY) === "1";
+      window.localStorage.setItem(SNAP_NOTICE_KEY, "1");
+    } catch {
+      // ignore
+    }
+    if (!seen) {
+      addMessage(
+        "assistant",
+        "Heads up: snapshots are only sent to my AI to answer your question and aren't stored. Password fields are blurred automatically. Nothing is sent until you hit Send."
+      );
+    }
+    inputEl.focus();
+  }
+
+  snapBtn.addEventListener("click", () => {
+    unlockAudio();
+    takeSnapshot();
+  });
+  attachX.addEventListener("click", clearSnapshot);
+
   async function sendMessage(rawText: string) {
-    const text = (rawText || "").trim();
+    const snap = pendingSnapshot;
+    const text = (rawText || "").trim() || (snap ? "Can you explain what's in this snapshot?" : "");
     if (!text || waiting) return;
     inputEl.value = "";
-    addMessage("user", text);
-    history.push({ role: "user", content: text });
+    clearSnapshot();
+    addMessage("user", text, snap ? "data:image/jpeg;base64," + snap : undefined);
+    // History stays text-only (images are one-shot, never re-sent), so a
+    // snapshot only costs tokens on the message it was attached to.
+    history.push({ role: "user", content: snap ? text + " [attached a screen snapshot]" : text });
     waiting = true;
     setStage("state-thinking");
     const placeholder = addMessage("assistant", "...");
@@ -795,7 +980,12 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: text, history: history.slice(0, -1), page: window.location.pathname }),
+        body: JSON.stringify({
+          message: text,
+          history: history.slice(0, -1),
+          page: window.location.pathname,
+          ...(snap ? { image: snap, image_type: "image/jpeg" } : {}),
+        }),
       });
       const data: AbuChatResponse = await res.json();
       placeholder.remove();

@@ -147,6 +147,7 @@ export default function UpdateApiKeyPage() {
                       <input
                         type="text"
                         autoFocus
+                        data-abu-private
                         value={newValue}
                         onChange={(e) => setNewValue(e.target.value)}
                         onKeyDown={(e) => {
