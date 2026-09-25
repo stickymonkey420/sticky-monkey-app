@@ -65,11 +65,11 @@ export default function ProfileSummaryCard() {
   const avatarUrl = profile?.avatar_url || DEFAULT_AVATAR_URL;
 
   return (
-    // Sticky + h-[calc(100vh-2rem)] mirrors the left sidebar (AppShell's
-    // <aside>) exactly, so the two side panels always match height instead
-    // of the profile card's height following its own (shorter) content.
+    // At least one screen tall (min-h, like the left sidebar) and grows with
+    // its content -- no inner scrollbar, so Quick Access is never cut off.
+    // AppShell's flex wrapper stretches it to match the sidebar's height.
     <div
-      className="sticky top-4 flex w-full flex-col gap-6 overflow-y-auto rounded-[30px] p-[30px] md:h-[calc(100vh-2rem)] md:w-80 md:shrink-0"
+      className="flex w-full flex-col gap-6 rounded-[30px] p-[30px] md:min-h-[calc(100vh-2rem)] md:w-80 md:shrink-0"
       style={{ backgroundColor: "#151b28" }}
     >
       {/* Avatar / name / handle (falls back to email if no handle is set yet) */}

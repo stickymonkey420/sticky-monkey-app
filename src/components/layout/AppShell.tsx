@@ -659,10 +659,10 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       {/* Matches the live Webflow sidebar: the logo sits directly on the
           page background (no card behind it), and the dark rgb(21,27,40)/
           30px-radius card starts below it, containing only the nav +
-          sign-out. The outer wrapper keeps the same sticky/full-height
-          footprint the card alone used to have, so overall sidebar height
-          (and its match with the profile panel) is unchanged. */}
-      <div className="sticky top-4 hidden h-[calc(100vh-2rem)] w-64 shrink-0 flex-col gap-10 md:flex">
+          sign-out. The wrapper is at least one screen tall and grows with
+          its content (no inner scrollbar, nothing hidden); both side panels
+          stretch to the page height so they still match. */}
+      <div className="hidden min-h-[calc(100vh-2rem)] w-64 shrink-0 flex-col gap-10 md:flex">
         {/* Sizes/spacing pulled via getComputedStyle off the live site's
             .logo-wrapper: 64px-tall head icon, 188px-wide wordmark, a
             25px/1px divider rule, then the FINANCE label at 13px/300
@@ -678,7 +678,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         </div>
 
         <aside
-          className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto rounded-[30px] p-4"
+          className="flex flex-1 flex-col gap-4 rounded-[30px] p-4"
           style={{ backgroundColor: "#151b28" }}
         >
           <nav className="flex flex-1 flex-col gap-1 px-1">
@@ -708,7 +708,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           instead of being a per-page dashboard card -- so it's present,
           sticky, and height-matched to the sidebar on every page. Only the
           `children` in between changes as you navigate. */}
-      <div className="hidden shrink-0 px-4 pb-4 md:block md:px-0 md:pb-0">
+      <div className="hidden shrink-0 px-4 pb-4 md:flex md:px-0 md:pb-0">
         <ProfileSummaryCard />
       </div>
     </div>
