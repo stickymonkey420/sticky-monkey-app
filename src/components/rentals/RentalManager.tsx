@@ -192,7 +192,12 @@ export default function RentalManager({
     ]);
     setBusy(false);
     if (error || rows.length === 0) {
-      flash("That didn't save. Check the fields and try again.", false);
+      flash(
+        error && /does not exist|schema cache/i.test(error)
+          ? "Rental tables aren't set up yet -- ask your App Director to run the rental-property SQL."
+          : "That didn't save. Check the fields and try again.",
+        false,
+      );
       return false;
     }
     setData((d) => ({ ...d, [key]: [...(d[key] as unknown as T[]), ...rows] }));
