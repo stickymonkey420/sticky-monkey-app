@@ -370,6 +370,7 @@ export default function RentalManager({
     memo: "",
   });
   const [ledgerFilter, setLedgerFilter] = useState("");
+  const [ledgerSort, setLedgerSort] = useState<"desc" | "asc">("desc");
   const [ledgerModal, setLedgerModal] = useState<"payment" | "charge" | null>(null);
   // Properties tab: "new" = Add Property dialog, a property id = that
   // property's units dialog.
@@ -1688,9 +1689,16 @@ export default function RentalManager({
                       </div>
                     )}
                     {(() => {
-                      const rows = data.ledger.filter(
-                        (e) => !ledgerFilter || e.lease_id === ledgerFilter,
-                      );
+                      // Date sort (newest first by default); same-day entries
+                      // keep entry order (charges before payments).
+                      const dir = ledgerSort === "desc" ? -1 : 1;
+                      const rows = data.ledger
+                        .filter((e) => !ledgerFilter || e.lease_id === ledgerFilter)
+                        .sort(
+                          (a, b) =>
+                            dir * a.entry_date.localeCompare(b.entry_date) ||
+                            dir * a.created_at.localeCompare(b.created_at),
+                        );
                       if (rows.length === 0)
                         return (
                           <div className="text-sm text-text-muted">
@@ -1702,8 +1710,19 @@ export default function RentalManager({
                           <table className="w-full min-w-[640px] border-collapse text-sm">
                             <thead>
                               <tr className="text-left text-[10.5px] uppercase tracking-wide text-text-muted">
-                                <th className="border-b border-card-border pb-2 pr-3">
-                                  Date
+                                <th
+                                  className="border-b border-card-border pb-2 pr-3"
+                                  aria-sort={ledgerSort === "desc" ? "descending" : "ascending"}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => setLedgerSort((d) => (d === "desc" ? "asc" : "desc"))}
+                                    title={ledgerSort === "desc" ? "Newest first -- click for oldest first" : "Oldest first -- click for newest first"}
+                                    className="inline-flex items-center gap-1 uppercase tracking-wide hover:text-text-primary"
+                                  >
+                                    Date
+                                    <span className="text-[#f5d020]">{ledgerSort === "desc" ? "▼" : "▲"}</span>
+                                  </button>
                                 </th>
                                 <th className="border-b border-card-border pb-2 pr-3">
                                   Tenant
