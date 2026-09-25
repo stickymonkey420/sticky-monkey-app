@@ -371,6 +371,9 @@ export default function RentalManager({
   });
   const [ledgerFilter, setLedgerFilter] = useState("");
   const [ledgerModal, setLedgerModal] = useState<"payment" | "charge" | null>(null);
+  // Properties tab: "new" = Add Property dialog, a property id = that
+  // property's units dialog.
+  const [propModal, setPropModal] = useState<string | null>(null);
   // Inline edit of one ledger row (date, tenant, amount, method, memo).
   // Type stays fixed: rent/late fees belong to a month, and switching a
   // payment into a charge would silently flip the balance.
@@ -655,7 +658,10 @@ export default function RentalManager({
                   </ol>
                   <button
                     type="button"
-                    onClick={() => setTab("properties")}
+                    onClick={() => {
+                      setTab("properties");
+                      setPropModal("new");
+                    }}
                     className={btnClass + " mt-4"}
                   >
                     Add your first property
@@ -817,245 +823,252 @@ export default function RentalManager({
           {/* ---------------- PROPERTIES & UNITS ---------------- */}
           {tab === "properties" && (
             <>
-              <div className={cardClass}>
-                <h4 className={h4Class}>Properties</h4>
-                {needProperty ? (
-                  <div className="mb-4 text-sm text-text-muted">
-                    No properties yet.
-                  </div>
-                ) : (
-                  <div className="mb-4 flex flex-col gap-3">
-                    {data.properties.map((p) => {
-                      const units = data.units.filter(
-                        (u) => u.property_id === p.id,
-                      );
-                      return (
-                        <div key={p.id} className="rounded-xl bg-white/5 p-3.5">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-semibold text-text-primary">
-                                {p.name}
-                              </div>
-                              {p.address && (
-                                <div className="truncate text-xs text-text-muted">
-                                  {p.address}
-                                </div>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                remove(
-                                  "rental_properties",
-                                  p.id,
-                                  "properties",
-                                  `"${p.name}"`,
-                                  "its units, leases, ledger, maintenance and expenses",
-                                )
-                              }
-                              className={removeBtn}
-                            >
-                              Remove
-                            </button>
-                          </div>
-                          {units.length > 0 && (
-                            <div className="mt-2.5 flex flex-col gap-1.5">
-                              {units.map((u: RentalUnit) => {
-                                const lease = activeLeases.find(
-                                  (l) => l.unit_id === u.id,
-                                );
-                                return (
-                                  <div
-                                    key={u.id}
-                                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#0f131c] px-3 py-2"
-                                  >
-                                    <div className="text-xs text-text-primary">
-                                      <span className="font-semibold">
-                                        {u.label}
-                                      </span>
-                                      {u.bedrooms != null &&
-                                        ` · ${num(u.bedrooms)} bd`}
-                                      {u.bathrooms != null &&
-                                        ` · ${num(u.bathrooms)} ba`}
-                                      {u.market_rent != null &&
-                                        ` · ${money(num(u.market_rent))} market`}
-                                    </div>
-                                    <div className="flex items-center gap-3 text-xs">
-                                      <span
-                                        className={
-                                          lease
-                                            ? "text-[#f5d020]"
-                                            : "text-[#ffb648]"
-                                        }
-                                      >
-                                        {lease
-                                          ? `Leased · ${lease.tenant_name}`
-                                          : "Vacant"}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          remove(
-                                            "rental_units",
-                                            u.id,
-                                            "units",
-                                            `unit "${u.label}"`,
-                                            "its leases, ledger and maintenance",
-                                          )
-                                        }
-                                        className={removeBtn}
-                                      >
-                                        ×
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    placeholder="Property name (e.g. Oak St Duplex)"
-                    value={propForm.name}
-                    onChange={(e) =>
-                      setPropForm((f) => ({ ...f, name: e.target.value }))
-                    }
-                    className={inputClass + " min-w-[220px] flex-1"}
-                  />
-                  <input
-                    placeholder="Address (optional)"
-                    value={propForm.address}
-                    onChange={(e) =>
-                      setPropForm((f) => ({ ...f, address: e.target.value }))
-                    }
-                    className={inputClass + " min-w-[220px] flex-1"}
-                  />
-                  <button
-                    type="button"
-                    disabled={busy || !propForm.name.trim()}
-                    onClick={async () => {
-                      const ok = await add<RentalProperty>(
-                        "rental_properties",
-                        {
-                          business_id: businessId,
-                          name: propForm.name.trim(),
-                          address: propForm.address.trim() || null,
-                        },
-                        "properties",
-                        "Property added. Now add its units.",
-                      );
-                      if (ok) setPropForm({ name: "", address: "" });
-                    }}
-                    className={btnClass}
-                  >
-                    Add Property
-                  </button>
-                </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {data.properties.map((p) => {
+                  const units = data.units.filter((u) => u.property_id === p.id);
+                  const leased = units.filter((u) => activeLeases.some((l) => l.unit_id === u.id)).length;
+                  const sizeLabel =
+                    units.length === 0 ? "No units yet" : units.length === 1 ? "Whole house" : `${units.length} units`;
+                  const statusLabel =
+                    units.length === 0
+                      ? "Add units"
+                      : units.length === 1
+                        ? leased
+                          ? "Leased"
+                          : "Vacant"
+                        : `${leased} leased · ${units.length - leased} vacant`;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setPropModal(p.id)}
+                      className="flex flex-col gap-3 rounded-2xl border border-card-border bg-card-bg p-4 text-left transition hover:border-[#f5d020]/60 hover:bg-white/5"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f5d020]/15 text-xl">
+                          {units.length > 1 ? "🏢" : "🏠"}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold text-text-primary">{p.name}</span>
+                          {p.address && <span className="mt-0.5 block truncate text-xs text-text-muted">{p.address}</span>}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="rounded-full bg-white/5 px-2.5 py-1 font-semibold text-text-primary">{sizeLabel}</span>
+                        <span
+                          className={
+                            units.length === 0
+                              ? "text-text-muted"
+                              : leased === units.length
+                                ? "text-[#f5d020]"
+                                : "text-[#ffb648]"
+                          }
+                        >
+                          {statusLabel}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setPropModal("new")}
+                  className="flex min-h-[110px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-card-border p-4 text-center transition hover:border-[#f5d020]/60 hover:bg-white/5"
+                >
+                  <span className="text-2xl leading-none text-[#f5d020]">+</span>
+                  <span className="text-sm font-semibold text-text-primary">Add Property</span>
+                </button>
               </div>
 
-              {!needProperty && (
-                <div className={cardClass}>
-                  <h4 className={h4Class}>Add a unit</h4>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select
-                      value={unitForm.property_id}
-                      onChange={(e) =>
-                        setUnitForm((f) => ({
-                          ...f,
-                          property_id: e.target.value,
-                        }))
-                      }
-                      className={inputClass}
-                    >
-                      <option value="">Property…</option>
-                      {propertyOptions}
-                    </select>
+              {propModal === "new" && (
+                <Modal
+                  title="Add Property"
+                  error={message && !message.ok ? message.text : null}
+                  onClose={() => setPropModal(null)}
+                >
+                  <div className="flex flex-col gap-2">
                     <input
-                      placeholder="Unit (e.g. Unit A, Whole house)"
-                      value={unitForm.label}
-                      onChange={(e) =>
-                        setUnitForm((f) => ({ ...f, label: e.target.value }))
-                      }
+                      autoFocus
+                      placeholder="Property name (e.g. Oak St Duplex)"
+                      value={propForm.name}
+                      onChange={(e) => setPropForm((f) => ({ ...f, name: e.target.value }))}
                       className={inputClass}
                     />
                     <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      placeholder="Beds"
-                      value={unitForm.bedrooms}
-                      onChange={(e) =>
-                        setUnitForm((f) => ({ ...f, bedrooms: e.target.value }))
-                      }
-                      className={inputClass + " w-20"}
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      placeholder="Baths"
-                      value={unitForm.bathrooms}
-                      onChange={(e) =>
-                        setUnitForm((f) => ({
-                          ...f,
-                          bathrooms: e.target.value,
-                        }))
-                      }
-                      className={inputClass + " w-20"}
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="Market rent"
-                      value={unitForm.market_rent}
-                      onChange={(e) =>
-                        setUnitForm((f) => ({
-                          ...f,
-                          market_rent: e.target.value,
-                        }))
-                      }
-                      className={inputClass + " w-32"}
+                      placeholder="Address (optional)"
+                      value={propForm.address}
+                      onChange={(e) => setPropForm((f) => ({ ...f, address: e.target.value }))}
+                      className={inputClass}
                     />
                     <button
                       type="button"
-                      disabled={
-                        busy || !unitForm.property_id || !unitForm.label.trim()
-                      }
+                      disabled={busy || !propForm.name.trim()}
                       onClick={async () => {
-                        const ok = await add<RentalUnit>(
-                          "rental_units",
+                        const { rows, error } = await insertRows<RentalProperty>(createClient(), "rental_properties", [
                           {
-                            property_id: unitForm.property_id,
-                            label: unitForm.label.trim(),
-                            bedrooms: optNum(unitForm.bedrooms),
-                            bathrooms: optNum(unitForm.bathrooms),
-                            market_rent: optNum(unitForm.market_rent),
+                            user_id: userId,
+                            business_id: businessId,
+                            name: propForm.name.trim(),
+                            address: propForm.address.trim() || null,
                           },
-                          "units",
-                          "Unit added.",
-                        );
-                        if (ok)
-                          setUnitForm((f) => ({
-                            ...f,
-                            label: "",
-                            bedrooms: "",
-                            bathrooms: "",
-                            market_rent: "",
-                          }));
+                        ]);
+                        if (error || rows.length === 0) {
+                          flash("That didn't save. Check the fields and try again.", false);
+                          return;
+                        }
+                        setData((d) => ({ ...d, properties: [...d.properties, ...rows] }));
+                        setPropForm({ name: "", address: "" });
+                        setMessage(null);
+                        // Go straight to the new property so its units can be added.
+                        setPropModal(rows[0].id);
                       }}
-                      className={btnClass}
+                      className={btnClass + " self-start"}
                     >
-                      Add Unit
+                      Add Property
                     </button>
                   </div>
-                </div>
+                </Modal>
               )}
+
+              {(() => {
+                const p = propModal && propModal !== "new" ? data.properties.find((x) => x.id === propModal) : null;
+                if (!p) return null;
+                const units = data.units.filter((u) => u.property_id === p.id);
+                return (
+                  <Modal
+                    title={p.name}
+                    error={message && !message.ok ? message.text : null}
+                    onClose={() => setPropModal(null)}
+                  >
+                    {p.address && <p className="-mt-3 mb-3 text-xs text-text-muted">{p.address}</p>}
+                    <h4 className={h4Class}>
+                      {units.length === 1 ? "Whole house" : `Units (${units.length})`}
+                    </h4>
+                    {units.length === 0 ? (
+                      <div className="mb-4 text-sm text-text-muted">No units yet -- add one below.</div>
+                    ) : (
+                      <div className="mb-4 flex max-h-[40vh] flex-col gap-1.5 overflow-y-auto">
+                        {units.map((u: RentalUnit) => {
+                          const lease = activeLeases.find((l) => l.unit_id === u.id);
+                          return (
+                            <div
+                              key={u.id}
+                              className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#0f131c] px-3 py-2"
+                            >
+                              <div className="text-xs text-text-primary">
+                                <span className="font-semibold">{u.label}</span>
+                                {u.bedrooms != null && ` · ${num(u.bedrooms)} bd`}
+                                {u.bathrooms != null && ` · ${num(u.bathrooms)} ba`}
+                                {u.market_rent != null && ` · ${money(num(u.market_rent))}`}
+                              </div>
+                              <div className="flex items-center gap-3 text-xs">
+                                <span className={lease ? "text-[#f5d020]" : "text-[#ffb648]"}>
+                                  {lease ? `Leased · ${lease.tenant_name}` : "Vacant"}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    remove(
+                                      "rental_units",
+                                      u.id,
+                                      "units",
+                                      `unit "${u.label}"`,
+                                      "its leases, ledger and maintenance",
+                                    )
+                                  }
+                                  className={removeBtn}
+                                  aria-label={`Remove ${u.label}`}
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <h4 className={h4Class}>Add a unit</h4>
+                    <div className="flex flex-col gap-2">
+                      <input
+                        placeholder={units.length === 0 ? "Unit (e.g. Whole house, Unit A)" : "Unit (e.g. Unit B)"}
+                        value={unitForm.label}
+                        onChange={(e) => setUnitForm((f) => ({ ...f, label: e.target.value }))}
+                        className={inputClass}
+                      />
+                      <div className="grid grid-cols-3 gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          placeholder="Beds"
+                          value={unitForm.bedrooms}
+                          onChange={(e) => setUnitForm((f) => ({ ...f, bedrooms: e.target.value }))}
+                          className={inputClass}
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          placeholder="Baths"
+                          value={unitForm.bathrooms}
+                          onChange={(e) => setUnitForm((f) => ({ ...f, bathrooms: e.target.value }))}
+                          className={inputClass}
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="Market rent"
+                          value={unitForm.market_rent}
+                          onChange={(e) => setUnitForm((f) => ({ ...f, market_rent: e.target.value }))}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          disabled={busy || !unitForm.label.trim()}
+                          onClick={async () => {
+                            const ok = await add<RentalUnit>(
+                              "rental_units",
+                              {
+                                property_id: p.id,
+                                label: unitForm.label.trim(),
+                                bedrooms: optNum(unitForm.bedrooms),
+                                bathrooms: optNum(unitForm.bathrooms),
+                                market_rent: optNum(unitForm.market_rent),
+                              },
+                              "units",
+                              "Unit added.",
+                            );
+                            if (ok)
+                              setUnitForm((f) => ({ ...f, label: "", bedrooms: "", bathrooms: "", market_rent: "" }));
+                          }}
+                          className={btnClass}
+                        >
+                          Add Unit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            remove(
+                              "rental_properties",
+                              p.id,
+                              "properties",
+                              `"${p.name}"`,
+                              "its units, leases, ledger, maintenance and expenses",
+                            )
+                          }
+                          className={removeBtn}
+                        >
+                          Remove property
+                        </button>
+                      </div>
+                    </div>
+                  </Modal>
+                );
+              })()}
             </>
           )}
 
