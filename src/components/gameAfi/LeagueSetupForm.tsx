@@ -76,7 +76,7 @@ export default function LeagueSetupForm({ onCreated }: { onCreated: () => void }
       />
       <div className="mt-3 flex items-center justify-between gap-3">
         {message && (
-          <p className={`text-sm ${message.ok ? "text-[#3ddc97]" : "text-[#ff5c7a]"}`}>{message.text}</p>
+          <p className={`text-sm ${message.ok ? "text-[#f5d020]" : "text-[#ff5c7a]"}`}>{message.text}</p>
         )}
         <button
           type="submit"

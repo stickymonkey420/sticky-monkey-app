@@ -47,7 +47,7 @@ export default function UpdatePasswordPage() {
   if (done) {
     return (
       <AuthCard title="Password updated" subtitle="Taking you to your dashboard…">
-        <p className="text-sm" style={{ color: "#3ddc97" }}>
+        <p className="text-sm" style={{ color: "#f5d020" }}>
           Your password has been changed.
         </p>
       </AuthCard>

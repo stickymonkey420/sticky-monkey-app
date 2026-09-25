@@ -126,7 +126,7 @@ const UserRow = forwardRef<UserRowHandle, UserRowProps>(function UserRow(
           >
             <span
               className="inline-block h-1.5 w-1.5 rounded-full"
-              style={{ backgroundColor: surveyDone ? "#3ddc97" : "hsla(224,18%,42%,0.5)" }}
+              style={{ backgroundColor: surveyDone ? "#f5d020" : "hsla(224,18%,42%,0.5)" }}
             />
             Survey
           </button>

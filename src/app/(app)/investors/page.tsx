@@ -129,7 +129,7 @@ export default function InvestorsPage() {
         <h1 className="text-xl font-semibold text-text-primary">Investors</h1>
         <div className="flex items-center gap-3">
           {status && (
-            <span className="text-sm" style={{ color: status.isError ? "#e05656" : "#3ddc97" }}>
+            <span className="text-sm" style={{ color: status.isError ? "#e05656" : "#f5d020" }}>
               {status.text}
             </span>
           )}

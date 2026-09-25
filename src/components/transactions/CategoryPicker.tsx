@@ -129,7 +129,7 @@ export default function CategoryPicker({ categories, current, onSelect, onAddCat
                   type="button"
                   disabled={saving}
                   onClick={submitNew}
-                  className="flex-1 rounded-md bg-[#3ddc97] py-1.5 text-xs font-semibold text-[#0f131c] disabled:opacity-60"
+                  className="flex-1 rounded-md bg-[#f5d020] py-1.5 text-xs font-semibold text-[#0f131c] disabled:opacity-60"
                 >
                   {saving ? "Adding…" : "Add"}
                 </button>

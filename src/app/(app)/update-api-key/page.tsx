@@ -128,7 +128,7 @@ export default function UpdateApiKeyPage() {
                       <div className="mt-0.5 flex items-center gap-2 text-xs text-text-muted">
                         <span
                           className="inline-block h-1.5 w-1.5 rounded-full"
-                          style={{ backgroundColor: isSet ? "#3ddc97" : "hsla(224,18%,42%,0.6)" }}
+                          style={{ backgroundColor: isSet ? "#f5d020" : "hsla(224,18%,42%,0.6)" }}
                         />
                         {isSet ? `Set · last updated ${fmtDate(status?.updated_at ?? null)}` : "Not set"}
                       </div>
@@ -173,7 +173,7 @@ export default function UpdateApiKeyPage() {
           </div>
 
           {message && (
-            <div className="mt-4 text-sm" style={{ color: message.isError ? "#ff5c7a" : "#3ddc97" }}>
+            <div className="mt-4 text-sm" style={{ color: message.isError ? "#ff5c7a" : "#f5d020" }}>
               {message.text}
             </div>
           )}

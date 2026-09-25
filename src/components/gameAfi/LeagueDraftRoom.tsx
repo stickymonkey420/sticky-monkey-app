@@ -111,7 +111,7 @@ export default function LeagueDraftRoom({
           </button>
         )}
         {message && (
-          <p className={`mt-3 text-sm ${message.ok ? "text-[#3ddc97]" : "text-[#ff5c7a]"}`}>{message.text}</p>
+          <p className={`mt-3 text-sm ${message.ok ? "text-[#f5d020]" : "text-[#ff5c7a]"}`}>{message.text}</p>
         )}
       </div>
     );
@@ -129,7 +129,7 @@ export default function LeagueDraftRoom({
                 {onClock.round}, Pick #{onClock.pickNumber}
               </p>
             ) : (
-              <p className="mt-1 text-sm text-[#3ddc97]">Draft complete -- {picks.length} picks in.</p>
+              <p className="mt-1 text-sm text-[#f5d020]">Draft complete -- {picks.length} picks in.</p>
             )}
           </div>
           {isAdmin && picks.length > 0 && (
@@ -157,7 +157,7 @@ export default function LeagueDraftRoom({
                 type="button"
                 onClick={() => setSide("long")}
                 className={`rounded px-3 py-1 text-xs font-medium ${
-                  side === "long" ? "bg-[#3ddc97] text-[#0f131c]" : "text-text-muted hover:bg-white/5"
+                  side === "long" ? "bg-[#f5d020] text-[#0f131c]" : "text-text-muted hover:bg-white/5"
                 }`}
               >
                 Long
@@ -183,7 +183,7 @@ export default function LeagueDraftRoom({
           </div>
         )}
         {message && (
-          <p className={`mt-3 text-sm ${message.ok ? "text-[#3ddc97]" : "text-[#ff5c7a]"}`}>{message.text}</p>
+          <p className={`mt-3 text-sm ${message.ok ? "text-[#f5d020]" : "text-[#ff5c7a]"}`}>{message.text}</p>
         )}
       </div>
 

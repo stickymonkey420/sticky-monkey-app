@@ -71,7 +71,7 @@ type TabKey = (typeof TABS)[number]["key"];
 const inputClass =
   "rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none";
 const btnClass =
-  "rounded-md bg-[#3ddc97] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-60";
+  "rounded-md bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-60";
 const cardClass = "rounded-2xl border border-card-border bg-card-bg p-5";
 const h4Class =
   "mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted";
@@ -99,7 +99,7 @@ function Tile({
 }) {
   const color =
     tone === "good"
-      ? "text-[#3ddc97]"
+      ? "text-[#f5d020]"
       : tone === "bad"
         ? "text-[#ff5c7a]"
         : "text-text-primary";
@@ -123,6 +123,46 @@ function Empty({ text, goLabel, onGo }: { text: string; goLabel?: string; onGo?:
           {goLabel}
         </button>
       )}
+    </div>
+  );
+}
+
+// Small centered dialog for the ledger forms: Esc or a backdrop click closes it.
+function Modal({
+  title,
+  error,
+  onClose,
+  children,
+}: {
+  title: string;
+  error?: string | null;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div role="dialog" aria-modal="true" aria-label={title} className="w-full max-w-md rounded-2xl border border-card-border bg-card-bg p-5 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h3 className="text-base font-semibold text-text-primary">{title}</h3>
+          <button type="button" onClick={onClose} aria-label="Close" className="text-xl leading-none text-text-muted hover:text-text-primary">
+            ×
+          </button>
+        </div>
+        {error && <div className="mb-3 rounded-lg bg-[#ff5c7a]/10 px-3 py-2 text-xs text-[#ff5c7a]">{error}</div>}
+        {children}
+      </div>
     </div>
   );
 }
@@ -330,6 +370,7 @@ export default function RentalManager({
     memo: "",
   });
   const [ledgerFilter, setLedgerFilter] = useState("");
+  const [ledgerModal, setLedgerModal] = useState<"payment" | "charge" | null>(null);
   // Inline edit of one ledger row (date, tenant, amount, method, memo).
   // Type stays fixed: rent/late fees belong to a month, and switching a
   // payment into a charge would silently flip the balance.
@@ -337,20 +378,36 @@ export default function RentalManager({
     id: string;
     lease_id: string;
     entry_date: string;
-    amount: string;
+    charge: string;
+    paid: string;
     method: PaymentMethod | "";
     memo: string;
   } | null>(null);
 
   async function saveEntry() {
     if (!editEntry || busy) return;
-    const amount = optNum(editEntry.amount);
-    if (!editEntry.entry_date || !(amount != null && amount > 0)) {
-      flash("Enter a date and an amount above 0.", false);
-      return;
-    }
     const orig = data.ledger.find((x) => x.id === editEntry.id);
     if (!orig) return;
+    const charge = optNum(editEntry.charge) ?? 0;
+    const paid = optNum(editEntry.paid) ?? 0;
+    if (!editEntry.entry_date || charge < 0 || paid < 0 || (charge > 0) === (paid > 0)) {
+      flash("Enter a date and an amount in either Charge or Paid / Credit (not both).", false);
+      return;
+    }
+    // Moving the amount between columns changes the entry type: rent and
+    // late fees can only be charges; a charge moved to Paid becomes a
+    // credit (or stays a payment); a payment/credit moved to Charge becomes
+    // an "other charge".
+    let kind: LedgerKind = orig.kind;
+    if (charge > 0 && !CHARGE_KINDS.includes(orig.kind)) kind = "other_charge";
+    if (paid > 0 && CHARGE_KINDS.includes(orig.kind)) {
+      if (orig.kind === "rent" || orig.kind === "late_fee") {
+        flash("Rent and late fees are charges -- use Charge, or add a credit to reduce them.", false);
+        return;
+      }
+      kind = "credit";
+    }
+    const amount = charge > 0 ? charge : paid;
     setBusy(true);
     const { row, error } = await updateRow<RentalLedgerEntry>(
       createClient(),
@@ -359,8 +416,9 @@ export default function RentalManager({
       {
         lease_id: editEntry.lease_id,
         entry_date: editEntry.entry_date,
+        kind,
         amount,
-        method: orig.kind === "payment" ? editEntry.method || null : null,
+        method: kind === "payment" ? editEntry.method || null : null,
         memo: editEntry.memo.trim() || null,
       },
     );
@@ -562,7 +620,7 @@ export default function RentalManager({
 
       {message && (
         <div
-          className={`flex items-start justify-between gap-3 rounded-xl px-3.5 py-2.5 text-sm ${message.ok ? "bg-[#3ddc97]/10 text-[#3ddc97]" : "bg-[#ff5c7a]/10 text-[#ff5c7a]"}`}
+          className={`flex items-start justify-between gap-3 rounded-xl px-3.5 py-2.5 text-sm ${message.ok ? "bg-[#f5d020]/10 text-[#f5d020]" : "bg-[#ff5c7a]/10 text-[#ff5c7a]"}`}
         >
           <span>{message.text}</span>
           <button
@@ -721,7 +779,7 @@ export default function RentalManager({
                               </div>
                               <div className="flex items-center gap-3">
                                 <span
-                                  className={`text-sm font-semibold ${bal > 0 ? "text-[#ff5c7a]" : bal < 0 ? "text-[#3ddc97]" : "text-text-muted"}`}
+                                  className={`text-sm font-semibold ${bal > 0 ? "text-[#ff5c7a]" : bal < 0 ? "text-[#f5d020]" : "text-text-muted"}`}
                                 >
                                   {bal > 0
                                     ? `Owes ${money(bal)}`
@@ -738,6 +796,7 @@ export default function RentalManager({
                                       amount: bal > 0 ? bal.toFixed(2) : "",
                                     }));
                                     setTab("ledger");
+                                    setLedgerModal("payment");
                                   }}
                                   className="text-xs font-semibold text-[#4f8cff] hover:underline"
                                 >
@@ -825,8 +884,8 @@ export default function RentalManager({
                                       <span
                                         className={
                                           lease
-                                            ? "text-[#3ddc97]"
-                                            : "text-[#f5d020]"
+                                            ? "text-[#f5d020]"
+                                            : "text-[#ffb648]"
                                         }
                                       >
                                         {lease
@@ -1348,9 +1407,33 @@ export default function RentalManager({
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <div className={cardClass}>
-                      <h4 className={h4Class}>Record a payment</h4>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => setLedgerModal("payment")}
+                      className="flex items-center gap-3.5 rounded-2xl border border-card-border bg-card-bg p-4 text-left transition hover:border-[#f5d020]/60 hover:bg-white/5"
+                    >
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f5d020]/15 text-xl">💵</span>
+                      <span>
+                        <span className="block text-sm font-semibold text-text-primary">Record a Payment</span>
+                        <span className="mt-0.5 block text-xs text-text-muted">Rent received by ACH, card, cash or check</span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLedgerModal("charge")}
+                      className="flex items-center gap-3.5 rounded-2xl border border-card-border bg-card-bg p-4 text-left transition hover:border-[#f5d020]/60 hover:bg-white/5"
+                    >
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f5d020]/15 text-xl">🧾</span>
+                      <span>
+                        <span className="block text-sm font-semibold text-text-primary">Add a Charge or Credit</span>
+                        <span className="mt-0.5 block text-xs text-text-muted">Utilities, fees, discounts, deposit applied</span>
+                      </span>
+                    </button>
+                  </div>
+
+                  {ledgerModal === "payment" && (
+                    <Modal title="Record a Payment" error={message && !message.ok ? message.text : null} onClose={() => setLedgerModal(null)}>
                       <div className="flex flex-col gap-2">
                         <select
                           value={payForm.lease_id}
@@ -1443,22 +1526,24 @@ export default function RentalManager({
                               "ledger",
                               "Payment recorded.",
                             );
-                            if (ok)
+                            if (ok) {
                               setPayForm((f) => ({
                                 ...f,
                                 amount: "",
                                 memo: "",
                               }));
+                              setLedgerModal(null);
+                            }
                           }}
                           className={btnClass + " self-start"}
                         >
                           Record Payment
                         </button>
                       </div>
-                    </div>
-
-                    <div className={cardClass}>
-                      <h4 className={h4Class}>Add a charge or credit</h4>
+                    </Modal>
+                  )}
+                  {ledgerModal === "charge" && (
+                    <Modal title="Add a Charge or Credit" error={message && !message.ok ? message.text : null} onClose={() => setLedgerModal(null)}>
                       <div className="flex flex-col gap-2">
                         <select
                           value={chargeForm.lease_id}
@@ -1552,20 +1637,22 @@ export default function RentalManager({
                                 ? "Credit added."
                                 : "Charge added.",
                             );
-                            if (ok)
+                            if (ok) {
                               setChargeForm((f) => ({
                                 ...f,
                                 amount: "",
                                 memo: "",
                               }));
+                              setLedgerModal(null);
+                            }
                           }}
                           className={btnClass + " self-start"}
                         >
                           Add
                         </button>
                       </div>
-                    </div>
-                  </div>
+                    </Modal>
+                  )}
 
                   <div className={cardClass}>
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1620,7 +1707,7 @@ export default function RentalManager({
                                 <th className="border-b border-card-border pb-2 pr-3 text-right">
                                   Paid / Credit
                                 </th>
-                                <th className="border-b border-card-border pb-2" />
+                                <th className="w-[1%] border-b border-card-border pb-2 pr-4" />
                               </tr>
                             </thead>
                             <tbody>
@@ -1631,16 +1718,19 @@ export default function RentalManager({
                                 const cellInput =
                                   "w-full rounded border border-card-border bg-[#0f131c] px-1.5 py-1 text-xs text-text-primary outline-none";
                                 if (editEntry && editEntry.id === e.id) {
-                                  const amountInput = (
+                                  const lockedCharge = e.kind === "rent" || e.kind === "late_fee";
+                                  const amountInput = (field: "charge" | "paid", disabled = false) => (
                                     <input
                                       type="number"
                                       min="0"
                                       step="0.01"
-                                      value={editEntry.amount}
+                                      placeholder="0"
+                                      disabled={disabled}
+                                      value={editEntry[field]}
                                       onChange={(ev) =>
-                                        setEditEntry((x) => x && { ...x, amount: ev.target.value })
+                                        setEditEntry((x) => x && { ...x, [field]: ev.target.value })
                                       }
-                                      className={cellInput + " text-right"}
+                                      className={cellInput.replace("w-full", "w-24") + " ml-auto block text-right disabled:opacity-40"}
                                     />
                                   );
                                   return (
@@ -1705,14 +1795,14 @@ export default function RentalManager({
                                           className={cellInput}
                                         />
                                       </td>
-                                      <td className={td}>{charge ? amountInput : null}</td>
-                                      <td className={td}>{charge ? null : amountInput}</td>
-                                      <td className="whitespace-nowrap border-b border-white/5 py-2 text-right text-xs">
+                                      <td className={td}>{amountInput("charge")}</td>
+                                      <td className={td}>{amountInput("paid", lockedCharge)}</td>
+                                      <td className="whitespace-nowrap border-b border-white/5 py-2 pl-2 pr-4 text-right text-xs">
                                         <button
                                           type="button"
                                           disabled={busy}
                                           onClick={saveEntry}
-                                          className="font-semibold text-[#3ddc97] hover:underline disabled:opacity-60"
+                                          className="font-semibold text-[#f5d020] hover:underline disabled:opacity-60"
                                         >
                                           Save
                                         </button>
@@ -1739,10 +1829,10 @@ export default function RentalManager({
                                     <td className={td + " text-right text-text-primary"}>
                                       {charge ? money(num(e.amount)) : ""}
                                     </td>
-                                    <td className={td + " text-right text-[#3ddc97]"}>
+                                    <td className={td + " text-right text-[#f5d020]"}>
                                       {charge ? "" : money(num(e.amount))}
                                     </td>
-                                    <td className="whitespace-nowrap border-b border-white/5 py-2 text-right text-xs">
+                                    <td className="whitespace-nowrap border-b border-white/5 py-2 pl-2 pr-4 text-right text-xs">
                                       <button
                                         type="button"
                                         onClick={() =>
@@ -1750,7 +1840,8 @@ export default function RentalManager({
                                             id: e.id,
                                             lease_id: e.lease_id,
                                             entry_date: e.entry_date,
-                                            amount: String(num(e.amount)),
+                                            charge: charge ? String(num(e.amount)) : "0",
+                                            paid: charge ? "0" : String(num(e.amount)),
                                             method: e.method ?? "",
                                             memo: e.memo ?? "",
                                           })
@@ -2223,14 +2314,14 @@ export default function RentalManager({
                               </div>
                             )}
                           </td>
-                          <td className="border-b border-white/5 py-2 pr-3 text-right text-[#3ddc97]">
+                          <td className="border-b border-white/5 py-2 pr-3 text-right text-[#f5d020]">
                             {money(r.income)}
                           </td>
                           <td className="border-b border-white/5 py-2 pr-3 text-right text-text-primary">
                             {money(r.expenses)}
                           </td>
                           <td
-                            className={`border-b border-white/5 py-2 text-right font-semibold ${r.net >= 0 ? "text-[#3ddc97]" : "text-[#ff5c7a]"}`}
+                            className={`border-b border-white/5 py-2 text-right font-semibold ${r.net >= 0 ? "text-[#f5d020]" : "text-[#ff5c7a]"}`}
                           >
                             {money(r.net)}
                           </td>
@@ -2240,14 +2331,14 @@ export default function RentalManager({
                         <td className="pt-2.5 pr-3 font-semibold text-text-primary">
                           Total
                         </td>
-                        <td className="pt-2.5 pr-3 text-right font-semibold text-[#3ddc97]">
+                        <td className="pt-2.5 pr-3 text-right font-semibold text-[#f5d020]">
                           {money(reportTotals.income)}
                         </td>
                         <td className="pt-2.5 pr-3 text-right font-semibold text-text-primary">
                           {money(reportTotals.expenses)}
                         </td>
                         <td
-                          className={`pt-2.5 text-right font-bold ${reportTotals.net >= 0 ? "text-[#3ddc97]" : "text-[#ff5c7a]"}`}
+                          className={`pt-2.5 text-right font-bold ${reportTotals.net >= 0 ? "text-[#f5d020]" : "text-[#ff5c7a]"}`}
                         >
                           {money(reportTotals.net)}
                         </td>

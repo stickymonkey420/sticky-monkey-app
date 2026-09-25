@@ -109,7 +109,7 @@ export default function BuySellSharesCard({
           type="button"
           disabled={submitting || loading}
           onClick={() => handleTrade("buy")}
-          className="rounded-md bg-[#3ddc97] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-50"
+          className="rounded-md bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-50"
         >
           Buy
         </button>
@@ -160,7 +160,7 @@ export default function BuySellSharesCard({
         )}
 
         {tradeMessage && (
-          <p className={`mt-3 text-sm ${tradeMessage.ok ? "text-[#3ddc97]" : "text-[#ff5c7a]"}`}>
+          <p className={`mt-3 text-sm ${tradeMessage.ok ? "text-[#f5d020]" : "text-[#ff5c7a]"}`}>
             {tradeMessage.text}
           </p>
         )}

@@ -286,7 +286,7 @@ export default function EditCategoriesPage() {
               type="button"
               disabled={!newLabel.trim() || adding || !userId}
               onClick={handleAdd}
-              className="rounded-md bg-[#3ddc97] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-60"
+              className="rounded-md bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-60"
             >
               {adding ? "Adding…" : "Add Category"}
             </button>

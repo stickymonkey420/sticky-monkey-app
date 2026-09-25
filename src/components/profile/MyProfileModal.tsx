@@ -491,7 +491,7 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
             )}
 
             {error && <div className="mt-3 text-xs text-[#e05656]">{error}</div>}
-            {savedMessage && !error && <div className="mt-3 text-xs text-[#3ddc97]">{savedMessage}</div>}
+            {savedMessage && !error && <div className="mt-3 text-xs text-[#f5d020]">{savedMessage}</div>}
 
             <div className="mt-6 flex items-center justify-between gap-2.5">
               <button

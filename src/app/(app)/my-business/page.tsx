@@ -294,7 +294,7 @@ export default function MyBusinessPage() {
       ) : businesses.length === 0 ? (
         <div className="rounded-2xl border border-card-border bg-card-bg p-5">
           <p className="mb-4 text-sm text-text-muted">No businesses added yet.</p>
-          <Link href="/side-gigs" className="rounded-md bg-[#3ddc97] px-4 py-2 text-sm font-semibold text-[#0f131c]">
+          <Link href="/side-gigs" className="rounded-md bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c]">
             Browse Side Gigs
           </Link>
         </div>
@@ -392,7 +392,7 @@ export default function MyBusinessPage() {
                     type="button"
                     disabled={addingClient || !clientForm.name.trim()}
                     onClick={handleAddClient}
-                    className="rounded-md bg-[#3ddc97] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-60"
+                    className="rounded-md bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-60"
                   >
                     {addingClient ? "Adding…" : "Add Client"}
                   </button>
@@ -453,7 +453,7 @@ export default function MyBusinessPage() {
                     type="button"
                     disabled={addingJob || !jobForm.title.trim()}
                     onClick={handleAddJob}
-                    className="rounded-md bg-[#3ddc97] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-60"
+                    className="rounded-md bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-60"
                   >
                     {addingJob ? "Adding…" : "Add Job"}
                   </button>
@@ -493,7 +493,7 @@ export default function MyBusinessPage() {
                     type="button"
                     disabled={addingAppt || !apptForm.title.trim() || !apptForm.start_at}
                     onClick={handleAddAppointment}
-                    className="rounded-md bg-[#3ddc97] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-60"
+                    className="rounded-md bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-60"
                   >
                     {addingAppt ? "Adding…" : "Add Appointment"}
                   </button>

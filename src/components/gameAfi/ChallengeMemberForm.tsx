@@ -144,7 +144,7 @@ export default function ChallengeMemberForm({ onSent }: { onSent?: () => void } 
             {sending ? "Sending…" : "Send Challenge"}
           </button>
           {sendError && <span className="text-xs text-[#ff5c7a]">{sendError}</span>}
-          {sendSuccess && <span className="text-xs text-[#3ddc97]">{sendSuccess}</span>}
+          {sendSuccess && <span className="text-xs text-[#f5d020]">{sendSuccess}</span>}
         </div>
       </form>
     </div>
