@@ -1671,7 +1671,7 @@ export default function RentalManager({
                                         </select>
                                       </td>
                                       <td className={td + " text-text-muted"}>
-                                        {LEDGER_KIND_LABELS[e.kind]}
+                                        {e.kind !== "payment" && LEDGER_KIND_LABELS[e.kind]}
                                         {e.kind === "payment" && (
                                           <select
                                             value={editEntry.method}
@@ -1680,7 +1680,7 @@ export default function RentalManager({
                                                 (x) => x && { ...x, method: ev.target.value as PaymentMethod | "" },
                                               )
                                             }
-                                            className={cellInput + " mt-1"}
+                                            className={cellInput}
                                           >
                                             <option value="">No method</option>
                                             {PAYMENT_METHODS.map((m) => (
