@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { addUserBusiness, fetchGigCategories } from "@/lib/business/queries";
@@ -32,6 +32,17 @@ export default function SideGigsPage() {
   const [businessName, setBusinessName] = useState("");
   const [adding, setAdding] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // The "name your business" panel renders above the results list, so on a
+  // long list a click far down the page looked like it did nothing -- the
+  // panel opened off-screen. Scroll it into view and focus the name field.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!selected) return;
+    panelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    nameRef.current?.focus({ preventScroll: true });
+  }, [selected]);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,7 +134,7 @@ export default function SideGigsPage() {
         />
 
         {selected && (
-          <div className="rounded-2xl border border-card-border bg-card-bg p-5">
+          <div ref={panelRef} className="rounded-2xl border border-[#4f8cff] bg-card-bg p-5">
             <h3 className="mb-1 text-sm font-semibold text-text-primary">
               {selected.icon} {selected.name}
             </h3>
@@ -131,6 +142,7 @@ export default function SideGigsPage() {
             {message && <div className="mb-3 text-sm text-[#ff5c7a]">{message}</div>}
             <div className="flex flex-wrap items-center gap-2">
               <input
+                ref={nameRef}
                 type="text"
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
@@ -169,7 +181,9 @@ export default function SideGigsPage() {
                       key={c.id}
                       type="button"
                       onClick={() => selectCategory(c)}
-                      className="flex items-start gap-2.5 rounded-xl bg-white/5 px-3.5 py-3 text-left hover:bg-white/10"
+                      className={`flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-left hover:bg-white/10 ${
+                        selected?.id === c.id ? "bg-[#4f8cff]/20 ring-1 ring-[#4f8cff]" : "bg-white/5"
+                      }`}
                     >
                       <span className="text-lg leading-none">{c.icon}</span>
                       <span>

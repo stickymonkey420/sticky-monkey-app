@@ -20,6 +20,8 @@ import {
   updateJobStatus,
 } from "@/lib/business/queries";
 import { JOB_STATUSES, JOB_STATUS_LABELS } from "@/lib/business/types";
+import RentalManager from "@/components/rentals/RentalManager";
+import { isRentalBusiness } from "@/lib/rentals/types";
 import type { BusinessAppointment, BusinessClient, BusinessJob, JobStatus, UserBusiness } from "@/lib/business/types";
 
 function fmtDateTime(iso: string): string {
@@ -126,6 +128,10 @@ export default function MyBusinessPage() {
   }, [activeId]);
 
   const active = useMemo(() => businesses.find((b) => b.id === activeId) ?? null, [businesses, activeId]);
+  // "Property Management (Small Scale)" businesses get the Rental Property
+  // module (properties, leases, rent ledger, maintenance, expenses, reports)
+  // in place of the generic Clients/Jobs board; the Scheduler stays.
+  const isRental = isRentalBusiness(active?.category_name);
   const jobsByStatus = useMemo(() => {
     const map = new Map<JobStatus, BusinessJob[]>();
     for (const status of JOB_STATUSES) map.set(status, []);
@@ -353,10 +359,11 @@ export default function MyBusinessPage() {
                 <h3 className="mb-1 text-sm font-semibold text-text-primary">
                   {active.business_name ?? active.category_name}
                 </h3>
-                <p className="mb-4 text-xs text-text-muted">
+                <p className={isRental ? "text-xs text-text-muted" : "mb-4 text-xs text-text-muted"}>
                   {active.category_name} · {active.group_label}
                 </p>
-
+                {!isRental && (
+                  <>
                 <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Clients</h4>
                 {loadingDetail ? (
                   <div className="mb-4 text-sm text-text-muted">Loading…</div>
@@ -390,8 +397,13 @@ export default function MyBusinessPage() {
                     {addingClient ? "Adding…" : "Add Client"}
                   </button>
                 </div>
+                  </>
+                )}
               </div>
 
+              {isRental && userId && <RentalManager key={active.id} userId={userId} businessId={active.id} />}
+
+              {!isRental && (
               <div className="rounded-2xl border border-card-border bg-card-bg p-5">
                 <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">Jobs</h4>
                 <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -447,9 +459,12 @@ export default function MyBusinessPage() {
                   </button>
                 </div>
               </div>
+              )}
 
               <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">Scheduler</h4>
+                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  {isRental ? "Scheduler (showings, inspections, move-ins)" : "Scheduler"}
+                </h4>
                 {appointments.length === 0 ? (
                   <div className="mb-4 text-sm text-text-muted">No appointments yet.</div>
                 ) : (
