@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Repeat, Trophy, UserPlus } from "lucide-react";
+import { Briefcase, Repeat, Trophy, UserPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import ChallengeMemberModal from "@/components/gameAfi/ChallengeMemberModal";
 import InviteFriendModal from "@/components/dashboard/InviteFriendModal";
+import W2JobModal from "@/components/income/W2JobModal";
 
 // Ported from the live Webflow Dashboard's "Add Option Trade" and "Connect
 // Accounts" (formerly "Connect Finance") Quick Access buttons
@@ -40,6 +41,7 @@ export default function QuickAccessCard() {
   const [connectLabel, setConnectLabel] = useState("Connect Accounts");
   const [challengeOpen, setChallengeOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [w2Open, setW2Open] = useState(false);
   const connectingRef = useRef(false);
 
   useEffect(() => {
@@ -167,6 +169,16 @@ export default function QuickAccessCard() {
         <Repeat size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
         <span className="quick-access-text-block">{connectLabel}</span>
       </button>
+      <button
+        type="button"
+        data-quick-action="add-w2-job-modal"
+        onClick={() => setW2Open(true)}
+        className="flex items-center gap-3 rounded-[10px] bg-[rgb(32,40,56)] px-5 py-[18px] text-left text-sm font-medium text-text-primary hover:bg-white/[0.06]"
+      >
+        <Briefcase size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
+        Add W-2 Job
+      </button>
+      {w2Open && <W2JobModal onClose={() => setW2Open(false)} />}
       {showAddTrade && (
         <button
           type="button"

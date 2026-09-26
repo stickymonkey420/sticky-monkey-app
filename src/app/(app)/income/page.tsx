@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import IncomeByAccountCards from "@/components/income/IncomeByAccountCards";
 import IncomeHistoryChart from "@/components/dashboard/IncomeHistoryChart";
+import W2JobsCard from "@/components/income/W2JobsCard";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAccountTypeOptions } from "@/lib/options/queries";
 import type { AccountTypeOption } from "@/lib/options/types";
@@ -59,6 +60,7 @@ export default function IncomePage() {
       <div className="flex flex-col gap-6">
         <IncomeByAccountCards userId={userId} accounts={accounts} loading={loading} />
         <IncomeHistoryChart />
+        <W2JobsCard />
       </div>
     </>
   );
