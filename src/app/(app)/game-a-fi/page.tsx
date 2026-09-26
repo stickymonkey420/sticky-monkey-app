@@ -60,7 +60,7 @@ export default function GameAFiPage() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-text-primary">Game-a-Fi</h1>
+        <h1 className="text-[21px] font-semibold text-text-primary">Game-a-Fi</h1>
       </div>
       <div className="flex flex-col gap-6">
         <p className="text-sm text-text-muted">

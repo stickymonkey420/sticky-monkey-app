@@ -27,7 +27,7 @@ export default function SmuPage() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-text-primary">Sticky Monkey University</h1>
+        <h1 className="text-[21px] font-semibold text-text-primary">Sticky Monkey University</h1>
       </div>
       <div className="flex flex-col gap-6">
         <div className="rounded-2xl border border-card-border bg-card-bg p-5">

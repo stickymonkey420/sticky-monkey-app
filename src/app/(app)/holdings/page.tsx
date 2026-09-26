@@ -78,7 +78,7 @@ function HoldingsPageInner() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-text-primary">
+        <h1 className="text-[21px] font-semibold text-text-primary">
           Holdings{selectedLabel ? ` — ${selectedLabel}` : ""}
         </h1>
       </div>

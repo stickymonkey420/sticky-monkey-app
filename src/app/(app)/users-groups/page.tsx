@@ -172,7 +172,7 @@ export default function UsersGroupsPage() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-text-primary">Users &amp; Groups</h1>
+        <h1 className="text-[21px] font-semibold text-text-primary">Users &amp; Groups</h1>
         {status && (
           <span className="text-sm" style={{ color: status.isError ? "#e05656" : "#f5d020" }}>
             {status.text}

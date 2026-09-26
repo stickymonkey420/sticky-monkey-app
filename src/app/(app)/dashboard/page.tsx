@@ -35,7 +35,7 @@ export default function DashboardPage() {
   return (
     <>
       <OnboardingFlow />
-      <h1 className="mb-6 text-xl font-semibold text-text-primary">Dashboard</h1>
+      <h1 className="mb-6 text-[21px] font-semibold text-text-primary">Dashboard</h1>
       <div className="flex min-w-0 w-full flex-col gap-6">
         <NetWorthCard />
         <NetWorthHistoryChart />

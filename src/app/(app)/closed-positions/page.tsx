@@ -11,7 +11,7 @@ export default function ClosedPositionsPage() {
   return (
     <>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-text-primary">Closed Positions</h1>
+        <h1 className="text-[21px] font-semibold text-text-primary">Closed Positions</h1>
         <p className="mt-1 text-sm text-text-muted">
           Realized wheel trades and long option closes across your accounts.
         </p>

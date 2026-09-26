@@ -126,7 +126,7 @@ export default function InvestorsPage() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-text-primary">Investors</h1>
+        <h1 className="text-[21px] font-semibold text-text-primary">Investors</h1>
         <div className="flex items-center gap-3">
           {status && (
             <span className="text-sm" style={{ color: status.isError ? "#e05656" : "#f5d020" }}>

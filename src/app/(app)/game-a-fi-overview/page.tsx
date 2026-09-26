@@ -198,7 +198,7 @@ export default function GameAFiOverviewPage() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-text-primary">Game-O-Fi -- Overview</h1>
+        <h1 className="text-[21px] font-semibold text-text-primary">Game-O-Fi -- Overview</h1>
       </div>
       <p className="mb-6 text-sm text-text-muted">
         Your Trade Off paper trading holdings -- simulated shares only, priced off the Stock Screener universe.

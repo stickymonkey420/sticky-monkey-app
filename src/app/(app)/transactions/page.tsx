@@ -115,7 +115,7 @@ export default function TransactionsPage() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-text-primary">Transactions</h1>
+        <h1 className="text-[21px] font-semibold text-text-primary">Transactions</h1>
       </div>
       <TransactionsTable
         transactions={transactions}
