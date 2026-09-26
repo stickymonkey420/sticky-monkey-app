@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import ProfileSummaryCard from "@/components/dashboard/ProfileSummaryCard";
+import MarketStrip from "./MarketStrip";
 import { ProfileProvider } from "@/lib/profile/ProfileProvider";
 import SignOutButton from "./SignOutButton";
 import TopBar from "./TopBar";
@@ -701,7 +702,10 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         <div className="hidden md:block">
           <TopBar />
         </div>
-        <main className="flex-1 px-4 pb-6 pt-6 md:px-8 md:pt-2">{children}</main>
+        <main className="relative flex-1 px-4 pb-6 pt-6 md:px-8 md:pt-5">
+          <MarketStrip />
+          {children}
+        </main>
       </div>
 
       {/* Profile panel now lives in the shared shell (like the sidebar)

@@ -9,6 +9,12 @@ import { createClient } from "@/lib/supabase/client";
 // Function (Yahoo Finance, cached server-side for 60s, $0). Polls once a
 // minute, only while the tab is visible, and keeps the last good values on
 // a failed poll so the strip never flashes empty.
+//
+// Placement: rendered inside AppShell's <main>, absolutely positioned on the
+// same line as the page's <h1> title -- starting just right of the title and
+// ending before any buttons that share the title row -- so it never pushes
+// the page content down. Re-measured on resize and whenever the page changes
+// (route change, buttons appearing); hidden if there's under 260px of room.
 
 type Quote = {
   key: string;
@@ -66,6 +72,74 @@ export default function MarketStrip() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const [overflowing, setOverflowing] = useState(false);
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    const main = host?.parentElement;
+    if (!host || !main) return;
+    const STRIP_H = 62;
+    const ROW_H = 44;
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const h1 = main.querySelector("h1");
+      if (!h1) {
+        setPlace((p) => (p ? null : p));
+        return;
+      }
+      const mr = main.getBoundingClientRect();
+      // Width of the title TEXT, not the h1 box (a block h1 spans the row).
+      const range = document.createRange();
+      range.selectNodeContents(h1);
+      const tr = range.getBoundingClientRect();
+      const row = h1.parentElement && h1.parentElement !== main ? h1.parentElement : h1;
+      const rr = row.getBoundingClientRect();
+      let right = Math.min(rr.right, mr.right - 16);
+      if (row !== h1) {
+        for (const sib of Array.from(row.children)) {
+          if (sib === h1 || sib.contains(host)) continue;
+          const r = sib.getBoundingClientRect();
+          if (r.width > 0 && r.left > tr.right) right = Math.min(right, r.left - 24);
+        }
+      }
+      const left = tr.right + 40;
+      const width = Math.floor(right - left);
+      const next =
+        width >= 260
+          ? {
+              // Line the ticker row (not the small label above it) up with
+              // the title; the label sits in the space above.
+              top: Math.round(tr.top - mr.top + tr.height / 2 - (STRIP_H - ROW_H / 2)),
+              left: Math.round(left - mr.left),
+              width,
+            }
+          : null;
+      setPlace((p) =>
+        p === next || (p && next && p.top === next.top && p.left === next.left && p.width === next.width) ? p : next,
+      );
+    };
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
+    };
+    schedule();
+    const ro = new ResizeObserver(schedule);
+    ro.observe(main);
+    const mo = new MutationObserver((records) => {
+      // Ignore the strip's own ticking text.
+      if (records.every((r) => host.contains(r.target))) return;
+      schedule();
+    });
+    mo.observe(main, { childList: true, subtree: true, characterData: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      ro.disconnect();
+      mo.disconnect();
+      window.removeEventListener("resize", schedule);
+    };
+  }, []);
 
   useEffect(() => {
     const vp = viewportRef.current;
@@ -125,14 +199,22 @@ export default function MarketStrip() {
     };
   }, []);
 
-  if (quotes.length === 0) return <div className="mt-6 h-[62px] min-w-0 flex-1" aria-hidden="true" />;
-
   const asOfLabel = asOf
     ? new Date(asOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
     : "";
 
   return (
-    <div className="relative mt-6 flex min-w-0 flex-1 flex-col gap-1">
+    <div
+      ref={hostRef}
+      className="pointer-events-none absolute z-10 hidden md:block"
+      style={
+        place && quotes.length
+          ? { top: place.top, left: place.left, width: place.width }
+          : { visibility: "hidden", top: 0, left: 0, width: 0 }
+      }
+    >
+    {quotes.length > 0 && (
+    <div className="pointer-events-auto relative flex min-w-0 flex-col gap-1">
       <div className="flex items-center gap-2 pl-3" title={asOfLabel ? `Updated ${asOfLabel}` : undefined}>
         <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[#f5d020]">
           <span className="relative flex h-2 w-2">
@@ -185,6 +267,8 @@ export default function MarketStrip() {
           ))}
         </div>
       </div>
+    </div>
+    )}
     </div>
   );
 }

@@ -10,7 +10,6 @@ import MyProfileModal from "@/components/profile/MyProfileModal";
 import NotificationsModal from "@/components/dashboard/NotificationsModal";
 import { fetchChallenges } from "@/lib/gameAfi/challengeQueries";
 import SignOutButton from "./SignOutButton";
-import MarketStrip from "./MarketStrip";
 
 // Global top bar: search, notifications bell (unread investment_alerts +
 // pending Head to Head invites), and a profile avatar/dropdown. Lives in
@@ -97,8 +96,8 @@ export default function TopBar() {
   const avatarUrl = profile?.avatar_url || DEFAULT_AVATAR_URL;
 
   return (
-    <header className="flex items-start justify-end gap-5 px-4 pb-1 pt-4 md:px-8">
-      <form onSubmit={handleSearchSubmit} className="mt-2 w-32 shrink-0 xl:w-36">
+    <header className="flex items-center justify-end gap-6 px-4 pb-0 pt-4 md:px-8">
+      <form onSubmit={handleSearchSubmit} className="mr-auto min-w-0 max-w-xs flex-1">
         <div className="flex items-center gap-2.5">
           <Search size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
           <input
@@ -112,13 +111,11 @@ export default function TopBar() {
         </div>
       </form>
 
-      <MarketStrip />
-
       <button
         type="button"
         aria-label="Notifications"
         onClick={() => setNotificationsOpen(true)}
-        className="relative mt-2 flex shrink-0 items-center"
+        className="relative flex shrink-0 items-center"
       >
         <Bell size={18} className="text-text-primary" strokeWidth={1.75} />
         {alertCount + inviteCount > 0 && (
