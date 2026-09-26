@@ -125,14 +125,14 @@ export default function MarketStrip() {
     };
   }, []);
 
-  if (quotes.length === 0) return <div className="min-w-0 flex-1" aria-hidden="true" />;
+  if (quotes.length === 0) return <div className="mt-6 h-[62px] min-w-0 flex-1" aria-hidden="true" />;
 
   const asOfLabel = asOf
     ? new Date(asOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
     : "";
 
   return (
-    <div className="relative flex min-w-0 flex-1 flex-col gap-1">
+    <div className="relative mt-6 flex min-w-0 flex-1 flex-col gap-1">
       <div className="flex items-center gap-2 pl-3" title={asOfLabel ? `Updated ${asOfLabel}` : undefined}>
         <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[#f5d020]">
           <span className="relative flex h-2 w-2">

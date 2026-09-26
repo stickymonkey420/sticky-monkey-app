@@ -97,8 +97,8 @@ export default function TopBar() {
   const avatarUrl = profile?.avatar_url || DEFAULT_AVATAR_URL;
 
   return (
-    <header className="flex items-center justify-end gap-5 px-4 pb-1 pt-3 md:px-8">
-      <form onSubmit={handleSearchSubmit} className="w-32 shrink-0 xl:w-36">
+    <header className="flex items-start justify-end gap-5 px-4 pb-1 pt-4 md:px-8">
+      <form onSubmit={handleSearchSubmit} className="mt-2 w-32 shrink-0 xl:w-36">
         <div className="flex items-center gap-2.5">
           <Search size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
           <input
@@ -118,7 +118,7 @@ export default function TopBar() {
         type="button"
         aria-label="Notifications"
         onClick={() => setNotificationsOpen(true)}
-        className="relative flex shrink-0 items-center"
+        className="relative mt-2 flex shrink-0 items-center"
       >
         <Bell size={18} className="text-text-primary" strokeWidth={1.75} />
         {alertCount + inviteCount > 0 && (

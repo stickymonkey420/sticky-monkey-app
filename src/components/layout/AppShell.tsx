@@ -701,7 +701,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         <div className="hidden md:block">
           <TopBar />
         </div>
-        <main className="flex-1 px-4 pb-6 pt-6 md:px-8 md:pt-3">{children}</main>
+        <main className="flex-1 px-4 pb-6 pt-6 md:px-8 md:pt-2">{children}</main>
       </div>
 
       {/* Profile panel now lives in the shared shell (like the sidebar)
