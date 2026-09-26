@@ -97,8 +97,8 @@ export default function TopBar() {
   const avatarUrl = profile?.avatar_url || DEFAULT_AVATAR_URL;
 
   return (
-    <header className="flex items-center justify-end gap-6 px-4 py-6 md:px-8">
-      <form onSubmit={handleSearchSubmit} className="w-40 shrink-0 xl:w-44">
+    <header className="flex items-center justify-end gap-5 px-4 pb-1 pt-3 md:px-8">
+      <form onSubmit={handleSearchSubmit} className="w-32 shrink-0 xl:w-36">
         <div className="flex items-center gap-2.5">
           <Search size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
           <input

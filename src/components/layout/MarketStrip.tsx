@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-// "SM Markets" -- the top-bar ticker strip: major indexes, the 10-year
+// "US Markets" -- the top-bar ticker strip: major indexes, the 10-year
 // yield, VIX, gold, bitcoin and crude with last price, change vs previous
 // close and an intraday sparkline. Data comes from the market-strip Edge
 // Function (Yahoo Finance, cached server-side for 60s, $0). Polls once a
@@ -132,21 +132,21 @@ export default function MarketStrip() {
     : "";
 
   return (
-    <div className="relative flex min-w-0 flex-1 items-center gap-4">
-      <div className="hidden shrink-0 flex-col items-start xl:flex" title={asOfLabel ? `Updated ${asOfLabel}` : undefined}>
+    <div className="relative flex min-w-0 flex-1 flex-col gap-1">
+      <div className="flex items-center gap-2 pl-3" title={asOfLabel ? `Updated ${asOfLabel}` : undefined}>
         <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[#f5d020]">
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#f5d020] opacity-50" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-[#f5d020]" />
           </span>
-          SM Markets
+          US Markets
         </span>
-        {asOfLabel && <span className="mt-0.5 text-[10px] text-text-muted">as of {asOfLabel}</span>}
+        {asOfLabel && <span className="text-[10px] text-text-muted">as of {asOfLabel}</span>}
       </div>
 
       <div
         ref={viewportRef}
-        className="group min-w-0 flex-1 overflow-hidden motion-reduce:overflow-x-auto"
+        className="group w-full min-w-0 overflow-hidden motion-reduce:overflow-x-auto"
         style={{
           maskImage: "linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 24px), transparent 100%)",
           WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 24px), transparent 100%)",
