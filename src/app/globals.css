@@ -81,3 +81,14 @@ body {
     opacity: 0.15;
   }
 }
+
+/* SM Markets ticker strip (TopBar/MarketStrip): the track holds two copies
+   of the ticker list, so sliding it by -50% loops seamlessly. */
+@keyframes sm-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}

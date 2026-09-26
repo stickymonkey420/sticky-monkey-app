@@ -10,6 +10,7 @@ import MyProfileModal from "@/components/profile/MyProfileModal";
 import NotificationsModal from "@/components/dashboard/NotificationsModal";
 import { fetchChallenges } from "@/lib/gameAfi/challengeQueries";
 import SignOutButton from "./SignOutButton";
+import MarketStrip from "./MarketStrip";
 
 // Global top bar: search, notifications bell (unread investment_alerts +
 // pending Head to Head invites), and a profile avatar/dropdown. Lives in
@@ -97,7 +98,7 @@ export default function TopBar() {
 
   return (
     <header className="flex items-center justify-end gap-6 px-4 py-6 md:px-8">
-      <form onSubmit={handleSearchSubmit} className="mr-auto min-w-0 max-w-xs flex-1">
+      <form onSubmit={handleSearchSubmit} className="w-40 shrink-0 xl:w-44">
         <div className="flex items-center gap-2.5">
           <Search size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
           <input
@@ -110,6 +111,8 @@ export default function TopBar() {
           />
         </div>
       </form>
+
+      <MarketStrip />
 
       <button
         type="button"
