@@ -80,7 +80,7 @@ export default function NetWorthCard() {
         { data: profileData },
         txs,
       ] = await Promise.all([
-        supabase.from("manual_accounts").select("category,account_name,balance").eq("user_id", user.id),
+        supabase.from("manual_accounts").select("category,account_name,balance,retirement_type,account_subtype").eq("user_id", user.id),
         supabase
           .from("wheel_trades")
           .select("premium,contracts,status,account_type,entry_date,strike,trade_type,close_price,close_date")

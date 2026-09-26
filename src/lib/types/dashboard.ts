@@ -2,6 +2,8 @@ export type ManualAccount = {
   category: string | null;
   account_name: string | null;
   balance: number | string | null;
+  retirement_type?: string | null;
+  account_subtype?: string | null;
 };
 
 export type NetWorthBucketName =
@@ -10,6 +12,7 @@ export type NetWorthBucketName =
   | "IRA Traditional"
   | "IRA Roth"
   | "Self-Directed IRA"
+  | "401(k)"
   | "Crypto"
   | "Cash & Bank";
 
