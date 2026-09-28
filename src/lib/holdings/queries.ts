@@ -53,6 +53,35 @@ export async function fetchActualAvgCostForTicker(
   return { shares: totalShares, avgCost: totalCost / totalShares };
 }
 
+// Same ticker as above, but one row per account_type (shares + share-weighted
+// avg cost within that account). Feeds the Screener Sell Calculator's account
+// checkboxes so a member can price a sale from just Taxable, just IRA, etc.
+export type TickerAccountLot = { account: string; shares: number; avgCost: number };
+
+export async function fetchActualLotsForTicker(
+  supabase: SupabaseClient,
+  userId: string,
+  ticker: string
+): Promise<TickerAccountLot[]> {
+  const { data, error } = await supabase
+    .from("positions")
+    .select("account_type,shares,cost_basis")
+    .eq("user_id", userId)
+    .eq("ticker", ticker);
+  if (error || !data) return [];
+  const byAcct = new Map<string, { shares: number; cost: number }>();
+  for (const row of data as { account_type: string | null; shares: number | string; cost_basis: number | string | null }[]) {
+    const shares = Number(row.shares) || 0;
+    if (shares <= 0) continue;
+    const key = row.account_type || "other";
+    const cur = byAcct.get(key) ?? { shares: 0, cost: 0 };
+    cur.shares += shares;
+    cur.cost += shares * (row.cost_basis === null ? 0 : Number(row.cost_basis) || 0);
+    byAcct.set(key, cur);
+  }
+  return [...byAcct.entries()].map(([account, v]) => ({ account, shares: v.shares, avgCost: v.cost / v.shares }));
+}
+
 // Unlike the Options page's fetchAccountTypeOptions() (filtered to
 // wheel_eligible=true -- that page only cares about accounts that support
 // the wheel strategy), Holdings shows positions across every configured

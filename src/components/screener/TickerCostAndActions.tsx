@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/screener/calc";
 import { computeAvgCost, fetchPaperTradesForTicker } from "@/lib/gameAfi/paperQueries";
-import { fetchActualAvgCostForTicker } from "@/lib/holdings/queries";
+import { fetchActualAvgCostForTicker, fetchActualLotsForTicker, type TickerAccountLot } from "@/lib/holdings/queries";
 import type { Role } from "@/lib/usersGroups/types";
 import BuyPaperTradeModal from "@/components/gameAfi/BuyPaperTradeModal";
 import SellContractModal from "@/components/gameAfi/SellContractModal";
@@ -145,6 +145,18 @@ export function SellPutButton({ ticker, userId }: { ticker: string; userId: stri
 // input is the sell price, defaulting to the current quote. No commissions
 // or capital-gains tax (per your call), so break-even = average cost.
 // Paid tier only, like the Actual line -- free tier just gets the buttons.
+const ACCOUNT_ORDER = ["brokerage", "traditional", "roth", "sdira", "crypto", "alt", "metals", "realestate"];
+const ACCOUNT_SHORT: Record<string, string> = {
+  brokerage: "Taxable",
+  traditional: "IRA Trad",
+  roth: "IRA Roth",
+  sdira: "SDIRA",
+  crypto: "Crypto",
+  alt: "Alternative",
+  metals: "Metals",
+  realestate: "Real Estate",
+};
+
 export function SellCalculator({
   ticker,
   userId,
@@ -158,7 +170,8 @@ export function SellCalculator({
   currentPrice: number | null;
   children: React.ReactNode;
 }) {
-  const [actual, setActual] = useState<{ shares: number; avgCost: number } | null>(null);
+  const [lots, setLots] = useState<TickerAccountLot[]>([]);
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const defaultSell = currentPrice != null && Number.isFinite(currentPrice) ? currentPrice.toFixed(2) : "";
   const [sellPrice, setSellPrice] = useState(defaultSell);
@@ -167,9 +180,10 @@ export function SellCalculator({
   useEffect(() => {
     let cancelled = false;
     if (!paid) return;
-    fetchActualAvgCostForTicker(createClient(), userId, ticker).then((a) => {
+    fetchActualLotsForTicker(createClient(), userId, ticker).then((rows) => {
       if (cancelled) return;
-      setActual(a);
+      rows.sort((a, b) => ACCOUNT_ORDER.indexOf(a.account) - ACCOUNT_ORDER.indexOf(b.account));
+      setLots(rows);
       setLoading(false);
     });
     return () => {
@@ -179,6 +193,22 @@ export function SellCalculator({
 
   const buttons = <div className="flex shrink-0 flex-col justify-end gap-2">{children}</div>;
   if (!paid) return buttons;
+
+  // Default: every account that holds this ticker is checked; unchecking one
+  // re-weights shares + purchase price from the remaining accounts.
+  const picked = lots.filter((l) => !excluded.has(l.account));
+  const pickedShares = picked.reduce((a, l) => a + l.shares, 0);
+  const actual =
+    pickedShares > 0
+      ? { shares: pickedShares, avgCost: picked.reduce((a, l) => a + l.shares * l.avgCost, 0) / pickedShares }
+      : null;
+  const toggle = (acct: string) =>
+    setExcluded((prev) => {
+      const next = new Set(prev);
+      if (next.has(acct)) next.delete(acct);
+      else next.add(acct);
+      return next;
+    });
 
   const sell = Number(sellPrice);
   const valid = !!actual && sellPrice.trim() !== "" && Number.isFinite(sell) && sell >= 0;
@@ -209,12 +239,32 @@ export function SellCalculator({
         <div className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Sell Calculator</div>
         {loading ? (
           <div className="mt-2 text-sm text-text-muted">Loading…</div>
-        ) : !actual ? (
+        ) : lots.length === 0 ? (
           <div className="mt-2 text-xs leading-snug text-text-muted/80">
             No actual {ticker} holdings tracked. Add them under Investments to calculate a sale.
           </div>
         ) : (
           <div className="mt-2.5 flex flex-col gap-2.5">
+            <div>
+              <span className={label}>Accounts</span>
+              <div className="flex flex-col gap-1">
+                {lots.map((l) => (
+                  <label key={l.account} className="flex cursor-pointer items-center gap-2 text-xs text-text-primary">
+                    <input
+                      type="checkbox"
+                      checked={!excluded.has(l.account)}
+                      onChange={() => toggle(l.account)}
+                      className="accent-[#f5d020]"
+                    />
+                    {ACCOUNT_SHORT[l.account] ?? l.account}
+                  </label>
+                ))}
+              </div>
+            </div>
+            {!actual ? (
+              <div className="text-xs leading-snug text-text-muted/80">Check at least one account.</div>
+            ) : (
+            <>
             <div>
               <span className={label}>Number of shares</span>
               <div className={readOnly}>{actual.shares.toLocaleString("en-US", { maximumFractionDigits: 4 })}</div>
@@ -248,6 +298,8 @@ export function SellCalculator({
                 </button>
               )}
             </div>
+            </>
+            )}
           </div>
         )}
       </div>
