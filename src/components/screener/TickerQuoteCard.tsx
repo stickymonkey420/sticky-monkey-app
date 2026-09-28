@@ -11,7 +11,7 @@ import {
 import type { TickerQuoteResult } from "@/lib/screener/types";
 import type { Role } from "@/lib/usersGroups/types";
 import Gauge from "./Gauge";
-import { AverageCostOwnedCard, BuyButton, SellPutButton } from "./TickerCostAndActions";
+import { AverageCostOwnedCard, BuyButton, SellCalculator, SellPutButton } from "./TickerCostAndActions";
 
 // The quote + Sticky Monkey Score + gauges card, extracted from
 // TickerLookup's search-result rendering so it can be reused wherever a
@@ -88,10 +88,18 @@ export default function TickerQuoteCard({
               gauge are one right-aligned group (lg:ml-auto); the left quote
               column (flex-1, min-w-0) shrinks to make room for them. */}
           <div className="flex w-full flex-col items-stretch gap-4 sm:w-auto sm:flex-row lg:ml-auto lg:flex-row">
-            <div className="flex shrink-0 flex-col justify-end gap-2">
-              {userId && <BuyButton ticker={result.symbol} userId={userId} />}
-              {userId && <SellPutButton ticker={result.symbol} userId={userId} />}
-            </div>
+            {userId && (
+              <SellCalculator
+                key={`calc-${result.symbol}`}
+                ticker={result.symbol}
+                userId={userId}
+                role={role}
+                currentPrice={result.price ?? null}
+              >
+                <BuyButton ticker={result.symbol} userId={userId} />
+                <SellPutButton ticker={result.symbol} userId={userId} />
+              </SellCalculator>
+            )}
 
             {result.stickyMonkeyScore !== null && result.stickyMonkeyScore !== undefined && (
               <StickyMonkeyScoreCard result={result} />

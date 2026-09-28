@@ -134,3 +134,144 @@ export function SellPutButton({ ticker, userId }: { ticker: string; userId: stri
     </>
   );
 }
+
+// "Sell Calculator" -- fills the gap between the Average Cost Owned card and
+// the Buy/Sell Option buttons on a Ticker Lookup result: an inputs box, then
+// a results box stacked above the buttons (the buttons are passed in as
+// children so they stay in their usual bottom-aligned spot). Shares and
+// purchase price are hard-filled from the member's ACTUAL tracked holdings
+// of this ticker (all accounts, share-weighted average cost -- same numbers
+// as the "Actual" line in Average Cost Owned) and aren't editable; the only
+// input is the sell price, defaulting to the current quote. No commissions
+// or capital-gains tax (per your call), so break-even = average cost.
+// Paid tier only, like the Actual line -- free tier just gets the buttons.
+export function SellCalculator({
+  ticker,
+  userId,
+  role,
+  currentPrice,
+  children,
+}: {
+  ticker: string;
+  userId: string;
+  role: Role | null;
+  currentPrice: number | null;
+  children: React.ReactNode;
+}) {
+  const [actual, setActual] = useState<{ shares: number; avgCost: number } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const defaultSell = currentPrice != null && Number.isFinite(currentPrice) ? currentPrice.toFixed(2) : "";
+  const [sellPrice, setSellPrice] = useState(defaultSell);
+  const paid = isPaidTier(role);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!paid) return;
+    fetchActualAvgCostForTicker(createClient(), userId, ticker).then((a) => {
+      if (cancelled) return;
+      setActual(a);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, paid, ticker]);
+
+  const buttons = <div className="flex shrink-0 flex-col justify-end gap-2">{children}</div>;
+  if (!paid) return buttons;
+
+  const sell = Number(sellPrice);
+  const valid = !!actual && sellPrice.trim() !== "" && Number.isFinite(sell) && sell >= 0;
+  const netBuy = actual ? actual.shares * actual.avgCost : 0;
+  const netSell = valid ? actual!.shares * sell : 0;
+  const pl = netSell - netBuy;
+  const roi = netBuy > 0 ? (pl / netBuy) * 100 : 0;
+  const plColor = pl > 0 ? "#3ddc97" : pl < 0 ? "#ff5c7a" : undefined;
+
+  const box = "rounded-2xl border border-white/[0.12] bg-white/[0.04] p-3.5";
+  const label = "mb-1 block text-[11px] font-medium text-text-muted";
+  const readOnly = "rounded-md border border-white/[0.06] bg-white/[0.03] px-2.5 py-1.5 text-sm text-text-primary";
+
+  const results: { k: string; v: string; strong?: boolean; color?: string }[] = actual
+    ? [
+        { k: "Net buy", v: money(netBuy) },
+        { k: "Net sell", v: valid ? money(netSell) : "--" },
+        { k: "Profit / Loss", v: valid ? `${pl < 0 ? "-" : ""}${money(Math.abs(pl))}` : "--", strong: true, color: plColor },
+        { k: "Return (ROI)", v: valid ? `${roi >= 0 ? "+" : ""}${roi.toFixed(2)}%` : "--", strong: true, color: plColor },
+        { k: "Break-even", v: money(actual.avgCost) },
+      ]
+    : [];
+
+  return (
+    <div className="flex w-full shrink-0 flex-col gap-4 sm:w-auto sm:flex-row">
+      {/* Inputs */}
+      <div className={`${box} w-full sm:w-[155px]`}>
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Sell Calculator</div>
+        {loading ? (
+          <div className="mt-2 text-sm text-text-muted">Loading…</div>
+        ) : !actual ? (
+          <div className="mt-2 text-xs leading-snug text-text-muted/80">
+            No actual {ticker} holdings tracked. Add them under Investments to calculate a sale.
+          </div>
+        ) : (
+          <div className="mt-2.5 flex flex-col gap-2.5">
+            <div>
+              <span className={label}>Number of shares</span>
+              <div className={readOnly}>{actual.shares.toLocaleString("en-US", { maximumFractionDigits: 4 })}</div>
+            </div>
+            <div>
+              <span className={label}>Purchase price</span>
+              <div className={readOnly}>{money(actual.avgCost)}</div>
+            </div>
+            <div>
+              <label className={label} htmlFor={`sell-price-${ticker}`}>
+                Sell price
+              </label>
+              <input
+                id={`sell-price-${ticker}`}
+                type="number"
+                min="0"
+                step="0.01"
+                inputMode="decimal"
+                value={sellPrice}
+                onChange={(e) => setSellPrice(e.target.value)}
+                placeholder="0"
+                className="w-full rounded-md border border-white/[0.12] bg-[#0d0f17] px-2.5 py-1.5 text-sm text-text-primary outline-none focus:border-[#f5d020]/60"
+              />
+              {defaultSell && sellPrice !== defaultSell && (
+                <button
+                  type="button"
+                  onClick={() => setSellPrice(defaultSell)}
+                  className="mt-1 text-[11px] font-semibold text-[#4f8cff] hover:underline"
+                >
+                  Reset to current
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Results above the Buy / Sell Option buttons */}
+      <div className="flex w-full shrink-0 flex-col justify-between gap-3 sm:w-[140px]">
+        {actual && (
+          <div className={`${box} flex flex-col gap-1.5`}>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Results</div>
+            {results.map((r) => (
+              <div key={r.k} className="leading-tight">
+                <div className="text-[11px] text-text-muted">{r.k}</div>
+                <div
+                  className={`text-sm tabular-nums ${r.strong ? "font-bold" : "font-medium text-text-primary"}`}
+                  style={r.color ? { color: r.color } : undefined}
+                >
+                  {r.v}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="mt-auto flex flex-col gap-2">{children}</div>
+      </div>
+    </div>
+  );
+}
