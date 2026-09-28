@@ -92,8 +92,8 @@ export type TickerQuoteResult = {
   // Graham Number intrinsic value estimate. See the edge function for the
   // full methodology notes.
   stickyMonkeyScore: number | null;
-  intrinsicValue: number | null; // Graham Number, $/share
-  intrinsicValueMethod: "graham" | null;
+  intrinsicValue: number | null; // $/share -- growth-adjusted, or asset-based fallback
+  intrinsicValueMethod: "growth" | "asset" | "graham" | null; // "graham" = pre-2026-09-28 responses
   intrinsicValueNote: string | null; // why intrinsicValue is null, when it is
   industry: IndustryComparison | null;
   // Present when reported earnings were boosted by a one-time tax benefit

@@ -228,7 +228,14 @@ function StickyMonkeyScoreCard({ result }: { result: TickerQuoteResult }) {
       <div className="mt-3 border-t border-white/[0.08] pt-3 text-sm">
         <div className="text-text-muted">Intrinsic value</div>
         {result.intrinsicValue !== null && result.intrinsicValue !== undefined ? (
-          <div className="mt-0.5 font-semibold text-text-primary">{money(result.intrinsicValue)} / share</div>
+          <div className="mt-0.5 font-semibold text-text-primary">
+            {money(result.intrinsicValue)} / share
+            {result.intrinsicValueMethod === "growth" || result.intrinsicValueMethod === "asset" ? (
+              <span className="ml-1.5 text-[11px] font-normal text-text-muted">
+                ({result.intrinsicValueMethod === "growth" ? "growth-adjusted" : "asset-based"})
+              </span>
+            ) : null}
+          </div>
         ) : (
           <div className="mt-0.5 text-text-muted/80">{result.intrinsicValueNote || "Not available for this ticker."}</div>
         )}
