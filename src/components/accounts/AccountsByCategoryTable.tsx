@@ -1,9 +1,13 @@
 import { money } from "@/lib/options/queries";
 import type { AccountCategoryGroup } from "@/lib/accounts/calc";
 
+import type { ManualAccount } from "@/lib/accounts/types";
+
 type AccountsByCategoryTableProps = {
   groups: AccountCategoryGroup[];
   loading: boolean;
+  // Omitted (free tier) = read-only rows, no Edit button.
+  onEdit?: (a: ManualAccount) => void;
 };
 
 // Read-only account list grouped by category (bank/brokerage/retirement/
@@ -13,7 +17,7 @@ type AccountsByCategoryTableProps = {
 // a later write increment -- both require `paid`/`app_director` per RLS
 // (manual_accounts INSERT/UPDATE/DELETE policies), so this first slice is
 // read-only the same way Options/Holdings started.
-export default function AccountsByCategoryTable({ groups, loading }: AccountsByCategoryTableProps) {
+export default function AccountsByCategoryTable({ groups, loading, onEdit }: AccountsByCategoryTableProps) {
   if (loading) {
     return (
       <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">
@@ -54,7 +58,14 @@ export default function AccountsByCategoryTable({ groups, loading }: AccountsByC
                     {a.mask ? ` ···${a.mask}` : ""}
                   </div>
                 </div>
-                <div className="shrink-0 text-sm text-text-primary">{money(Number(a.balance))}</div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <div className="text-sm text-text-primary">{money(Number(a.balance))}</div>
+                  {onEdit && (
+                    <button type="button" onClick={() => onEdit(a)} className="text-xs font-semibold text-[#4f8cff] hover:underline">
+                      Edit
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

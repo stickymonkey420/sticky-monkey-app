@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import AccountsSummaryCards from "@/components/accounts/AccountsSummaryCards";
 import AccountsByCategoryTable from "@/components/accounts/AccountsByCategoryTable";
+import EditManualAccountModal from "@/components/accounts/EditManualAccountModal";
 import { createClient } from "@/lib/supabase/client";
 import { fetchManualAccounts } from "@/lib/accounts/queries";
 import { computeAccountsSummary, groupAccountsByCategory } from "@/lib/accounts/calc";
@@ -21,6 +22,8 @@ import type { ManualAccount } from "@/lib/accounts/types";
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<ManualAccount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [canEdit, setCanEdit] = useState(false);
+  const [editing, setEditing] = useState<ManualAccount | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,9 +43,13 @@ export default function AccountsPage() {
         return;
       }
 
-      const rows = await fetchManualAccounts(supabase, user.id);
+      const [rows, { data: profile }] = await Promise.all([
+        fetchManualAccounts(supabase, user.id),
+        supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
+      ]);
       if (cancelled) return;
       setAccounts(rows);
+      setCanEdit(profile?.role === "paid" || profile?.role === "app_director");
       setLoading(false);
     }
 
@@ -67,8 +74,22 @@ export default function AccountsPage() {
       </div>
       <div className="flex flex-col gap-6">
         <AccountsSummaryCards summary={summary} loading={loading} />
-        <AccountsByCategoryTable groups={groups} loading={loading} />
+        <AccountsByCategoryTable
+          groups={groups}
+          loading={loading}
+          onEdit={canEdit ? (a) => setEditing(a) : undefined}
+        />
       </div>
+      {editing && (
+        <EditManualAccountModal
+          account={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(saved) => {
+            setAccounts((rows) => rows.map((r) => (r.id === saved.id ? saved : r)));
+            setEditing(null);
+          }}
+        />
+      )}
     </>
   );
 }
