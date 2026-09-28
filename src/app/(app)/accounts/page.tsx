@@ -88,6 +88,10 @@ export default function AccountsPage() {
             setAccounts((rows) => rows.map((r) => (r.id === saved.id ? saved : r)));
             setEditing(null);
           }}
+          onRemoved={(id) => {
+            setAccounts((rows) => rows.filter((r) => r.id !== id));
+            setEditing(null);
+          }}
         />
       )}
     </>
