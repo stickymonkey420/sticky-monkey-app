@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import HoldingsSummary from "@/components/holdings/HoldingsSummary";
 import HoldingsTable from "@/components/holdings/HoldingsTable";
+import EditHoldingModal from "@/components/holdings/EditHoldingModal";
+import { createHolding } from "@/lib/holdings/mutations";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAccountTypeOptions } from "@/lib/holdings/queries";
 import type { AccountTypeOption } from "@/lib/holdings/types";
@@ -41,6 +43,7 @@ function HoldingsPageInner() {
   const [accountOptions, setAccountOptions] = useState<AccountTypeOption[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,7 +84,32 @@ function HoldingsPageInner() {
         <h1 className="text-[21px] font-semibold text-text-primary">
           Holdings{selectedLabel ? ` — ${selectedLabel}` : ""}
         </h1>
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          disabled={loadingAccounts}
+          className="rounded-md bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-60"
+        >
+          + Add Holding
+        </button>
       </div>
+      {addOpen && (
+        <EditHoldingModal
+          holding={null}
+          defaultAccount={selectedAccount}
+          accountOptions={accountOptions.filter((o) => ["brokerage", "traditional", "roth", "crypto"].includes(o.id))}
+          onClose={() => setAddOpen(false)}
+          onSaved={handleChanged}
+          onSubmit={async (input) => {
+            const supabase = createClient();
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            if (!user) return { error: "not_signed_in" };
+            return createHolding(supabase, user.id, input);
+          }}
+        />
+      )}
       {loadingAccounts ? (
         <div className="text-sm text-text-muted">Loading…</div>
       ) : (

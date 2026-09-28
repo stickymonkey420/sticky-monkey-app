@@ -10,7 +10,9 @@ const INPUT_CLASS =
 const LABEL_CLASS = "mb-1.5 block text-xs font-medium text-text-muted";
 
 type EditHoldingModalProps = {
-  holding: HoldingWithDerived;
+  // null = Add mode (Holdings page "+ Add Holding").
+  holding: HoldingWithDerived | null;
+  defaultAccount?: string | null;
   accountOptions: AccountTypeOption[];
   onClose: () => void;
   onSaved: () => void;
@@ -22,14 +24,24 @@ type EditHoldingModalProps = {
 // created elsewhere, e.g. when an option assignment adds shares via
 // src/lib/options/holdingsSync.ts), so this only ever edits an existing
 // `positions` row.
-export default function EditHoldingModal({ holding, accountOptions, onClose, onSaved, onSubmit }: EditHoldingModalProps) {
-  const [ticker, setTicker] = useState(holding.ticker);
-  const [assetClass, setAssetClass] = useState<string>(holding.asset_class || "equity");
-  const [shares, setShares] = useState(String(holding.shares));
-  const [costBasis, setCostBasis] = useState(
-    holding.cost_basis === null || holding.cost_basis === undefined ? "" : String(holding.cost_basis)
+export default function EditHoldingModal({
+  holding,
+  defaultAccount,
+  accountOptions,
+  onClose,
+  onSaved,
+  onSubmit,
+}: EditHoldingModalProps) {
+  const isAdd = holding === null;
+  const [ticker, setTicker] = useState(holding?.ticker ?? "");
+  const [assetClass, setAssetClass] = useState<string>(
+    holding?.asset_class || (defaultAccount === "crypto" ? "crypto" : "equity")
   );
-  const [accountType, setAccountType] = useState(holding.account_type);
+  const [shares, setShares] = useState(holding ? String(holding.shares) : "");
+  const [costBasis, setCostBasis] = useState(
+    holding?.cost_basis === null || holding?.cost_basis === undefined ? "" : String(holding.cost_basis)
+  );
+  const [accountType, setAccountType] = useState(holding?.account_type ?? defaultAccount ?? "");
 
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -66,7 +78,7 @@ export default function EditHoldingModal({ holding, accountOptions, onClose, onS
     });
     setSaving(false);
     if (error) {
-      setErrorMsg("Could not update holding. Try again.");
+      setErrorMsg(isAdd ? "Could not add holding. Try again." : "Could not update holding. Try again.");
       return;
     }
     onSaved();
@@ -82,7 +94,7 @@ export default function EditHoldingModal({ holding, accountOptions, onClose, onS
     >
       <div className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-2xl border border-card-border bg-card-bg p-5">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-text-primary">Edit Holding</h3>
+          <h3 className="text-base font-semibold text-text-primary">{isAdd ? "Add Holding" : "Edit Holding"}</h3>
           <button type="button" onClick={onClose} className="text-text-muted hover:text-text-primary" aria-label="Close">
             ✕
           </button>
@@ -150,8 +162,9 @@ export default function EditHoldingModal({ holding, accountOptions, onClose, onS
         </div>
 
         <div className="mb-3 text-xs text-text-muted">
-          Current price on file: {holding.price === null ? "—" : `${money(Number(holding.price))}/sh`} (not
-          editable here -- prices sync separately)
+          {isAdd
+            ? "Live price updates automatically within 30 minutes. Adding a ticker you already hold in this account merges the shares and averages the cost."
+            : `Current price on file: ${holding.price === null ? "—" : `${money(Number(holding.price))}/sh`} (not editable here -- prices sync separately)`}
         </div>
 
         {errorMsg && <div className="mb-3 text-xs text-[#ff5c7a]">{errorMsg}</div>}
@@ -171,7 +184,7 @@ export default function EditHoldingModal({ holding, accountOptions, onClose, onS
             className="rounded-xl px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
             style={{ backgroundColor: "#4f8cff" }}
           >
-            {saving ? "Updating…" : "Update Holding"}
+            {saving ? (isAdd ? "Adding…" : "Updating…") : isAdd ? "Add Holding" : "Update Holding"}
           </button>
         </div>
       </div>

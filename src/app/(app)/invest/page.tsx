@@ -7,6 +7,10 @@ import { createClient } from "@/lib/supabase/client";
 import { fetchHoldings, fetchMetalHoldings } from "@/lib/invest/queries";
 import { groupByAccountDonut, groupMetalsDonut } from "@/lib/invest/calc";
 import type { Holding, MetalHolding } from "@/lib/invest/types";
+import EditHoldingModal from "@/components/holdings/EditHoldingModal";
+import { createHolding } from "@/lib/holdings/mutations";
+import { fetchAccountTypeOptions } from "@/lib/holdings/queries";
+import type { AccountTypeOption } from "@/lib/holdings/types";
 
 // Account-type donut buckets shown above the Vault -- one card per
 // wheel/brokerage account_type plus Crypto, all sourced from the same
@@ -38,6 +42,9 @@ export default function InvestPage() {
   const [metalHoldings, setMetalHoldings] = useState<MetalHolding[]>([]);
   const [accountTypes, setAccountTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [addOpen, setAddOpen] = useState(false);
+  const [accountOptions, setAccountOptions] = useState<AccountTypeOption[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,12 +68,14 @@ export default function InvestPage() {
 
       // One fetch per table, shared across every donut card + the Vault
       // list below -- not one fetch per account_type bucket.
-      const [holdingRows, metalRows, profileRow] = await Promise.all([
+      const [holdingRows, metalRows, profileRow, accountOpts] = await Promise.all([
         fetchHoldings(supabase, user.id, null),
         fetchMetalHoldings(supabase, user.id),
         supabase.from("profiles").select("account_types").eq("id", user.id).maybeSingle(),
+        fetchAccountTypeOptions(supabase),
       ]);
       if (cancelled) return;
+      setAccountOptions(accountOpts.filter((o) => ["brokerage", "traditional", "roth", "crypto"].includes(o.id)));
       setHoldings(holdingRows);
       setMetalHoldings(metalRows);
       setAccountTypes((profileRow.data as { account_types: string[] | null } | null)?.account_types ?? []);
@@ -82,7 +91,7 @@ export default function InvestPage() {
       cancelled = true;
       window.removeEventListener("pageshow", onPageShow);
     };
-  }, []);
+  }, [reloadKey]);
 
   // While the initial fetch is still in flight, show every bucket in its
   // loading state (matching this page's previous behavior) rather than
@@ -107,7 +116,30 @@ export default function InvestPage() {
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[21px] font-semibold text-text-primary">Investments</h1>
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className="rounded-md bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c]"
+        >
+          + Add Holding
+        </button>
       </div>
+      {addOpen && (
+        <EditHoldingModal
+          holding={null}
+          accountOptions={accountOptions}
+          onClose={() => setAddOpen(false)}
+          onSaved={() => setReloadKey((k) => k + 1)}
+          onSubmit={async (input) => {
+            const supabase = createClient();
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            if (!user) return { error: "not_signed_in" };
+            return createHolding(supabase, user.id, input);
+          }}
+        />
+      )}
       <div className="flex flex-col gap-6">
         {!loading && accountDonuts.length === 0 && !showMetals ? (
           <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">
