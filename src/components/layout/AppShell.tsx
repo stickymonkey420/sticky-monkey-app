@@ -236,6 +236,7 @@ const NAV_TREE: NavNode[] = [
     requires: "investOptIn",
     children: [
       { href: "/invest", label: "Portfolio" },
+      { href: "/stock-screener", label: "Screener" },
       { href: "/invest-accounts", label: "Accounts" },
       {
         label: "Taxable",
@@ -279,7 +280,6 @@ const NAV_TREE: NavNode[] = [
     icon: Trophy,
     children: [
       { href: "/game-a-fi-overview", label: "Overview" },
-      { href: "/stock-screener", label: "Screener" },
       { href: "/game-a-fi", label: "Standings" },
     ],
   },
