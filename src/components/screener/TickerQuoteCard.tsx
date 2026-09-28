@@ -127,7 +127,7 @@ export default function TickerQuoteCard({
           <span className="text-text-muted">
             {result.symbol}&apos;s reported earnings were boosted by a tax benefit (after-tax margin{" "}
             {result.taxAdjustment.reportedNetMargin}% vs. {result.taxAdjustment.pretaxMargin}% before tax), so the
-            earnings-based gauges, score, and Graham Number below use a normal{" "}
+            earnings-based gauges, score, and intrinsic value below use a normal{" "}
             {result.taxAdjustment.normalTaxRatePct}% tax rate instead.
             {result.taxAdjustment.reportedPeRatio !== null && result.peRatio !== null && (
               <>
@@ -226,7 +226,7 @@ function StickyMonkeyScoreCard({ result }: { result: TickerQuoteResult }) {
       </div>
 
       <div className="mt-3 border-t border-white/[0.08] pt-3 text-sm">
-        <div className="text-text-muted">Intrinsic value (Graham Number)</div>
+        <div className="text-text-muted">Intrinsic value</div>
         {result.intrinsicValue !== null && result.intrinsicValue !== undefined ? (
           <div className="mt-0.5 font-semibold text-text-primary">{money(result.intrinsicValue)} / share</div>
         ) : (

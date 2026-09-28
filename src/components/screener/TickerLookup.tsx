@@ -65,9 +65,9 @@ export default function TickerLookup() {
     <div className="rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-1 text-sm font-semibold text-text-primary">Ticker Lookup</h3>
       <p className="mb-4 text-xs text-text-muted">
-        Live quote plus 7 gauges for any ticker: Peter Lynch-style PEG and Debt/Equity valuation, Return on Equity,
+        Live quote plus 7 gauges for any ticker: PEG and Debt/Equity valuation, Return on Equity,
         Return on Assets, Current Ratio, Net Profit Margin, and Price/Free Cash Flow -- tallied into a Sticky Monkey
-        Score, compared against the ticker&apos;s industry peers, alongside a Graham Number intrinsic value estimate.
+        Score, compared against the ticker&apos;s industry peers, alongside an intrinsic value estimate.
       </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
