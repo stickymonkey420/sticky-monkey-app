@@ -1,3 +1,4 @@
+import PurchasingPowerCalculator from "@/components/simulator/PurchasingPowerCalculator";
 import WeeklyIncomeSimulator from "@/components/simulator/WeeklyIncomeSimulator";
 
 // Port of the live Webflow "Simulator" page (page id 6a8cd798d6044b9cc6fbe79f).
@@ -11,6 +12,7 @@ export default function SimulatorPage() {
         <h1 className="text-[21px] font-semibold text-text-primary">Simulator</h1>
       </div>
       <WeeklyIncomeSimulator />
+      <PurchasingPowerCalculator />
     </>
   );
 }
