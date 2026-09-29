@@ -89,9 +89,6 @@ export default function W2JobModal({ job, onClose }: { job?: W2Job | null; onClo
   return (
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div
         role="dialog"

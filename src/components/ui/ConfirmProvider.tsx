@@ -68,9 +68,6 @@ export default function ConfirmProvider({ children }: { children: React.ReactNod
       {pending && (
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) settle(false);
-          }}
         >
           <div className="w-full max-w-sm rounded-2xl border border-card-border bg-card-bg p-5">
             <h3 className="mb-2 text-base font-semibold text-text-primary">{pending.title ?? "Are you sure?"}</h3>

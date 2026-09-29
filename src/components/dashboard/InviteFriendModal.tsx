@@ -11,9 +11,6 @@ export default function InviteFriendModal({ onClose }: { onClose: () => void }) 
   return (
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-5"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div className="w-full max-w-xl">
         <div className="mb-3 flex items-center justify-end">

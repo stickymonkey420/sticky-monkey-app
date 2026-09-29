@@ -145,9 +145,6 @@ export default function NotificationsModal({ onClose, onChange }: { onClose: () 
     <div
       id="ia-alert-overlay"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-2xl border border-card-border bg-card-bg p-5">
         <div className="mb-3 flex items-center justify-between">

@@ -129,9 +129,6 @@ export default function EditManualAccountModal({
   return (
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div role="dialog" aria-modal="true" aria-label="Edit account" className="w-full max-w-md rounded-2xl border border-card-border bg-card-bg p-5 shadow-2xl">
         <div className="mb-4 flex items-center justify-between gap-3">

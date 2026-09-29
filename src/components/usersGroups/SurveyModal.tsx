@@ -70,9 +70,6 @@ export default function SurveyModal({
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-5"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-card-bg p-7 shadow-2xl">
         <h2 className="mb-1 text-lg font-bold text-text-primary">Survey &amp; Profile</h2>
