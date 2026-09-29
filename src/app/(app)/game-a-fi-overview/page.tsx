@@ -86,6 +86,12 @@ export default function GameAFiOverviewPage() {
   const { loading, holdings, trade } = usePaperTradingAccount(hasMatch ? userId : null, selectedChallengeId);
   const contractAccount = useContractTradingAccount(hasMatch ? userId : null, selectedChallengeId);
 
+  // Free-standing "Monkey Monkey" practice account (challenge_id null) --
+  // the account the Stock Screener's Buy button trades in. Shown on its own
+  // section at the top so those positions are visible even with no Trade
+  // Off match open. Never mixed with any match's holdings.
+  const practice = usePaperTradingAccount(userId, null);
+
   // Opponent's holdings for the currently-selected match -- fetches their
   // raw trades via game_afi_match_opponent_trades, then reuses the exact
   // same computeHoldings() pipeline usePaperTradingAccount uses for the
@@ -189,6 +195,15 @@ export default function GameAFiOverviewPage() {
     return applyColorOverrides(withCash, colorOverrides);
   }, [oppHoldings, matchSummary, colorOverrides]);
 
+  const practiceAllocation = useMemo(() => {
+    const base = groupHoldingsByTicker(practice.holdings);
+    const withCash = practice.account ? appendCash(base, practice.account.cashBalance) : base;
+    return applyColorOverrides(withCash, colorOverrides);
+  }, [practice.holdings, practice.account, colorOverrides]);
+
+  const practiceInvested = practice.holdings.reduce((sum, h) => sum + (h.marketValue ?? h.shares * h.avgCost), 0);
+  const practiceUnrealized = practice.holdings.reduce((sum, h) => sum + (h.unrealizedPl ?? 0), 0);
+
   const myTitle = matchSummary ? `@${matchSummary.me.username ?? matchSummary.me.name ?? "Me"}` : "Allocation";
 
   const opponentTitle = matchSummary
@@ -201,16 +216,59 @@ export default function GameAFiOverviewPage() {
         <h1 className="text-[21px] font-semibold text-text-primary">Game-O-Fi -- Overview</h1>
       </div>
       <p className="mb-6 text-sm text-text-muted">
-        Your Trade Off paper trading holdings -- simulated shares only, priced off the Stock Screener universe.
+        Your paper trading holdings (practice account and Trade Off matches) -- simulated shares only, priced off the Stock Screener universe.
         Not real holdings; nothing here is actually at risk.
       </p>
 
+      {userId && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-base font-semibold text-text-primary">Monkey Monkey Practice Account</h2>
+          <div className="mb-5 grid grid-cols-1 gap-5 md:grid-cols-4">
+            <div className="md:col-span-1">
+              <PortfolioDonutCard
+                title="Practice"
+                slices={practiceAllocation.slices}
+                total={practiceAllocation.total}
+                loading={practice.loading}
+                emptyLabel="No open positions yet -- use Buy on any Stock Screener ticker."
+                formatValue={formatMoney}
+                onColorChange={handleColorChange}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:col-span-3 md:grid-cols-4 md:content-start">
+              {[
+                { k: "Total value", v: practice.account ? formatMoney(practice.account.cashBalance + practiceInvested) : "--" },
+                { k: "Cash", v: practice.account ? formatMoney(practice.account.cashBalance) : "--" },
+                { k: "Invested", v: formatMoney(practiceInvested) },
+                {
+                  k: "Unrealized P/L",
+                  v: `${practiceUnrealized >= 0 ? "+" : "-"}${formatMoney(Math.abs(practiceUnrealized))}`,
+                  color: practiceUnrealized >= 0 ? "text-[#3ddc97]" : "text-[#ff5c7a]",
+                },
+              ].map((t) => (
+                <div key={t.k} className="rounded-2xl border border-card-border bg-card-bg p-4">
+                  <div className="text-xs text-text-muted">{t.k}</div>
+                  <div className={`mt-1 text-lg font-semibold ${t.color ?? "text-text-primary"}`}>
+                    {practice.loading ? "…" : t.v}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {practice.loading ? (
+            <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">Loading…</div>
+          ) : (
+            <PaperHoldingsTable holdings={practice.holdings} />
+          )}
+        </section>
+      )}
+
+      <h2 className="mb-3 text-base font-semibold text-text-primary">Trade Off Matches</h2>
       {!matchesLoaded ? (
         <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">Loading…</div>
       ) : matches.length === 0 ? (
         <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">
-          You need an accepted Trade Off match before you have any holdings to show. Send or accept a challenge on
-          the Standings tab first.
+          No Trade Off matches open. Send or accept a challenge on the Standings tab to start one.
         </div>
       ) : (
         <>
