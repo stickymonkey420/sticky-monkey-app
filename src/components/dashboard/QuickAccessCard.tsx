@@ -1,39 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Briefcase, Repeat, Trophy, UserPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import ChallengeMemberModal from "@/components/gameAfi/ChallengeMemberModal";
 import InviteFriendModal from "@/components/dashboard/InviteFriendModal";
+import { callPlaidFunction, loadPlaidScript } from "@/lib/plaid/link";
 import W2JobModal from "@/components/income/W2JobModal";
 
 // Ported from the live Webflow Dashboard's "Add Option Trade" and "Connect
 // Accounts" (formerly "Connect Finance") Quick Access buttons
 // (dashboard-quick-actions-js edge function).
-
-declare global {
-  interface Window {
-    Plaid?: {
-      create: (config: {
-        token: string;
-        onSuccess: (publicToken: string, metadata: { institution?: { name?: string } }) => void;
-        onExit: () => void;
-      }) => { open: () => void };
-    };
-  }
-}
-
-function loadPlaidScript(): Promise<void> {
-  if (window.Plaid) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = "https://cdn.plaid.com/link/v2/stable/link-initialize.js";
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error("plaid_sdk_failed"));
-    document.head.appendChild(s);
-  });
-}
 
 export default function QuickAccessCard() {
   const router = useRouter();
@@ -42,6 +21,7 @@ export default function QuickAccessCard() {
   const [challengeOpen, setChallengeOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [w2Open, setW2Open] = useState(false);
+  const [capMessage, setCapMessage] = useState<string | null>(null);
   const connectingRef = useRef(false);
 
   useEffect(() => {
@@ -85,28 +65,30 @@ export default function QuickAccessCard() {
     }
 
     setConnectLabel("Loading…");
+    setCapMessage(null);
     const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
     try {
-      const [, tokenRes] = await Promise.all([
-        loadPlaidScript(),
-        fetch(`${base}/functions/v1/plaid-create-link-token`, {
-          method: "POST",
-          headers: {
-            apikey: anonKey,
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-        }),
-      ]);
-      const tokenBody = await tokenRes.json();
+      const [, tokenRes] = await Promise.all([loadPlaidScript(), callPlaidFunction("plaid-create-link-token")]);
+      const tokenBody = tokenRes.data;
+
+      // Trial-plan guardrail: the server refuses new connections once all free
+      // Plaid slots are used (removing a connection does NOT free a slot).
+      if (tokenRes.status === 409 && tokenBody?.error === "plaid_item_cap_reached") {
+        setCapMessage(
+          (tokenBody.message as string) ||
+            "All free Plaid connections are used. To fix a broken connection, use Reconnect on the Banking page.",
+        );
+        setConnectLabel("Connect Accounts");
+        return;
+      }
       if (!tokenRes.ok || !tokenBody?.link_token) {
-        throw new Error(tokenBody?.error || "link_token_failed");
+        throw new Error((tokenBody?.error as string) || "link_token_failed");
       }
 
       const handler = window.Plaid!.create({
-        token: tokenBody.link_token,
+        token: tokenBody.link_token as string,
         onSuccess: async (publicToken, metadata) => {
           setConnectLabel("Connecting…");
           try {
@@ -169,6 +151,14 @@ export default function QuickAccessCard() {
         <Repeat size={16} className="shrink-0 text-text-muted" strokeWidth={1.75} />
         <span className="quick-access-text-block">{connectLabel}</span>
       </button>
+      {capMessage && (
+        <div role="status" className="-mt-1 rounded-lg bg-[#f5d020]/10 px-3 py-2 text-xs text-text-primary">
+          {capMessage}{" "}
+          <Link href="/accounts" className="font-semibold text-[#f5d020] hover:underline">
+            Go to Banking
+          </Link>
+        </div>
+      )}
       <button
         type="button"
         data-quick-action="add-w2-job-modal"

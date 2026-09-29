@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { callPlaidFunction } from "@/lib/plaid/link";
 import { updateManualAccount } from "@/lib/accounts/queries";
 import { ACCOUNT_CATEGORIES, ACCOUNT_CATEGORY_LABELS, type AccountCategory, type ManualAccount } from "@/lib/accounts/types";
 
@@ -24,29 +25,26 @@ function numOrNull(v: string): number | null {
 // "Disconnect" (Plaid-synced) / "Remove account" (manual) goes through the
 // plaid-unlink-account edge function: it deletes the account, its Plaid link,
 // and -- once no other account uses that bank login -- removes the login at
-// Plaid too so it stops being billed. Already-synced transactions are kept.
-// Two-step confirm inline (no stacked dialogs over this modal).
-async function unlinkAccount(accountId: string): Promise<string | null> {
-  const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return "Please sign in again.";
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/plaid-unlink-account`, {
-      method: "POST",
-      headers: {
-        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        Authorization: `Bearer ${session.access_token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ account_id: accountId }),
-    });
-    if (!res.ok) return "Couldn't remove that account. Please try again.";
-    return null;
-  } catch {
-    return "Couldn't reach the server. Please try again.";
+// Plaid too. Already-synced transactions are kept.
+//
+// Trial-plan guardrail (plaid-unlink-account v6): if this is the LAST account
+// on a Plaid connection, the server refuses with 409
+// confirm_remove_connection_required, because removing the connection is
+// permanent and the free slot can't be reused. The modal then shows that
+// warning and only proceeds on a second, explicit confirmation.
+type UnlinkResult = { ok: true } | { ok: false; needsConnectionConfirm: true; message: string } | { ok: false; error: string };
+
+async function unlinkAccount(accountId: string, confirmRemoveConnection = false): Promise<UnlinkResult> {
+  const res = await callPlaidFunction("plaid-unlink-account", {
+    account_id: accountId,
+    ...(confirmRemoveConnection ? { confirm_remove_connection: true } : {}),
+  });
+  if (res.ok) return { ok: true };
+  if (res.status === 409 && res.data.error === "confirm_remove_connection_required") {
+    return { ok: false, needsConnectionConfirm: true, message: String(res.data.message || "") };
   }
+  if (res.status === 0 || res.status === 401) return { ok: false, error: String(res.data.message) };
+  return { ok: false, error: "Couldn't remove that account. Please try again." };
 }
 
 export default function EditManualAccountModal({
@@ -63,6 +61,7 @@ export default function EditManualAccountModal({
   const isPlaid = /plaid/i.test(account.notes ?? "");
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [connectionWarning, setConnectionWarning] = useState<string | null>(null);
   const [institution, setInstitution] = useState(account.institution_name ?? "");
   const [name, setName] = useState(account.account_name ?? "");
   const [category, setCategory] = useState<AccountCategory>(account.category);
@@ -88,14 +87,22 @@ export default function EditManualAccountModal({
     if (removing) return;
     setRemoving(true);
     setError(null);
-    const err = await unlinkAccount(account.id);
+    const result = await unlinkAccount(account.id, connectionWarning !== null);
     setRemoving(false);
-    if (err) {
-      setError(err);
-      setConfirmRemove(false);
+    if (result.ok) {
+      onRemoved(account.id);
       return;
     }
-    onRemoved(account.id);
+    if ("needsConnectionConfirm" in result) {
+      setConnectionWarning(
+        result.message ||
+          "This is the last account on this bank connection. Disconnecting it permanently removes the connection, and the free Plaid slot can't be reused.",
+      );
+      return;
+    }
+    setError(result.error);
+    setConfirmRemove(false);
+    setConnectionWarning(null);
   }
 
   async function submit() {
@@ -199,9 +206,11 @@ export default function EditManualAccountModal({
             ) : (
               <div className="flex flex-col gap-2 rounded-lg bg-[#ff5c7a]/10 p-3">
                 <div className="text-xs text-text-primary">
-                  {isPlaid
-                    ? `Disconnect ${account.account_name}? It stops syncing and is removed from the app. Past transactions stay.`
-                    : `Remove ${account.account_name}? This can't be undone.`}
+                  {connectionWarning
+                    ? connectionWarning
+                    : isPlaid
+                      ? `Disconnect ${account.account_name}? It stops syncing and is removed from the app. Past transactions stay.`
+                      : `Remove ${account.account_name}? This can't be undone.`}
                 </div>
                 <div className="flex items-center gap-3">
                   <button
@@ -210,9 +219,22 @@ export default function EditManualAccountModal({
                     onClick={remove}
                     className="rounded-md bg-[#ff5c7a] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
                   >
-                    {removing ? "Working…" : isPlaid ? "Yes, disconnect" : "Yes, remove"}
+                    {removing
+                      ? "Working…"
+                      : connectionWarning
+                        ? "Remove connection permanently"
+                        : isPlaid
+                          ? "Yes, disconnect"
+                          : "Yes, remove"}
                   </button>
-                  <button type="button" onClick={() => setConfirmRemove(false)} className="text-xs text-text-muted hover:text-text-primary">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmRemove(false);
+                      setConnectionWarning(null);
+                    }}
+                    className="text-xs text-text-muted hover:text-text-primary"
+                  >
                     Keep it
                   </button>
                 </div>

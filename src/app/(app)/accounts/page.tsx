@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import AccountsSummaryCards from "@/components/accounts/AccountsSummaryCards";
 import AccountsByCategoryTable from "@/components/accounts/AccountsByCategoryTable";
 import EditManualAccountModal from "@/components/accounts/EditManualAccountModal";
+import PlaidRelinkBanner from "@/components/accounts/PlaidRelinkBanner";
 import { createClient } from "@/lib/supabase/client";
 import { fetchManualAccounts } from "@/lib/accounts/queries";
 import { computeAccountsSummary, groupAccountsByCategory } from "@/lib/accounts/calc";
@@ -73,6 +74,7 @@ export default function AccountsPage() {
         <h1 className="text-[21px] font-semibold text-text-primary">Banking</h1>
       </div>
       <div className="flex flex-col gap-6">
+        <PlaidRelinkBanner />
         <AccountsSummaryCards summary={summary} loading={loading} />
         <AccountsByCategoryTable
           groups={groups}
