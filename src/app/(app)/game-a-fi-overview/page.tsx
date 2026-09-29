@@ -9,7 +9,7 @@ import { usePaperTradingAccount } from "@/lib/gameAfi/usePaperTrading";
 import { useContractTradingAccount } from "@/lib/gameAfi/useContractTrading";
 import SellContractWidget from "@/components/gameAfi/SellContractWidget";
 import { fetchChallenges, fetchMatchSummary } from "@/lib/gameAfi/challengeQueries";
-import { computeHoldings, fetchOpponentTrades } from "@/lib/gameAfi/paperQueries";
+import { computeHoldings, editPracticeHolding, fetchOpponentTrades } from "@/lib/gameAfi/paperQueries";
 import { appendCash, applyColorOverrides, groupHoldingsByTicker } from "@/lib/gameAfi/allocationCalc";
 import { formatMoney } from "@/lib/gameAfi/format";
 import { fetchTickerColorOverrides, setTickerColorOverride } from "@/lib/gameAfi/tickerColors";
@@ -258,7 +258,14 @@ export default function GameAFiOverviewPage() {
           {practice.loading ? (
             <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">Loading…</div>
           ) : (
-            <PaperHoldingsTable holdings={practice.holdings} />
+            <PaperHoldingsTable
+              holdings={practice.holdings}
+              onEdit={async (ticker, shares, avgCost) => {
+                const res = await editPracticeHolding(createClient(), ticker, shares, avgCost);
+                if (res.ok) await practice.refresh();
+                return res;
+              }}
+            />
           )}
         </section>
       )}

@@ -262,3 +262,31 @@ export async function fetchPaperAvailableWeeks(supabase: SupabaseClient): Promis
   }
   return ((data ?? []) as { week_start: string }[]).map((r) => r.week_start);
 }
+
+// Edit (shares + avg cost) or delete (shares = 0) a holding in the caller's
+// Monkey Monkey PRACTICE account only -- Trade Off match accounts can't be
+// edited. Server replaces the ticker's practice trades with a single buy
+// and adjusts practice cash by the cost difference. See migration
+// game_afi_practice_edit_holding.
+export async function editPracticeHolding(
+  supabase: SupabaseClient,
+  ticker: string,
+  shares: number,
+  avgCost: number | null
+): Promise<ExecuteTradeResult> {
+  const { data, error } = await supabase.rpc("game_afi_practice_edit_holding", {
+    p_ticker: ticker,
+    p_shares: shares,
+    p_avg_cost: avgCost,
+  });
+  if (error || !data || data.length === 0) {
+    console.error("editPracticeHolding failed", error);
+    return { ok: false, message: "Could not save that change. Try again.", newCashBalance: null };
+  }
+  const row = data[0] as { ok: boolean; message: string; new_cash_balance: number | null };
+  return {
+    ok: row.ok,
+    message: row.message,
+    newCashBalance: row.new_cash_balance === null ? null : Number(row.new_cash_balance),
+  };
+}
