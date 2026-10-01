@@ -70,3 +70,16 @@ export function fmtDate(d: string | null): string {
     return d;
   }
 }
+
+// Value / shares for an equity % at the current company valuation.
+export function equityValue(pct: number, valuation: number | null | undefined): number | null {
+  if (valuation == null || !Number.isFinite(valuation)) return null;
+  return (pct / 100) * valuation;
+}
+export function equityShares(pct: number, totalShares: number | null | undefined): number | null {
+  if (totalShares == null || !Number.isFinite(totalShares)) return null;
+  return Math.round((pct / 100) * totalShares);
+}
+export function fmtShares(n: number | null): string {
+  return n == null ? "—" : n.toLocaleString("en-US");
+}

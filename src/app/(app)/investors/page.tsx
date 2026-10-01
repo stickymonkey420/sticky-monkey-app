@@ -7,17 +7,21 @@ import PoolSummaryCards from "@/components/investors/PoolSummaryCards";
 import OwnersTable from "@/components/investors/OwnersTable";
 import ManageEntriesTable from "@/components/investors/ManageEntriesTable";
 import EntryFormModal from "@/components/investors/EntryFormModal";
+import CompanyValuationCard from "@/components/investors/CompanyValuationCard";
 import { createClient } from "@/lib/supabase/client";
 import {
   addCapTableEntry,
   deleteCapTableEntry,
   fetchAllEntries,
+  fetchCompanySettings,
   fetchDirectorEmails,
   fetchMyEntries,
   fetchMyRole,
   fetchProfileOptions,
   updateCapTableEntry,
+  updateCompanySettings,
   type CapTableEntryInput,
+  type CompanySettings,
   type ProfileOption,
 } from "@/lib/investors/queries";
 import { computePoolSummary } from "@/lib/investors/calc";
@@ -42,6 +46,7 @@ export default function InvestorsPage() {
   const [allEntries, setAllEntries] = useState<CapTableEntry[]>([]);
   const [profileOptions, setProfileOptions] = useState<ProfileOption[]>([]);
   const [directorEmails, setDirectorEmails] = useState<Set<string>>(new Set());
+  const [company, setCompany] = useState<CompanySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<{ text: string; isError: boolean } | null>(null);
   const [editEntry, setEditEntry] = useState<CapTableEntry | null | undefined>(undefined);
@@ -70,9 +75,10 @@ export default function InvestorsPage() {
       const role = await fetchMyRole(supabase, user.id);
       if (cancelled) return;
       setMyRole(role);
-      const mine = await fetchMyEntries(supabase, user.id);
+      const [mine, settings] = await Promise.all([fetchMyEntries(supabase, user.id), fetchCompanySettings(supabase)]);
       if (cancelled) return;
       setMyEntries(mine);
+      setCompany(settings);
       if (role === "app_director") {
         const [all, emails, options] = await Promise.all([
           fetchAllEntries(supabase),
@@ -104,6 +110,17 @@ export default function InvestorsPage() {
       setAllEntries(all);
       setMyEntries(mine);
       showStatus(id ? "Entry updated." : "Entry added.", false);
+    }
+    return result;
+  }
+
+  async function handleSaveValuation(input: { valuation: number; total_shares: number }) {
+    if (!userId) return { error: "Not signed in." };
+    const supabase = createClient();
+    const result = await updateCompanySettings(supabase, userId, input);
+    if (!result.error) {
+      setCompany(await fetchCompanySettings(supabase));
+      showStatus("Valuation updated.", false);
     }
     return result;
   }
@@ -150,12 +167,13 @@ export default function InvestorsPage() {
         <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">Loading…</div>
       ) : (
         <div className="flex flex-col gap-6">
-          <YourEquityTable entries={myEntries} />
+          <CompanyValuationCard settings={company} canEdit={isDirector} onSave={handleSaveValuation} />
+          <YourEquityTable entries={myEntries} valuation={company?.valuation ?? null} totalShares={company?.total_shares ?? null} />
 
           {isDirector && (
             <>
               <PoolSummaryCards summary={summary} />
-              <OwnersTable owners={summary.owners} />
+              <OwnersTable owners={summary.owners} valuation={company?.valuation ?? null} totalShares={company?.total_shares ?? null} />
               <ManageEntriesTable entries={allEntries} onEdit={(e) => setEditEntry(e)} onDelete={handleDelete} />
             </>
           )}

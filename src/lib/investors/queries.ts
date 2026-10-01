@@ -110,3 +110,34 @@ export async function deleteCapTableEntry(supabase: SupabaseClient, id: string):
   const { error } = await supabase.from("cap_table_entries").delete().eq("id", id);
   return { error: error ? error.message : null };
 }
+
+// ---- Company valuation (company_settings, single row id=true) ----
+// SELECT: app_director or anyone with a cap_table_entries row.
+// UPDATE: app_director only (RLS company_settings_update_director).
+export type CompanySettings = { valuation: number; total_shares: number; updated_at: string | null };
+
+export async function fetchCompanySettings(supabase: SupabaseClient): Promise<CompanySettings | null> {
+  const { data, error } = await supabase
+    .from("company_settings")
+    .select("valuation,total_shares,updated_at")
+    .eq("id", true)
+    .maybeSingle();
+  if (error || !data) {
+    if (error) console.error("fetchCompanySettings failed", error);
+    return null;
+  }
+  const d = data as { valuation: number | string; total_shares: number | string; updated_at: string | null };
+  return { valuation: Number(d.valuation), total_shares: Number(d.total_shares), updated_at: d.updated_at };
+}
+
+export async function updateCompanySettings(
+  supabase: SupabaseClient,
+  userId: string,
+  input: { valuation: number; total_shares: number }
+): Promise<MutationResult> {
+  const { error } = await supabase
+    .from("company_settings")
+    .update({ ...input, updated_at: new Date().toISOString(), updated_by: userId })
+    .eq("id", true);
+  return { error: error ? error.message : null };
+}
