@@ -21,6 +21,8 @@ import {
 } from "@/lib/business/queries";
 import { JOB_STATUSES, JOB_STATUS_LABELS } from "@/lib/business/types";
 import RentalManager from "@/components/rentals/RentalManager";
+import ClassSessions from "@/components/business/ClassSessions";
+import { isClassBasedBusiness } from "@/lib/business/sessionTypes";
 import { isRentalBusiness } from "@/lib/rentals/types";
 import type { BusinessAppointment, BusinessClient, BusinessJob, JobStatus, UserBusiness } from "@/lib/business/types";
 
@@ -136,6 +138,9 @@ export default function MyBusinessPage() {
   // module (properties, leases, rent ledger, maintenance, expenses, reports)
   // in place of the generic Clients/Jobs board; the Scheduler stays.
   const isRental = isRentalBusiness(active?.category_name);
+  // Yoga / fitness businesses run classes with many clients per session,
+  // so they get Classes & Sessions in place of the one-client Jobs board.
+  const isClassBased = !isRental && isClassBasedBusiness(active?.category_name);
   // Each job's appointments (soonest first), for the date/time shown on its card.
   const apptsByJob = useMemo(() => {
     const map = new Map<string, BusinessAppointment[]>();
@@ -520,7 +525,11 @@ export default function MyBusinessPage() {
 
               {isRental && userId && <RentalManager key={active.id} userId={userId} businessId={active.id} />}
 
-              {!isRental && (
+              {isClassBased && userId && (
+                <ClassSessions key={active.id} userId={userId} businessId={active.id} clients={clients} />
+              )}
+
+              {!isRental && !isClassBased && (
               <div className="rounded-2xl border border-card-border bg-card-bg p-5">
                 <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">Jobs</h4>
                 <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
