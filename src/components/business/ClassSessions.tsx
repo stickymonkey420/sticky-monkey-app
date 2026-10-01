@@ -68,7 +68,14 @@ const TYPE_BADGE: Record<SessionType, string> = {
   workshop: "bg-[#f5d020]/15 text-[#f5d020]",
 };
 
-type AttendeeForm = { clientChoice: string; newName: string; payment_type: PaymentType; payment_method: string; amount: string };
+type AttendeeForm = {
+  clientChoice: string;
+  newName: string;
+  payment_type: PaymentType;
+  payment_method: string;
+  amount: string;
+  paid: boolean;
+};
 
 export default function ClassSessions({
   userId,
@@ -102,6 +109,7 @@ export default function ClassSessions({
     payment_type: "drop_in",
     payment_method: "",
     amount: "",
+    paid: false,
   });
   const [addingAtt, setAddingAtt] = useState(false);
   // Inline edit of one roster line.
@@ -178,6 +186,8 @@ export default function ClassSessions({
       payment_type: pt,
       payment_method: "",
       amount: defaultAmount(pt, s.default_price == null ? null : Number(s.default_price)),
+      // New attendees start Unpaid -- mark Paid once the money is in.
+      paid: false,
     });
   }
 
@@ -247,7 +257,7 @@ export default function ClassSessions({
       payment_type: attForm.payment_type,
       payment_method: (attForm.payment_method || null) as PaymentMethod | null,
       amount,
-      paid: true,
+      paid: attForm.paid,
     });
     setAddingAtt(false);
     if (error || !attendee) {
@@ -255,7 +265,7 @@ export default function ClassSessions({
       return;
     }
     setAttendees((rows) => [...rows, attendee]);
-    setAttForm((f) => ({ ...f, clientChoice: "", newName: "" }));
+    setAttForm((f) => ({ ...f, clientChoice: "", newName: "", paid: false }));
   }
 
   // Linked clients always show their current name from the Clients list.
@@ -687,6 +697,15 @@ export default function ClassSessions({
                           onChange={(e) => setAttForm((f) => ({ ...f, amount: e.target.value }))}
                           className={`${smallInput} w-28`}
                         />
+                        <select
+                          aria-label="Paid status"
+                          value={attForm.paid ? "paid" : "unpaid"}
+                          onChange={(e) => setAttForm((f) => ({ ...f, paid: e.target.value === "paid" }))}
+                          className={smallInput}
+                        >
+                          <option value="unpaid">Unpaid</option>
+                          <option value="paid">Paid</option>
+                        </select>
                         <button
                           type="button"
                           disabled={
