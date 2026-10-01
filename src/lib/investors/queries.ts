@@ -68,7 +68,7 @@ export async function fetchProfileOptions(supabase: SupabaseClient): Promise<Pro
 // used to include it and every save failed with "cannot insert a
 // non-DEFAULT value into column \"lockup_expires_on\"".
 export type CapTableEntryInput = {
-  user_id: string;
+  user_id: string | null;
   first_name: string;
   last_name: string;
   email: string;

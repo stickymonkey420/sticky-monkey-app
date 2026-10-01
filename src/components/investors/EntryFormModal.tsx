@@ -64,8 +64,11 @@ export default function EntryFormModal({
   }
 
   async function handleSave() {
-    if (!userId) {
-      setError("Choose an investor first.");
+    // A linked app account is optional (user_id is nullable) -- investors
+    // without an account yet are tracked by name + email and can be linked
+    // later from this same form.
+    if (!email.trim()) {
+      setError("Email is required.");
       return;
     }
     const pct = Number(equityPct);
@@ -77,10 +80,11 @@ export default function EntryFormModal({
     setError(null);
     const { error: err } = await onSave(
       {
-        user_id: userId,
+        user_id: userId || null,
+
         first_name: firstName,
         last_name: lastName,
-        email,
+        email: email.trim(),
         relationship_to_founder: relationship || null,
         entry_type: entryType,
         equity_pct: pct,
@@ -111,19 +115,17 @@ export default function EntryFormModal({
       <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-card-bg p-7 shadow-2xl">
         <h2 className="mb-5 text-lg font-bold text-text-primary">{entry ? "Edit Entry" : "Add Entry"}</h2>
 
-        {!entry && (
-          <div className="mb-3">
-            <label className="mb-1.5 block text-xs text-text-muted">Investor</label>
-            <select value={userId} onChange={(e) => handlePickProfile(e.target.value)} className={FIELD_CLASS}>
-              <option value="">Select an account…</option>
-              {profileOptions.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name || p.email || p.id}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div className="mb-3">
+          <label className="mb-1.5 block text-xs text-text-muted">Linked account (optional)</label>
+          <select value={userId} onChange={(e) => handlePickProfile(e.target.value)} className={FIELD_CLASS}>
+            <option value="">No app account</option>
+            {profileOptions.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name || p.email || p.id}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div className="mb-3 grid grid-cols-2 gap-2.5">
           <div>

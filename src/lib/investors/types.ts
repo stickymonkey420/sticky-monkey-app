@@ -10,7 +10,7 @@ export type EntryStatus = "pending" | "confirmed" | "cancelled";
 
 export type CapTableEntry = {
   id: string;
-  user_id: string;
+  user_id: string | null;
   entry_type: EntryType;
   equity_pct: number;
   price_paid: number | null;
