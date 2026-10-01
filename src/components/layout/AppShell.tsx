@@ -14,6 +14,7 @@ import {
   Wrench,
   Briefcase,
   Trophy,
+  MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -295,6 +296,7 @@ const NAV_TREE: NavNode[] = [
   },
   { href: "/investors", label: "Owners", requires: "owner", icon: Crown },
   { href: "/users-groups", label: "Users & Groups", requires: "admin", icon: ShieldCheck },
+  { href: "/feedback", label: "Feedback", requires: "owner", icon: MessageSquare },
 ];
 
 function passesGate(requires: NavNode["requires"], role: Role | null, accountTypes: string[] | null): boolean {

@@ -5,7 +5,6 @@ import { useConfirm } from "@/components/ui/ConfirmProvider";
 import UserRow, { type UserRowHandle } from "@/components/usersGroups/UserRow";
 import EditProfileModal from "@/components/usersGroups/EditProfileModal";
 import SurveyModal from "@/components/usersGroups/SurveyModal";
-import FeedbackAdmin from "@/components/feedback/FeedbackAdmin";
 import { createClient } from "@/lib/supabase/client";
 import {
   deleteAccount,
@@ -36,7 +35,6 @@ export default function UsersGroupsPage() {
   const [surveyProfile, setSurveyProfile] = useState<Profile | null>(null);
   const [editProfile, setEditProfile] = useState<Profile | null>(null);
   const [savingAll, setSavingAll] = useState(false);
-  const [view, setView] = useState<"users" | "feedback">("users");
 
   // One handle per rendered row, keyed by profile id -- lets the top-right
   // "Save All" button trigger every row's own save from a single click, as
@@ -189,31 +187,6 @@ export default function UsersGroupsPage() {
           Your account doesn&apos;t have access to this page.
         </div>
       ) : (
-        <>
-        {myRole === "app_director" && (
-          <div className="mb-4 flex gap-1 rounded-full bg-white/5 p-1 text-sm sm:w-fit">
-            {(
-              [
-                ["users", "Users"],
-                ["feedback", "Feedback"],
-              ] as const
-            ).map(([k, label]) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setView(k)}
-                className={`flex-1 rounded-full px-5 py-1.5 font-semibold sm:flex-none ${view === k ? "bg-[#4f8cff] text-white" : "text-text-muted"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-        {view === "feedback" && myRole === "app_director" ? (
-          <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-            <FeedbackAdmin people={profiles} onStatus={showStatus} />
-          </div>
-        ) : (
         <div className="rounded-2xl border border-card-border bg-card-bg p-5">
           {profiles.length === 0 ? (
             <div className="p-6 text-center text-sm text-text-muted">No accounts found.</div>
@@ -265,8 +238,6 @@ export default function UsersGroupsPage() {
             </>
           )}
         </div>
-        )}
-        </>
       )}
 
       {editProfile && (
