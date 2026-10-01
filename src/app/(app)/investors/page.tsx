@@ -184,6 +184,7 @@ export default function InvestorsPage() {
         <EntryFormModal
           entry={editEntry ?? null}
           profileOptions={profileOptions}
+          valuation={company?.valuation ?? null}
           onClose={() => setEditEntry(undefined)}
           onSave={handleSaveEntry}
         />

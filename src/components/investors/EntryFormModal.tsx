@@ -28,11 +28,13 @@ function fmtLockupPreview(acquiredOn: string): string {
 export default function EntryFormModal({
   entry,
   profileOptions,
+  valuation,
   onClose,
   onSave,
 }: {
   entry: CapTableEntry | null;
   profileOptions: ProfileOption[];
+  valuation: number | null;
   onClose: () => void;
   onSave: (input: CapTableEntryInput, id: string | null) => Promise<{ error: string | null }>;
 }) {
@@ -42,7 +44,16 @@ export default function EntryFormModal({
   const [email, setEmail] = useState(entry?.email ?? "");
   const [relationship, setRelationship] = useState(entry?.relationship_to_founder ?? "");
   const [entryType, setEntryType] = useState<EntryType>(entry?.entry_type ?? "purchase");
-  const [equityPct, setEquityPct] = useState(entry ? String(entry.equity_pct) : "");
+  // Equity is entered as a dollar value; % = dollars / company valuation.
+  // equity_pct stays the stored source of truth (caps/triggers use it).
+  const hasValuation = valuation != null && valuation > 0;
+  const [equityDollars, setEquityDollars] = useState(
+    entry && hasValuation ? String(Math.round((Number(entry.equity_pct) / 100) * valuation * 100) / 100) : ""
+  );
+  const [equityPctFallback, setEquityPctFallback] = useState(entry ? String(entry.equity_pct) : "");
+  const dollars = Number(equityDollars);
+  const computedPct = hasValuation && equityDollars && Number.isFinite(dollars) ? Math.round((dollars / valuation) * 100 * 10000) / 10000 : null;
+  const equityPct = hasValuation ? (computedPct == null ? "" : String(computedPct)) : equityPctFallback;
   const [pricePaid, setPricePaid] = useState(entry?.price_paid != null ? String(entry.price_paid) : "");
   const [currency, setCurrency] = useState(entry?.currency ?? "USD");
   const [acquiredOn, setAcquiredOn] = useState(entry?.acquired_on ?? "");
@@ -73,7 +84,7 @@ export default function EntryFormModal({
     }
     const pct = Number(equityPct);
     if (!equityPct || Number.isNaN(pct) || pct <= 0) {
-      setError("Equity % must be a positive number.");
+      setError(hasValuation ? "Equity value must be a positive dollar amount." : "Equity % must be a positive number.");
       return;
     }
     setSaving(true);
@@ -171,16 +182,36 @@ export default function EntryFormModal({
 
         <div className="mb-3 grid grid-cols-2 gap-2.5">
           <div>
-            <label className="mb-1.5 block text-xs text-text-muted">Equity %</label>
-            <input
-              type="number"
-              step="0.1"
-              min="0.1"
-              max="100"
-              value={equityPct}
-              onChange={(e) => setEquityPct(e.target.value)}
-              className={FIELD_CLASS}
-            />
+            {hasValuation ? (
+              <>
+                <label className="mb-1.5 block text-xs text-text-muted">Equity Value ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={equityDollars}
+                  onChange={(e) => setEquityDollars(e.target.value)}
+                  className={FIELD_CLASS}
+                />
+                <div className="mt-1 text-xs text-text-muted">
+                  = <span className="font-semibold text-text-primary">{computedPct == null ? "—" : `${computedPct.toFixed(4)}%`}</span> of $
+                  {valuation.toLocaleString("en-US")}
+                </div>
+              </>
+            ) : (
+              <>
+                <label className="mb-1.5 block text-xs text-text-muted">Equity % (set a company valuation to enter $)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  max="100"
+                  value={equityPctFallback}
+                  onChange={(e) => setEquityPctFallback(e.target.value)}
+                  className={FIELD_CLASS}
+                />
+              </>
+            )}
           </div>
           <div className="flex items-end pb-2.5">
             <label className="flex items-center gap-2.5 text-sm text-text-primary">
