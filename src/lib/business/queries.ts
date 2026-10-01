@@ -120,11 +120,19 @@ export async function addBusinessJob(
   supabase: SupabaseClient,
   userId: string,
   businessId: string,
-  input: { title: string; client_id: string | null; amount: number | null; due_date: string | null; notes: string | null }
+  input: {
+    title: string;
+    client_id: string | null;
+    amount: number | null;
+    due_date: string | null;
+    notes: string | null;
+    status?: JobStatus;
+  }
 ): Promise<{ job: BusinessJob | null; error: string | null }> {
+  const { status = "lead", ...rest } = input;
   const { data, error } = await supabase
     .from("business_jobs")
-    .insert({ ...input, user_id: userId, business_id: businessId, status: "lead" })
+    .insert({ ...rest, user_id: userId, business_id: businessId, status })
     .select("*")
     .single();
   if (error) {
@@ -168,7 +176,15 @@ export async function addBusinessAppointment(
   supabase: SupabaseClient,
   userId: string,
   businessId: string,
-  input: { title: string; start_at: string; end_at: string | null; location: string | null; notes: string | null }
+  input: {
+    title: string;
+    start_at: string;
+    end_at: string | null;
+    location: string | null;
+    notes: string | null;
+    job_id?: string | null;
+    client_id?: string | null;
+  }
 ): Promise<{ appointment: BusinessAppointment | null; error: string | null }> {
   const { data, error } = await supabase
     .from("business_appointments")

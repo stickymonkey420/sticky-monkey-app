@@ -65,7 +65,11 @@ export default function MyBusinessPage() {
   const [clientForm, setClientForm] = useState({ name: "", email: "", phone: "", notes: "" });
   const [addingClient, setAddingClient] = useState(false);
 
-  const [jobForm, setJobForm] = useState({ title: "", client_id: "", amount: "", due_date: "", notes: "" });
+  const [jobForm, setJobForm] = useState({ title: "", client_id: "", amount: "", start_at: "", location: "", notes: "" });
+  // Inline "Schedule" on an existing job card: which job is open + its fields.
+  const [schedulingJobId, setSchedulingJobId] = useState<string | null>(null);
+  const [jobSchedForm, setJobSchedForm] = useState({ start_at: "", location: "" });
+  const [savingJobSched, setSavingJobSched] = useState(false);
   const [addingJob, setAddingJob] = useState(false);
 
   const [apptForm, setApptForm] = useState({ title: "", start_at: "", end_at: "", location: "", notes: "" });
@@ -132,6 +136,19 @@ export default function MyBusinessPage() {
   // module (properties, leases, rent ledger, maintenance, expenses, reports)
   // in place of the generic Clients/Jobs board; the Scheduler stays.
   const isRental = isRentalBusiness(active?.category_name);
+  // Each job's appointments (soonest first), for the date/time shown on its card.
+  const apptsByJob = useMemo(() => {
+    const map = new Map<string, BusinessAppointment[]>();
+    for (const a of appointments) {
+      if (!a.job_id) continue;
+      const list = map.get(a.job_id) ?? [];
+      list.push(a);
+      map.set(a.job_id, list);
+    }
+    return map;
+  }, [appointments]);
+  const jobTitleById = useMemo(() => new Map(jobs.map((j) => [j.id, j.title])), [jobs]);
+
   const jobsByStatus = useMemo(() => {
     const map = new Map<JobStatus, BusinessJob[]>();
     for (const status of JOB_STATUSES) map.set(status, []);
@@ -206,24 +223,74 @@ export default function MyBusinessPage() {
     setClients((rows) => rows.filter((r) => r.id !== c.id));
   }
 
+  // Jobs and the Scheduler are one flow: giving a new job a date/time puts
+  // it straight into "Scheduled" and creates its linked appointment
+  // (business_appointments.job_id). Without a date it starts as a Lead.
   async function handleAddJob() {
     if (!userId || !activeId || addingJob || !jobForm.title.trim()) return;
     setAddingJob(true);
     const supabase = createClient();
+    const when = jobForm.start_at ? new Date(jobForm.start_at) : null;
+    const clientId = jobForm.client_id || null;
     const { job, error } = await addBusinessJob(supabase, userId, activeId, {
       title: jobForm.title.trim(),
-      client_id: jobForm.client_id || null,
+      client_id: clientId,
       amount: jobForm.amount.trim() ? Number(jobForm.amount) : null,
-      due_date: jobForm.due_date || null,
+      due_date: jobForm.start_at ? jobForm.start_at.slice(0, 10) : null,
       notes: jobForm.notes.trim() || null,
+      status: when ? "scheduled" : "lead",
     });
-    setAddingJob(false);
     if (error || !job) {
+      setAddingJob(false);
       setMessage("Could not add that job. Please try again.");
       return;
     }
     setJobs((rows) => [...rows, job]);
-    setJobForm({ title: "", client_id: "", amount: "", due_date: "", notes: "" });
+    if (when) {
+      const { appointment, error: apptErr } = await addBusinessAppointment(supabase, userId, activeId, {
+        title: job.title,
+        start_at: when.toISOString(),
+        end_at: null,
+        location: jobForm.location.trim() || null,
+        notes: null,
+        job_id: job.id,
+        client_id: clientId,
+      });
+      if (apptErr || !appointment) {
+        setMessage("Job added, but its schedule didn't save. Use Schedule on the job card to try again.");
+      } else {
+        setAppointments((rows) => [...rows, appointment].sort((x, y) => x.start_at.localeCompare(y.start_at)));
+      }
+    }
+    setAddingJob(false);
+    setJobForm({ title: "", client_id: "", amount: "", start_at: "", location: "", notes: "" });
+  }
+
+  // Schedule an existing job (e.g. a Lead): creates its linked appointment
+  // and moves a Lead to Scheduled.
+  async function handleScheduleJob(job: BusinessJob) {
+    if (!userId || !activeId || savingJobSched || !jobSchedForm.start_at) return;
+    setSavingJobSched(true);
+    const supabase = createClient();
+    const { appointment, error } = await addBusinessAppointment(supabase, userId, activeId, {
+      title: job.title,
+      start_at: new Date(jobSchedForm.start_at).toISOString(),
+      end_at: null,
+      location: jobSchedForm.location.trim() || null,
+      notes: null,
+      job_id: job.id,
+      client_id: job.client_id,
+    });
+    if (error || !appointment) {
+      setSavingJobSched(false);
+      setMessage("Could not schedule that job. Please try again.");
+      return;
+    }
+    setAppointments((rows) => [...rows, appointment].sort((x, y) => x.start_at.localeCompare(y.start_at)));
+    if (job.status === "lead") await handleJobStatusChange(job, "scheduled");
+    setSavingJobSched(false);
+    setSchedulingJobId(null);
+    setJobSchedForm({ start_at: "", location: "" });
   }
 
   async function handleJobStatusChange(job: BusinessJob, status: JobStatus) {
@@ -238,14 +305,18 @@ export default function MyBusinessPage() {
   }
 
   async function handleDeleteJob(job: BusinessJob) {
-    if (!(await confirm({ message: `Remove job "${job.title}"?`, danger: true }))) return;
+    const linked = apptsByJob.get(job.id) ?? [];
+    const extra = linked.length ? ` Its ${linked.length === 1 ? "appointment" : `${linked.length} appointments`} will be removed too.` : "";
+    if (!(await confirm({ message: `Remove job "${job.title}"?${extra}`, danger: true }))) return;
     const supabase = createClient();
+    for (const appt of linked) await deleteBusinessAppointment(supabase, appt.id);
     const { error } = await deleteBusinessJob(supabase, job.id);
     if (error) {
       setMessage("Could not remove that job. Please try again.");
       return;
     }
     setJobs((rows) => rows.filter((r) => r.id !== job.id));
+    setAppointments((rows) => rows.filter((r) => r.job_id !== job.id));
   }
 
   async function handleAddAppointment() {
@@ -280,6 +351,52 @@ export default function MyBusinessPage() {
   }
 
   const inputClass = "rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none";
+
+  // Schedule list + quick "Add Appointment" (for appointments not tied to a
+  // job). Shown inside the Jobs card for regular businesses, and as its own
+  // Scheduler card for rentals (which have no Jobs board).
+  const scheduleSection = (
+    <>
+                {appointments.length === 0 ? (
+                  <div className="mb-4 text-sm text-text-muted">No appointments yet.</div>
+                ) : (
+                  <div className="mb-4 flex flex-col gap-2">
+                    {appointments.map((a) => (
+                      <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/5 px-3.5 py-2.5">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm text-text-primary">
+                            {a.title}
+                            {a.job_id && jobTitleById.has(a.job_id) && a.title !== jobTitleById.get(a.job_id) && (
+                              <span className="text-text-muted"> · {jobTitleById.get(a.job_id)}</span>
+                            )}
+                          </div>
+                          <div className="truncate text-xs text-text-muted">
+                            {fmtDateTime(a.start_at)}
+                            {a.location ? ` · ${a.location}` : ""}
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => handleDeleteAppointment(a)} className="text-xs text-[#ff5c7a] hover:underline">
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <input placeholder="Title" value={apptForm.title} onChange={(e) => setApptForm((f) => ({ ...f, title: e.target.value }))} className={inputClass} />
+                  <input type="datetime-local" value={apptForm.start_at} onChange={(e) => setApptForm((f) => ({ ...f, start_at: e.target.value }))} className={inputClass} />
+                  <input placeholder="Location (optional)" value={apptForm.location} onChange={(e) => setApptForm((f) => ({ ...f, location: e.target.value }))} className={inputClass} />
+                  <button
+                    type="button"
+                    disabled={addingAppt || !apptForm.title.trim() || !apptForm.start_at}
+                    onClick={handleAddAppointment}
+                    className="rounded-md bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-60"
+                  >
+                    {addingAppt ? "Adding…" : "Add Appointment"}
+                  </button>
+                </div>
+    </>
+  );
 
   return (
     <>
@@ -415,6 +532,56 @@ export default function MyBusinessPage() {
                           <div key={j.id} className="rounded-lg bg-[#0f131c] p-2">
                             <div className="text-sm text-text-primary">{j.title}</div>
                             {j.amount != null && <div className="text-xs text-text-muted">${Number(j.amount).toLocaleString()}</div>}
+                            {(apptsByJob.get(j.id) ?? []).map((appt) => (
+                              <div key={appt.id} className="mt-0.5 text-xs text-[#f5d020]">
+                                {fmtDateTime(appt.start_at)}
+                                {appt.location ? ` · ${appt.location}` : ""}
+                              </div>
+                            ))}
+                            {schedulingJobId === j.id ? (
+                              <div className="mt-1.5 flex flex-col gap-1.5">
+                                <input
+                                  type="datetime-local"
+                                  aria-label={`${j.title} date and time`}
+                                  value={jobSchedForm.start_at}
+                                  onChange={(e) => setJobSchedForm((f) => ({ ...f, start_at: e.target.value }))}
+                                  className="rounded border border-card-border bg-[#0f131c] px-1.5 py-1 text-xs text-text-primary outline-none"
+                                />
+                                <input
+                                  placeholder="Location (optional)"
+                                  value={jobSchedForm.location}
+                                  onChange={(e) => setJobSchedForm((f) => ({ ...f, location: e.target.value }))}
+                                  className="rounded border border-card-border bg-[#0f131c] px-1.5 py-1 text-xs text-text-primary outline-none"
+                                />
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={savingJobSched || !jobSchedForm.start_at}
+                                    onClick={() => handleScheduleJob(j)}
+                                    className="rounded bg-[#f5d020] px-2 py-1 text-xs font-semibold text-[#0f131c] disabled:opacity-60"
+                                  >
+                                    {savingJobSched ? "Saving…" : "Save"}
+                                  </button>
+                                  <button type="button" onClick={() => setSchedulingJobId(null)} className="text-xs text-text-muted hover:text-text-primary">
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              j.status !== "completed" &&
+                              j.status !== "cancelled" && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSchedulingJobId(j.id);
+                                    setJobSchedForm({ start_at: "", location: "" });
+                                  }}
+                                  className="mt-1 text-xs font-semibold text-[#f5d020] hover:underline"
+                                >
+                                  {(apptsByJob.get(j.id) ?? []).length ? "+ Add time" : "Schedule"}
+                                </button>
+                              )
+                            )}
                             <div className="mt-1.5 flex items-center gap-1.5">
                               <select
                                 value={j.status}
@@ -448,7 +615,22 @@ export default function MyBusinessPage() {
                     ))}
                   </select>
                   <input type="number" placeholder="Amount (optional)" value={jobForm.amount} onChange={(e) => setJobForm((f) => ({ ...f, amount: e.target.value }))} className={inputClass} />
-                  <input type="date" value={jobForm.due_date} onChange={(e) => setJobForm((f) => ({ ...f, due_date: e.target.value }))} className={inputClass} />
+                  <input
+                    type="datetime-local"
+                    aria-label="Date and time (optional)"
+                    title="Date and time (optional) -- adds the job to the schedule"
+                    value={jobForm.start_at}
+                    onChange={(e) => setJobForm((f) => ({ ...f, start_at: e.target.value }))}
+                    className={inputClass}
+                  />
+                  {jobForm.start_at && (
+                    <input
+                      placeholder="Location (optional)"
+                      value={jobForm.location}
+                      onChange={(e) => setJobForm((f) => ({ ...f, location: e.target.value }))}
+                      className={inputClass}
+                    />
+                  )}
                   <button
                     type="button"
                     disabled={addingJob || !jobForm.title.trim()}
@@ -458,47 +640,22 @@ export default function MyBusinessPage() {
                     {addingJob ? "Adding…" : "Add Job"}
                   </button>
                 </div>
+
+                <div className="mt-6 border-t border-white/[0.08] pt-4">
+                  <h5 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">Schedule</h5>
+                  {scheduleSection}
+                </div>
               </div>
               )}
 
-              <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  {isRental ? "Scheduler (showings, inspections, move-ins)" : "Scheduler"}
-                </h4>
-                {appointments.length === 0 ? (
-                  <div className="mb-4 text-sm text-text-muted">No appointments yet.</div>
-                ) : (
-                  <div className="mb-4 flex flex-col gap-2">
-                    {appointments.map((a) => (
-                      <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/5 px-3.5 py-2.5">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm text-text-primary">{a.title}</div>
-                          <div className="truncate text-xs text-text-muted">
-                            {fmtDateTime(a.start_at)}
-                            {a.location ? ` · ${a.location}` : ""}
-                          </div>
-                        </div>
-                        <button type="button" onClick={() => handleDeleteAppointment(a)} className="text-xs text-[#ff5c7a] hover:underline">
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="flex flex-wrap items-center gap-2">
-                  <input placeholder="Title" value={apptForm.title} onChange={(e) => setApptForm((f) => ({ ...f, title: e.target.value }))} className={inputClass} />
-                  <input type="datetime-local" value={apptForm.start_at} onChange={(e) => setApptForm((f) => ({ ...f, start_at: e.target.value }))} className={inputClass} />
-                  <input placeholder="Location (optional)" value={apptForm.location} onChange={(e) => setApptForm((f) => ({ ...f, location: e.target.value }))} className={inputClass} />
-                  <button
-                    type="button"
-                    disabled={addingAppt || !apptForm.title.trim() || !apptForm.start_at}
-                    onClick={handleAddAppointment}
-                    className="rounded-md bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-60"
-                  >
-                    {addingAppt ? "Adding…" : "Add Appointment"}
-                  </button>
+              {isRental && (
+                <div className="rounded-2xl border border-card-border bg-card-bg p-5">
+                  <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                    Scheduler (showings, inspections, move-ins)
+                  </h4>
+                  {scheduleSection}
                 </div>
-              </div>
+              )}
             </>
           )}
         </div>
