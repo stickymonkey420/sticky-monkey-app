@@ -82,6 +82,10 @@ export default function EntryFormModal({
       setError("Email is required.");
       return;
     }
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("First and last name are required.");
+      return;
+    }
     const pct = Number(equityPct);
     if (!equityPct || Number.isNaN(pct) || pct <= 0) {
       setError(hasValuation ? "Equity value must be a positive dollar amount." : "Equity % must be a positive number.");
@@ -93,18 +97,19 @@ export default function EntryFormModal({
       {
         user_id: userId || null,
 
-        first_name: firstName,
-        last_name: lastName,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         email: email.trim(),
-        relationship_to_founder: relationship || null,
+        // NOT NULL columns: send "" / defaults instead of null.
+        relationship_to_founder: relationship.trim(),
         entry_type: entryType,
         equity_pct: pct,
         // Board Grant entries have no purchase price -- the fields are
         // hidden for this type below, and nulled here so a value left over
         // from switching away from Purchase never gets saved silently.
         price_paid: entryType === "board_grant" ? null : pricePaid ? Number(pricePaid) : null,
-        currency: entryType === "board_grant" ? null : currency || null,
-        acquired_on: acquiredOn || null,
+        currency: currency || "USD",
+        acquired_on: acquiredOn || new Date().toISOString().slice(0, 10),
         status,
         is_board_seat: isBoardSeat,
         notes: notes || null,
