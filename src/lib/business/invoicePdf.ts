@@ -52,7 +52,6 @@ export async function downloadInvoicePdf(opts: {
   // Header: white background (printer-friendly; works with any logo,
   // transparent or not), then a solid black rule separating it from the body.
   const headerMid = 56;
-  let titleX = M;
   if (from.logo) {
     const size = (await imageSize(from.logo)) ?? { w: 3, h: 1 };
     const maxW = 170;
@@ -62,7 +61,6 @@ export async function downloadInvoicePdf(opts: {
     const lh = size.h * scale;
     try {
       doc.addImage(from.logo, "PNG", M, headerMid - lh / 2, lw, lh, undefined, "FAST");
-      titleX = M + lw + 18;
     } catch (err) {
       console.error("logo addImage failed", err);
     }
@@ -70,7 +68,8 @@ export async function downloadInvoicePdf(opts: {
   doc.setTextColor(20, 24, 33);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(26);
-  doc.text("INVOICE", titleX, headerMid + 9);
+  // Title centered on the page, above the divider rule.
+  doc.text("INVOICE", W / 2, headerMid + 9, { align: "center" });
   doc.setFontSize(11);
   doc.text(invoice.number, W - M, headerMid - 14, { align: "right" });
   doc.setFont("helvetica", "normal");
