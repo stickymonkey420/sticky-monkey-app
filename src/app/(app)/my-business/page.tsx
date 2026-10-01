@@ -23,6 +23,7 @@ import {
 import { JOB_STATUSES, JOB_STATUS_LABELS } from "@/lib/business/types";
 import RentalManager from "@/components/rentals/RentalManager";
 import ClassSessions from "@/components/business/ClassSessions";
+import CategoryIllustration from "@/components/business/CategoryIllustration";
 import { isClassBasedBusiness } from "@/lib/business/sessionTypes";
 import { isRentalBusiness } from "@/lib/rentals/types";
 import type { BusinessAppointment, BusinessClient, BusinessJob, JobStatus, UserBusiness } from "@/lib/business/types";
@@ -504,12 +505,17 @@ export default function MyBusinessPage() {
           {active && (
             <>
               <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-                <h3 className="mb-1 text-sm font-semibold text-text-primary">
-                  {active.business_name ?? active.category_name}
-                </h3>
-                <p className={isRental ? "text-xs text-text-muted" : "mb-4 text-xs text-text-muted"}>
-                  {active.category_name} · {active.group_label}
-                </p>
+                <div className={`flex items-center gap-4 ${isRental ? "" : "mb-4"}`}>
+                  <CategoryIllustration categoryName={active.category_name} groupLabel={active.group_label} size={112} />
+                  <div className="min-w-0">
+                    <h3 className="mb-1 text-base font-semibold text-text-primary">
+                      {active.business_name ?? active.category_name}
+                    </h3>
+                    <p className="text-xs text-text-muted">
+                      {active.category_name} · {active.group_label}
+                    </p>
+                  </div>
+                </div>
                 {!isRental && (
                   <>
                 <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Clients</h4>
