@@ -610,6 +610,10 @@ export default function MyBusinessPage() {
                   userId={userId}
                   businessId={active.id}
                   businessName={active.business_name ?? active.category_name}
+                  logoDataUrl={active.logo_data_url ?? null}
+                  onLogoChange={(logo) =>
+                    setBusinesses((rows) => rows.map((r) => (r.id === active.id ? { ...r, logo_data_url: logo } : r)))
+                  }
                   clients={clients}
                 />
               )}

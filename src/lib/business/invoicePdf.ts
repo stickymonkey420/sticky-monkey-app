@@ -10,7 +10,20 @@ import { INVOICE_PAYMENT_METHOD_LABELS } from "./invoiceTypes";
 export type InvoicePdfParty = {
   name: string;
   lines?: (string | null | undefined)[];
+  // PNG data URL; shown top-left of the invoice header.
+  logo?: string | null;
 };
+
+// Natural pixel size of a data-URL image (browser only).
+function imageSize(dataUrl: string): Promise<{ w: number; h: number } | null> {
+  return new Promise((resolve) => {
+    if (typeof Image === "undefined") return resolve(null);
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
 
 function money(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -39,10 +52,29 @@ export async function downloadInvoicePdf(opts: {
   // Header band
   doc.setFillColor(15, 19, 28);
   doc.rect(0, 0, W, 96, "F");
+  // Optional logo on a white plate (so dark logos stay visible), then title.
+  let titleX = M;
+  if (from.logo) {
+    const size = (await imageSize(from.logo)) ?? { w: 3, h: 1 };
+    const maxW = 150;
+    const maxH = 52;
+    const scale = Math.min(maxW / size.w, maxH / size.h);
+    const lw = size.w * scale;
+    const lh = size.h * scale;
+    const pad = 8;
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(M - pad, 48 - lh / 2 - pad, lw + pad * 2, lh + pad * 2, 6, 6, "F");
+    try {
+      doc.addImage(from.logo, "PNG", M, 48 - lh / 2, lw, lh, undefined, "FAST");
+      titleX = M + lw + pad * 2 + 14;
+    } catch (err) {
+      console.error("logo addImage failed", err);
+    }
+  }
   doc.setTextColor(245, 208, 32);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(26);
-  doc.text("INVOICE", M, 58);
+  doc.text("INVOICE", titleX, 58);
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");

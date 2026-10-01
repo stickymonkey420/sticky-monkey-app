@@ -21,6 +21,8 @@ export type UserBusiness = {
   category_name: string;
   group_label: string;
   business_name: string | null;
+  // Optional invoice logo (PNG data URL, resized client-side).
+  logo_data_url?: string | null;
   created_at: string;
 };
 

@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { createClient } from "@/lib/supabase/client";
 import { deleteInvoice, setInvoiceStatus } from "@/lib/business/devQueries";
+import { setBusinessLogo } from "@/lib/business/queries";
+import { fileToLogoPng } from "@/lib/business/logoImage";
 import { downloadInvoicePdf, type InvoicePdfParty } from "@/lib/business/invoicePdf";
 import {
   INVOICE_PAYMENT_METHODS,
@@ -45,6 +47,8 @@ export default function InvoicesPanel({
   clients,
   projectNameById,
   from,
+  businessId,
+  onLogoChange,
   onChanged,
   onError,
 }: {
@@ -54,6 +58,8 @@ export default function InvoicesPanel({
   clients: BusinessClient[];
   projectNameById: (id: string | null) => string | null;
   from: InvoicePdfParty;
+  businessId: string;
+  onLogoChange: (logo: string | null) => void;
   onChanged: () => void;
   onError: (msg: string | null) => void;
 }) {
@@ -63,6 +69,32 @@ export default function InvoicesPanel({
   const [payMethod, setPayMethod] = useState<InvoicePaymentMethod>("bank_transfer");
   const [busyId, setBusyId] = useState<string | null>(null);
   const today = todayIso();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+
+  async function handleLogoFile(file: File | undefined) {
+    if (!file) return;
+    setLogoBusy(true);
+    onError(null);
+    const { dataUrl, error } = await fileToLogoPng(file);
+    if (error || !dataUrl) {
+      setLogoBusy(false);
+      return onError(error ?? "Could not use that image.");
+    }
+    const res = await setBusinessLogo(createClient(), businessId, dataUrl);
+    setLogoBusy(false);
+    if (res.error) return onError("Could not save the logo. Please try again.");
+    onLogoChange(dataUrl);
+  }
+
+  async function handleRemoveLogo() {
+    if (!(await confirm({ message: "Remove the logo from your invoices?", danger: true }))) return;
+    setLogoBusy(true);
+    const res = await setBusinessLogo(createClient(), businessId, null);
+    setLogoBusy(false);
+    if (res.error) return onError("Could not remove the logo. Please try again.");
+    onLogoChange(null);
+  }
 
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
   const linesByInvoice = useMemo(() => {
@@ -126,7 +158,41 @@ export default function InvoicesPanel({
 
   return (
     <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-      <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">Invoices</h4>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Invoices</h4>
+        {/* Invoice branding */}
+        <div className="flex items-center gap-3 text-xs">
+          {from.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- local data URL preview
+            <img src={from.logo} alt="Invoice logo" className="h-10 max-w-[140px] rounded bg-white object-contain p-1" />
+          ) : (
+            <span className="text-text-muted">No logo on invoices</span>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+            className="hidden"
+            onChange={(e) => {
+              void handleLogoFile(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            disabled={logoBusy}
+            onClick={() => fileRef.current?.click()}
+            className="font-semibold text-[#f5d020] hover:underline disabled:opacity-60"
+          >
+            {logoBusy ? "Saving…" : from.logo ? "Replace logo" : "Upload logo"}
+          </button>
+          {from.logo && (
+            <button type="button" disabled={logoBusy} onClick={handleRemoveLogo} className="text-[#ff5c7a] hover:underline">
+              Remove
+            </button>
+          )}
+        </div>
+      </div>
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
           { k: "Draft", v: totals.draft },

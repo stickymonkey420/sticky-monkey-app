@@ -53,6 +53,17 @@ export async function addUserBusiness(
   return { business: data as UserBusiness, error: null };
 }
 
+// Set or clear a business's invoice logo (PNG data URL, see logoImage.ts).
+export async function setBusinessLogo(
+  supabase: SupabaseClient,
+  id: string,
+  logoDataUrl: string | null
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.from("user_businesses").update({ logo_data_url: logoDataUrl }).eq("id", id);
+  if (error) console.error("setBusinessLogo failed", error);
+  return { error: error ? error.message : null };
+}
+
 export async function renameUserBusiness(
   supabase: SupabaseClient,
   id: string,

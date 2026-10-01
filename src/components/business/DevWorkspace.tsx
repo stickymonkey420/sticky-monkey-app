@@ -77,11 +77,15 @@ export default function DevWorkspace({
   userId,
   businessId,
   businessName,
+  logoDataUrl,
+  onLogoChange,
   clients,
 }: {
   userId: string;
   businessId: string;
   businessName: string;
+  logoDataUrl: string | null;
+  onLogoChange: (logo: string | null) => void;
   clients: BusinessClient[];
 }) {
   const confirm = useConfirm();
@@ -876,7 +880,9 @@ export default function DevWorkspace({
           lines={lines}
           clients={clients}
           projectNameById={(id) => (id ? projectById.get(id)?.name ?? null : null)}
-          from={{ name: businessName, lines: [userEmail] }}
+          from={{ name: businessName, lines: [userEmail], logo: logoDataUrl }}
+          businessId={businessId}
+          onLogoChange={onLogoChange}
           onChanged={reload}
           onError={setMessage}
         />
