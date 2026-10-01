@@ -24,6 +24,8 @@ import { JOB_STATUSES, JOB_STATUS_LABELS } from "@/lib/business/types";
 import RentalManager from "@/components/rentals/RentalManager";
 import ClassSessions from "@/components/business/ClassSessions";
 import DevWorkspace from "@/components/business/DevWorkspace";
+import ItWorkspace from "@/components/business/ItWorkspace";
+import { isItBusiness } from "@/lib/business/itTypes";
 import { isDevBusiness } from "@/lib/business/devTypes";
 import CategoryIllustration from "@/components/business/CategoryIllustration";
 import { isClassBasedBusiness } from "@/lib/business/sessionTypes";
@@ -150,6 +152,8 @@ export default function MyBusinessPage() {
   const isClassBased = !isRental && isClassBasedBusiness(active?.category_name);
   // App / Web Developer: Projects -> milestones + time -> invoices (PDF).
   const isDev = !isRental && !isClassBased && isDevBusiness(active?.category_name);
+  // IT / Tech Support: tickets + SLAs, time (15-min), parts, contracts, assets.
+  const isIt = !isRental && !isClassBased && !isDev && isItBusiness(active?.category_name);
   // Each job's appointments (soonest first), for the date/time shown on its card.
   const apptsByJob = useMemo(() => {
     const map = new Map<string, BusinessAppointment[]>();
@@ -618,7 +622,21 @@ export default function MyBusinessPage() {
                 />
               )}
 
-              {!isRental && !isClassBased && !isDev && (
+              {isIt && userId && (
+                <ItWorkspace
+                  key={active.id}
+                  userId={userId}
+                  businessId={active.id}
+                  businessName={active.business_name ?? active.category_name}
+                  logoDataUrl={active.logo_data_url ?? null}
+                  onLogoChange={(logo) =>
+                    setBusinesses((rows) => rows.map((r) => (r.id === active.id ? { ...r, logo_data_url: logo } : r)))
+                  }
+                  clients={clients}
+                />
+              )}
+
+              {!isRental && !isClassBased && !isDev && !isIt && (
               <div className="rounded-2xl border border-card-border bg-card-bg p-5">
                 <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">Jobs</h4>
                 <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
