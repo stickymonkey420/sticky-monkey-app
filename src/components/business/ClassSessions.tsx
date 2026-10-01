@@ -93,6 +93,8 @@ export default function ClassSessions({
   const [message, setMessage] = useState<string | null>(null);
   const [view, setView] = useState<"upcoming" | "past">("upcoming");
   const [openId, setOpenId] = useState<string | null>(null);
+  // Weekly planner: offset in weeks from the current week (Sunday start).
+  const [weekOffset, setWeekOffset] = useState(0);
 
   const [form, setForm] = useState({
     session_type: "group_class" as SessionType,
@@ -172,6 +174,37 @@ export default function ClassSessions({
     const unpaid = rows.filter((a) => !a.paid).reduce((sum, a) => sum + Number(a.amount), 0);
     return { sessions: monthSessions.length, attendees: rows.length, collected, unpaid };
   }, [sessions, attendees]);
+
+  // 7 days of the selected week, each with its sessions (time order).
+  const week = useMemo(() => {
+    const base = new Date(now);
+    base.setHours(0, 0, 0, 0);
+    base.setDate(base.getDate() - base.getDay() + weekOffset * 7);
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      return d;
+    });
+    const end = new Date(base);
+    end.setDate(base.getDate() + 7);
+    const byDay: BusinessSession[][] = days.map(() => []);
+    for (const s of sessions) {
+      const t = new Date(s.start_at);
+      if (t < base || t >= end) continue;
+      byDay[t.getDay()].push(s);
+    }
+    for (const list of byDay) list.sort((a, b) => a.start_at.localeCompare(b.start_at));
+    return { days, byDay, start: base, end };
+  }, [sessions, weekOffset, now]);
+
+  const todayKey = new Date(now).toDateString();
+
+  // Planner click: show the session in the list below with its roster open.
+  function focusSession(s: BusinessSession) {
+    setView(upcoming.includes(s) ? "upcoming" : "past");
+    if (openId !== s.id) openRoster(s);
+    setTimeout(() => document.getElementById(`session-${s.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+  }
 
   function openRoster(s: BusinessSession) {
     if (openId === s.id) {
@@ -339,10 +372,9 @@ export default function ClassSessions({
       {message && <div className="mb-3 rounded-lg bg-[#ff5c7a]/10 px-3 py-2 text-xs text-[#ff5c7a]">{message}</div>}
 
       {/* This month */}
-      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
           { k: "Sessions this month", v: String(monthStats.sessions) },
-          { k: "Attendees", v: String(monthStats.attendees) },
           { k: "Collected", v: money(monthStats.collected), color: "text-[#3ddc97]" },
           { k: "Unpaid", v: money(monthStats.unpaid), color: monthStats.unpaid > 0 ? "text-[#ff5c7a]" : undefined },
         ].map((t) => (
@@ -415,6 +447,84 @@ export default function ClassSessions({
         </button>
       </div>
 
+      {/* Weekly planner */}
+      <div className="mb-5 rounded-xl bg-white/[0.03] p-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-sm font-semibold text-text-primary">
+            {week.start.toLocaleDateString([], { month: "short", day: "numeric" })} –{" "}
+            {new Date(week.end.getTime() - 86_400_000).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <button
+              type="button"
+              aria-label="Previous week"
+              onClick={() => setWeekOffset((w) => w - 1)}
+              className="rounded-md bg-white/5 px-2.5 py-1 text-text-primary hover:bg-white/10"
+            >
+              ‹ Prev
+            </button>
+            <button
+              type="button"
+              onClick={() => setWeekOffset(0)}
+              disabled={weekOffset === 0}
+              className="rounded-md bg-white/5 px-2.5 py-1 text-text-primary hover:bg-white/10 disabled:opacity-50"
+            >
+              This week
+            </button>
+            <button
+              type="button"
+              aria-label="Next week"
+              onClick={() => setWeekOffset((w) => w + 1)}
+              className="rounded-md bg-white/5 px-2.5 py-1 text-text-primary hover:bg-white/10"
+            >
+              Next ›
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-7">
+          {week.days.map((d, i) => {
+            const isToday = d.toDateString() === todayKey;
+            const list = week.byDay[i];
+            return (
+              <div
+                key={d.toISOString()}
+                className={`min-h-[110px] rounded-lg p-2 ${isToday ? "bg-[#f5d020]/[0.08] ring-1 ring-[#f5d020]/40" : "bg-white/5"}`}
+              >
+                <div className={`mb-1.5 text-xs font-semibold ${isToday ? "text-[#f5d020]" : "text-text-muted"}`}>
+                  {d.toLocaleDateString([], { weekday: "short" })} {d.getDate()}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {list.map((s) => {
+                    const roster = rosterBySession.get(s.id) ?? [];
+                    const owed = roster.some((a) => !a.paid);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => focusSession(s)}
+                        className={`rounded-md px-1.5 py-1 text-left text-[11px] leading-tight hover:brightness-125 ${TYPE_BADGE[s.session_type]} ${
+                          s.status === "cancelled" ? "line-through opacity-60" : ""
+                        }`}
+                        title={`${s.title} -- ${SESSION_TYPE_LABELS[s.session_type]}`}
+                      >
+                        <div className="font-semibold">
+                          {new Date(s.start_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                        </div>
+                        <div className="truncate">{s.title}</div>
+                        <div className="opacity-80">
+                          {roster.length}
+                          {s.capacity != null ? `/${s.capacity}` : ""} {owed ? "· $ owed" : ""}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Upcoming / Past */}
       <div className="mb-3 flex gap-2">
         {(["upcoming", "past"] as const).map((v) => (
@@ -447,7 +557,7 @@ export default function ClassSessions({
             const open = openId === s.id;
             const sessionPrice = s.default_price == null ? null : Number(s.default_price);
             return (
-              <div key={s.id} className="rounded-xl bg-white/5">
+              <div key={s.id} id={`session-${s.id}`} className="scroll-mt-24 rounded-xl bg-white/5">
                 <div className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
