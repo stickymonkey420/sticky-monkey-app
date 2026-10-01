@@ -23,6 +23,8 @@ import {
 import { JOB_STATUSES, JOB_STATUS_LABELS } from "@/lib/business/types";
 import RentalManager from "@/components/rentals/RentalManager";
 import ClassSessions from "@/components/business/ClassSessions";
+import DevWorkspace from "@/components/business/DevWorkspace";
+import { isDevBusiness } from "@/lib/business/devTypes";
 import CategoryIllustration from "@/components/business/CategoryIllustration";
 import { isClassBasedBusiness } from "@/lib/business/sessionTypes";
 import { isRentalBusiness } from "@/lib/rentals/types";
@@ -146,6 +148,8 @@ export default function MyBusinessPage() {
   // Yoga / fitness businesses run classes with many clients per session,
   // so they get Classes & Sessions in place of the one-client Jobs board.
   const isClassBased = !isRental && isClassBasedBusiness(active?.category_name);
+  // App / Web Developer: Projects -> milestones + time -> invoices (PDF).
+  const isDev = !isRental && !isClassBased && isDevBusiness(active?.category_name);
   // Each job's appointments (soonest first), for the date/time shown on its card.
   const apptsByJob = useMemo(() => {
     const map = new Map<string, BusinessAppointment[]>();
@@ -600,7 +604,17 @@ export default function MyBusinessPage() {
                 <ClassSessions key={active.id} userId={userId} businessId={active.id} clients={clients} />
               )}
 
-              {!isRental && !isClassBased && (
+              {isDev && userId && (
+                <DevWorkspace
+                  key={active.id}
+                  userId={userId}
+                  businessId={active.id}
+                  businessName={active.business_name ?? active.category_name}
+                  clients={clients}
+                />
+              )}
+
+              {!isRental && !isClassBased && !isDev && (
               <div className="rounded-2xl border border-card-border bg-card-bg p-5">
                 <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">Jobs</h4>
                 <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
