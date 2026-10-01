@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
+  canManageLeague,
   fetchDraftPicks,
   fetchDraftPool,
   fetchLeagueMembers,
@@ -28,6 +29,7 @@ import LeagueHeatmap from "./LeagueHeatmap";
 import LeagueSectorBattle from "./LeagueSectorBattle";
 import LeagueTopMovers from "./LeagueTopMovers";
 import LeagueSeasonChart from "./LeagueSeasonChart";
+import LeagueEditModal from "./LeagueEditModal";
 
 // League: season-long snake-draft fantasy stock league (see
 // lib/gameAfi/leagueTypes.ts and migration add_game_afi_league). Setup and
@@ -47,10 +49,16 @@ export default function LeaguePanel() {
   const [positions, setPositions] = useState<LeaguePositionRow[]>([]);
   const [snapshots, setSnapshots] = useState<LeagueSnapshotRow[]>([]);
 
-  const league = leagues[0] ?? null;
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [canManage, setCanManage] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  // Newest league by default; a picker appears when there's more than one.
+  const league = leagues.find((l) => l.id === selectedId) ?? leagues[0] ?? null;
 
   const loadLeagueDetail = useCallback(async (l: LeagueSummary) => {
     const supabase = createClient();
+    canManageLeague(supabase, l.id).then(setCanManage);
     if (l.status === "setup" || l.status === "drafting") {
       const [m, oc, p, pk] = await Promise.all([
         fetchLeagueMembers(supabase, l.id),
@@ -84,7 +92,9 @@ export default function LeaguePanel() {
     }
     const ls = await fetchLeagues(supabase);
     setLeagues(ls);
-    if (ls[0]) await loadLeagueDetail(ls[0]);
+    const current = ls.find((l) => l.id === selectedId) ?? ls[0];
+    if (!current) setSelectedId(null);
+    if (current) await loadLeagueDetail(current);
     setLoading(false);
   }
 
@@ -112,6 +122,12 @@ export default function LeaguePanel() {
     setLeagues(ls);
   }
 
+  async function selectLeague(id: string) {
+    setSelectedId(id);
+    const l = leagues.find((x) => x.id === id);
+    if (l) await loadLeagueDetail(l);
+  }
+
   if (loading) {
     return (
       <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">Loading…</div>
@@ -136,8 +152,27 @@ export default function LeaguePanel() {
 
   return (
     <div className="flex flex-col gap-4">
-      {isAdmin && (
-        <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {leagues.length > 1 && (
+          <select
+            aria-label="League"
+            value={league.id}
+            onChange={(e) => selectLeague(e.target.value)}
+            className="mr-auto rounded-md border border-card-border bg-[#0f131c] px-2.5 py-1.5 text-xs text-text-primary outline-none"
+          >
+            {leagues.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        )}
+        {canManage && (
+          <button type="button" onClick={() => setEditing(true)} className="text-xs text-[#4f8cff] hover:underline">
+            ✎ Edit / delete league
+          </button>
+        )}
+        {isAdmin && (
           <button
             type="button"
             onClick={() => setShowCreate((v) => !v)}
@@ -145,7 +180,23 @@ export default function LeaguePanel() {
           >
             {showCreate ? "Cancel" : "+ New League"}
           </button>
-        </div>
+        )}
+      </div>
+      {editing && (
+        <LeagueEditModal
+          league={league}
+          members={members}
+          onClose={() => setEditing(false)}
+          onSaved={async () => {
+            setEditing(false);
+            await loadAll();
+          }}
+          onDeleted={async () => {
+            setEditing(false);
+            setSelectedId(null);
+            await loadAll();
+          }}
+        />
       )}
       {showCreate && (
         <LeagueSetupForm

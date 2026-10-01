@@ -238,3 +238,32 @@ export async function undoLastPick(supabase: SupabaseClient, leagueId: string): 
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: "Last pick undone." };
 }
+
+// Commissioner = league creator or a league admin (game_afi_league_can_manage).
+export async function canManageLeague(supabase: SupabaseClient, leagueId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("game_afi_league_can_manage", { p_league_id: leagueId });
+  if (error) return false;
+  return data === true;
+}
+
+// Name any time; roster size / members (handles, in draft order) only before the first pick.
+export async function updateLeague(
+  supabase: SupabaseClient,
+  leagueId: string,
+  input: { name: string; rosterSize: number; handles: string[] | null }
+): Promise<{ ok: boolean; message: string }> {
+  const { error } = await supabase.rpc("game_afi_league_update", {
+    p_league_id: leagueId,
+    p_name: input.name,
+    p_roster_size: input.rosterSize,
+    p_handles: input.handles,
+  });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: "League updated." };
+}
+
+export async function deleteLeague(supabase: SupabaseClient, leagueId: string): Promise<{ ok: boolean; message: string }> {
+  const { error } = await supabase.rpc("game_afi_league_delete", { p_league_id: leagueId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: "League deleted." };
+}
