@@ -665,13 +665,13 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           sign-out. The wrapper is at least one screen tall and grows with
           its content (no inner scrollbar, nothing hidden); both side panels
           stretch to the page height so they still match. */}
-      <div className="hidden min-h-[calc(100vh-2rem)] w-64 shrink-0 flex-col gap-10 md:flex">
+      <div className="hidden min-h-[calc(100vh-2rem)] w-64 shrink-0 flex-col gap-5 md:flex">
         {/* Sizes/spacing pulled via getComputedStyle off the live site's
             .logo-wrapper: 64px-tall head icon, 188px-wide wordmark, a
             25px/1px divider rule, then the FINANCE label at 13px/300
             weight/0.35em tracking -- not the placeholder sizes this used
             before. */}
-        <div className="flex shrink-0 flex-col items-center px-2">
+        <div className="flex shrink-0 flex-col items-center px-2 pt-5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={LOGO_HEAD_URL} alt="" className="mb-0.5 h-16 w-auto" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
