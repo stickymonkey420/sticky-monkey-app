@@ -70,7 +70,7 @@ export default function LeagueSetupForm({ onCreated }: { onCreated: () => void }
       <textarea
         value={handlesText}
         onChange={(e) => setHandlesText(e.target.value)}
-        placeholder={"Member handles, one per line (draft order)\ntannor\nsteve\nmatt"}
+        placeholder={"Member handles, one per line (draft order)\nhandle1\nhandle2\nhandle3"}
         rows={5}
         className="mt-3 w-full rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none"
       />
