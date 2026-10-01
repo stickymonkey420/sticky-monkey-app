@@ -27,6 +27,7 @@ export type CapTableEntry = {
   last_name: string | null;
   relationship_to_founder: string | null;
   email: string;
+  individual_cap_override: number | string | null;
 };
 
 // Mirrors check_cap_table_limits() exactly: a 49% pool for non-owner

@@ -22,6 +22,7 @@ import {
   updateCompanySettings,
   type CapTableEntryInput,
   type CompanySettings,
+  type CompanySettingsInput,
   type ProfileOption,
 } from "@/lib/investors/queries";
 import { computePoolSummary } from "@/lib/investors/calc";
@@ -114,7 +115,7 @@ export default function InvestorsPage() {
     return result;
   }
 
-  async function handleSaveValuation(input: { valuation: number; total_shares: number }) {
+  async function handleSaveValuation(input: CompanySettingsInput) {
     if (!userId) return { error: "Not signed in." };
     const supabase = createClient();
     const result = await updateCompanySettings(supabase, userId, input);
@@ -138,7 +139,7 @@ export default function InvestorsPage() {
     showStatus("Entry deleted.", false);
   }
 
-  const summary = computePoolSummary(allEntries, directorEmails);
+  const summary = computePoolSummary(allEntries, directorEmails, company?.investor_pool_pct ?? 49);
 
   return (
     <>
@@ -168,11 +169,11 @@ export default function InvestorsPage() {
       ) : (
         <div className="flex flex-col gap-6">
           <CompanyValuationCard settings={company} canEdit={isDirector} onSave={handleSaveValuation} />
-          <YourEquityTable entries={myEntries} valuation={company?.valuation ?? null} totalShares={company?.total_shares ?? null} />
+          <YourEquityTable entries={myEntries} valuation={company?.valuation ?? null} totalShares={company?.total_shares ?? null} capPct={company?.individual_cap_pct ?? 8} />
 
           {isDirector && (
             <>
-              <PoolSummaryCards summary={summary} />
+              <PoolSummaryCards summary={summary} poolPct={company?.investor_pool_pct ?? 49} seatLimit={company?.board_seat_limit ?? 7} />
               <OwnersTable owners={summary.owners} valuation={company?.valuation ?? null} totalShares={company?.total_shares ?? null} />
               <ManageEntriesTable entries={allEntries} onEdit={(e) => setEditEntry(e)} onDelete={handleDelete} />
             </>
@@ -185,6 +186,7 @@ export default function InvestorsPage() {
           entry={editEntry ?? null}
           profileOptions={profileOptions}
           valuation={company?.valuation ?? null}
+          defaultCap={company?.individual_cap_pct ?? 8}
           onClose={() => setEditEntry(undefined)}
           onSave={handleSaveEntry}
         />

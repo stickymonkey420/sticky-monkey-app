@@ -15,8 +15,10 @@ export default function YourEquityTable({
   entries,
   valuation,
   totalShares,
+  capPct,
 }: {
   entries: CapTableEntry[];
+  capPct: number;
   valuation: number | null;
   totalShares: number | null;
 }) {
@@ -28,7 +30,7 @@ export default function YourEquityTable({
       <h3 className="mb-1 text-sm font-semibold text-text-primary">Your Equity</h3>
       <p className="mb-4 text-xs text-text-muted">
         Equity in Sticky Monkey Finance is currently reserved for a small group of hand-picked board members, subject
-        to a 5-year lockup and an 8% individual holding cap.
+        to a 5-year lockup and a per-person holding cap of {capPct}%.
       </p>
       {entries.length === 0 ? (
         <div className="text-sm text-text-muted">You don&apos;t currently hold any equity.</div>

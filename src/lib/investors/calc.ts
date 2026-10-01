@@ -1,4 +1,3 @@
-import { INVESTOR_POOL_PCT } from "./types";
 import type { CapTableEntry } from "./types";
 
 export type OwnerRow = { email: string; firstName: string; lastName: string; ownershipPct: number };
@@ -15,13 +14,13 @@ export type PoolSummary = {
 // identified by email match against profiles.role = 'app_director', the
 // exact same join the trigger performs, so these numbers agree with what
 // the trigger will actually allow.
-export function computePoolSummary(entries: CapTableEntry[], directorEmails: Set<string>): PoolSummary {
+export function computePoolSummary(entries: CapTableEntry[], directorEmails: Set<string>, poolPct: number): PoolSummary {
   const confirmed = entries.filter((e) => e.status === "confirmed");
   const totalConfirmedEquityPct = confirmed.reduce((sum, e) => sum + Number(e.equity_pct), 0);
 
   const investorConfirmed = confirmed.filter((e) => !directorEmails.has((e.email || "").toLowerCase()));
   const poolUsedPct = investorConfirmed.reduce((sum, e) => sum + Number(e.equity_pct), 0);
-  const poolRemainingPct = INVESTOR_POOL_PCT - poolUsedPct;
+  const poolRemainingPct = poolPct - poolUsedPct;
 
   const byEmail = new Map<string, OwnerRow>();
   for (const e of investorConfirmed) {

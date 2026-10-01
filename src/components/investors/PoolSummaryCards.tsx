@@ -1,16 +1,23 @@
-import { BOARD_SEAT_LIMIT, INVESTOR_POOL_PCT } from "@/lib/investors/types";
 import { fmtPct } from "@/lib/investors/calc";
 import type { PoolSummary } from "@/lib/investors/calc";
 
 // App Director-only. Mirrors check_cap_table_limits()'s own numbers (see
 // lib/investors/calc.ts) -- read-only, the trigger is what actually
 // enforces these caps.
-export default function PoolSummaryCards({ summary }: { summary: PoolSummary }) {
+export default function PoolSummaryCards({
+  summary,
+  poolPct,
+  seatLimit,
+}: {
+  summary: PoolSummary;
+  poolPct: number;
+  seatLimit: number;
+}) {
   const tiles = [
     { label: "Total Confirmed Equity", value: fmtPct(summary.totalConfirmedEquityPct) },
-    { label: "Pool Used", value: `${fmtPct(summary.poolUsedPct)} of ${INVESTOR_POOL_PCT}%` },
+    { label: "Pool Used", value: `${fmtPct(summary.poolUsedPct)} of ${poolPct}%` },
     { label: "Pool Remaining", value: fmtPct(summary.poolRemainingPct) },
-    { label: "Board Seats", value: `${summary.boardSeatsUsed} / ${BOARD_SEAT_LIMIT}` },
+    { label: "Board Seats", value: `${summary.boardSeatsUsed} / ${seatLimit}` },
   ];
   return (
     <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

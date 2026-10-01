@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { money } from "@/lib/investors/calc";
-import type { CompanySettings } from "@/lib/investors/queries";
+import type { CompanySettings, CompanySettingsInput } from "@/lib/investors/queries";
 
 // Company Valuation card (restored from the Webflow Investors page).
 // Everyone who can read company_settings (director + investors) sees it;
@@ -14,11 +14,15 @@ export default function CompanyValuationCard({
 }: {
   settings: CompanySettings | null;
   canEdit: boolean;
-  onSave: (input: { valuation: number; total_shares: number }) => Promise<{ error: string | null }>;
+  onSave: (input: CompanySettingsInput) => Promise<{ error: string | null }>;
 }) {
   const [editing, setEditing] = useState(false);
   const [valuation, setValuation] = useState("");
   const [shares, setShares] = useState("");
+  const [pool, setPool] = useState("");
+  const [cap, setCap] = useState("");
+  const [seats, setSeats] = useState("");
+  const [boardOnly, setBoardOnly] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -31,6 +35,10 @@ export default function CompanyValuationCard({
   function startEdit() {
     setValuation(v == null ? "" : String(v));
     setShares(s == null ? "" : String(s));
+    setPool(String(settings?.investor_pool_pct ?? 49));
+    setCap(String(settings?.individual_cap_pct ?? 8));
+    setSeats(String(settings?.board_seat_limit ?? 7));
+    setBoardOnly(settings?.board_only ?? true);
     setErr(null);
     setEditing(true);
   }
@@ -40,10 +48,24 @@ export default function CompanyValuationCard({
     const ns = Number(shares);
     if (!Number.isFinite(nv) || nv < 0) return setErr("Valuation must be zero or more.");
     if (!Number.isFinite(ns) || ns <= 0 || !Number.isInteger(ns)) return setErr("Total shares must be a whole number above zero.");
+    const np = Number(pool);
+    const nc = Number(cap);
+    const nseat = Number(seats);
+    if (!Number.isFinite(np) || np <= 0 || np >= 100) return setErr("Investor pool must be between 0 and 100%.");
+    if (!Number.isFinite(nc) || nc <= 0 || nc > 100) return setErr("Per-person cap must be between 0 and 100%.");
+    if (!Number.isInteger(nseat) || nseat < 0) return setErr("Board seats must be a whole number.");
     setBusy(true);
-    const { error } = await onSave({ valuation: nv, total_shares: ns });
+    const { error } = await onSave({
+      valuation: nv,
+      total_shares: ns,
+      investor_pool_pct: np,
+      individual_cap_pct: nc,
+      board_seat_limit: nseat,
+      board_only: boardOnly,
+    });
     setBusy(false);
-    if (error) return setErr("Could not save. Please try again.");
+    // The DB guard's messages are user-readable (e.g. "pool can't go below X%").
+    if (error) return setErr(error);
     setEditing(false);
   }
 
@@ -77,6 +99,27 @@ export default function CompanyValuationCard({
               <div className="mt-1 py-2 text-sm font-semibold text-text-primary">{previewPps == null ? "—" : fmtPps(previewPps)}</div>
             </div>
           </div>
+          <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-text-muted">Cap table limits</div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <label className="text-xs text-text-muted">
+              Investor pool %
+              <input type="number" min="0.1" max="99.9" step="0.1" value={pool} onChange={(e) => setPool(e.target.value)} className={`${input} mt-1`} />
+              <span className="mt-1 block">You keep {Number(pool) > 0 && Number(pool) < 100 ? `${(100 - Number(pool)).toFixed(1)}%` : "—"}</span>
+            </label>
+            <label className="text-xs text-text-muted">
+              Per-person cap %
+              <input type="number" min="0.1" max="100" step="0.1" value={cap} onChange={(e) => setCap(e.target.value)} className={`${input} mt-1`} />
+              <span className="mt-1 block">Override per person on their entry</span>
+            </label>
+            <label className="text-xs text-text-muted">
+              Board seats
+              <input type="number" min="0" step="1" value={seats} onChange={(e) => setSeats(e.target.value)} className={`${input} mt-1`} />
+            </label>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-text-primary">
+            <input type="checkbox" checked={boardOnly} onChange={(e) => setBoardOnly(e.target.checked)} className="h-4 w-4" />
+            Board members only (equity requires a board seat)
+          </label>
           {err && <div className="text-xs text-[#e05656]">{err}</div>}
           <div className="flex gap-2">
             <button
@@ -98,6 +141,20 @@ export default function CompanyValuationCard({
           <Tile label="Valuation" value={v == null ? "—" : money(v, "USD")} />
           <Tile label="Total Shares" value={s == null ? "—" : s.toLocaleString("en-US")} />
           <Tile label="Price per Share" value={pps == null ? "—" : fmtPps(pps)} />
+        </div>
+      )}
+      {settings && canEdit && !editing && (
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
+          <span>
+            Investor pool <b className="text-text-primary">{settings.investor_pool_pct}%</b> (you keep {100 - settings.investor_pool_pct}%)
+          </span>
+          <span>
+            Per-person cap <b className="text-text-primary">{settings.individual_cap_pct}%</b>
+          </span>
+          <span>
+            Board seats <b className="text-text-primary">{settings.board_seat_limit}</b>
+          </span>
+          <span>{settings.board_only ? "Board members only" : "Open to non-board investors"}</span>
         </div>
       )}
       {settings?.updated_at && !editing && (

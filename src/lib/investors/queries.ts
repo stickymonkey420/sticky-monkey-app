@@ -81,6 +81,7 @@ export type CapTableEntryInput = {
   status: import("./types").EntryStatus;
   is_board_seat: boolean;
   notes: string | null;
+  individual_cap_override: number | null;
 };
 
 // Insert/update both surface the raw Postgres error message on failure --
@@ -114,26 +115,41 @@ export async function deleteCapTableEntry(supabase: SupabaseClient, id: string):
 // ---- Company valuation (company_settings, single row id=true) ----
 // SELECT: app_director or anyone with a cap_table_entries row.
 // UPDATE: app_director only (RLS company_settings_update_director).
-export type CompanySettings = { valuation: number; total_shares: number; updated_at: string | null };
+export type CompanyLimits = {
+  investor_pool_pct: number;
+  individual_cap_pct: number;
+  board_seat_limit: number;
+  board_only: boolean;
+};
+export type CompanySettings = CompanyLimits & { valuation: number; total_shares: number; updated_at: string | null };
+export type CompanySettingsInput = CompanyLimits & { valuation: number; total_shares: number };
 
 export async function fetchCompanySettings(supabase: SupabaseClient): Promise<CompanySettings | null> {
   const { data, error } = await supabase
     .from("company_settings")
-    .select("valuation,total_shares,updated_at")
+    .select("valuation,total_shares,updated_at,investor_pool_pct,individual_cap_pct,board_seat_limit,board_only")
     .eq("id", true)
     .maybeSingle();
   if (error || !data) {
     if (error) console.error("fetchCompanySettings failed", error);
     return null;
   }
-  const d = data as { valuation: number | string; total_shares: number | string; updated_at: string | null };
-  return { valuation: Number(d.valuation), total_shares: Number(d.total_shares), updated_at: d.updated_at };
+  const d = data as Record<string, unknown>;
+  return {
+    valuation: Number(d.valuation),
+    total_shares: Number(d.total_shares),
+    updated_at: (d.updated_at as string | null) ?? null,
+    investor_pool_pct: Number(d.investor_pool_pct ?? 49),
+    individual_cap_pct: Number(d.individual_cap_pct ?? 8),
+    board_seat_limit: Number(d.board_seat_limit ?? 7),
+    board_only: d.board_only !== false,
+  };
 }
 
 export async function updateCompanySettings(
   supabase: SupabaseClient,
   userId: string,
-  input: { valuation: number; total_shares: number }
+  input: CompanySettingsInput
 ): Promise<MutationResult> {
   const { error } = await supabase
     .from("company_settings")

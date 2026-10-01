@@ -29,12 +29,14 @@ export default function EntryFormModal({
   entry,
   profileOptions,
   valuation,
+  defaultCap,
   onClose,
   onSave,
 }: {
   entry: CapTableEntry | null;
   profileOptions: ProfileOption[];
   valuation: number | null;
+  defaultCap: number;
   onClose: () => void;
   onSave: (input: CapTableEntryInput, id: string | null) => Promise<{ error: string | null }>;
 }) {
@@ -60,6 +62,7 @@ export default function EntryFormModal({
   const [status, setStatus] = useState<EntryStatus>(entry?.status ?? "pending");
   const [isBoardSeat, setIsBoardSeat] = useState(entry?.is_board_seat ?? false);
   const [notes, setNotes] = useState(entry?.notes ?? "");
+  const [capOverride, setCapOverride] = useState(entry?.individual_cap_override != null ? String(Number(entry.individual_cap_override)) : "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,6 +94,11 @@ export default function EntryFormModal({
       setError(hasValuation ? "Equity value must be a positive dollar amount." : "Equity % must be a positive number.");
       return;
     }
+    const override = capOverride.trim() ? Number(capOverride) : null;
+    if (override != null && (!Number.isFinite(override) || override <= 0 || override > 100)) {
+      setError("Personal cap must be between 0 and 100%.");
+      return;
+    }
     setSaving(true);
     setError(null);
     const { error: err } = await onSave(
@@ -113,6 +121,7 @@ export default function EntryFormModal({
         status,
         is_board_seat: isBoardSeat,
         notes: notes || null,
+        individual_cap_override: override,
       },
       entry?.id ?? null
     );
@@ -255,6 +264,20 @@ export default function EntryFormModal({
               {acquiredOn ? fmtLockupPreview(acquiredOn) : "Set once Acquired On is filled in"}
             </div>
           </div>
+        </div>
+
+        <div className="mb-3">
+          <label className="mb-1.5 block text-xs text-text-muted">Personal cap override % (optional)</label>
+          <input
+            type="number"
+            step="0.1"
+            min="0.1"
+            max="100"
+            placeholder={`Default: ${defaultCap}%`}
+            value={capOverride}
+            onChange={(e) => setCapOverride(e.target.value)}
+            className={FIELD_CLASS}
+          />
         </div>
 
         <div className="mb-3">
