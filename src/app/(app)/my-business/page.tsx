@@ -28,6 +28,7 @@ import ItWorkspace from "@/components/business/ItWorkspace";
 import { isItBusiness } from "@/lib/business/itTypes";
 import { isDevBusiness } from "@/lib/business/devTypes";
 import CategoryIllustration from "@/components/business/CategoryIllustration";
+import FeedbackButton from "@/components/feedback/FeedbackButton";
 import { isClassBasedBusiness } from "@/lib/business/sessionTypes";
 import { isRentalBusiness } from "@/lib/rentals/types";
 import type { BusinessAppointment, BusinessClient, BusinessJob, JobStatus, UserBusiness } from "@/lib/business/types";
@@ -521,6 +522,16 @@ export default function MyBusinessPage() {
                     <p className="text-xs text-text-muted">
                       {active.category_name} · {active.group_label}
                     </p>
+                    {userId && (
+                      <div className="mt-2">
+                        <FeedbackButton
+                          userId={userId}
+                          businessId={active.id}
+                          businessName={active.business_name ?? active.category_name}
+                          categoryName={active.category_name}
+                        />
+                      </div>
+                    )}
                   </div>
                   <CategoryIllustration categoryName={active.category_name} groupLabel={active.group_label} size={112} />
                 </div>
