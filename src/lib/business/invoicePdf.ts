@@ -49,38 +49,38 @@ export async function downloadInvoicePdf(opts: {
   const M = 48;
   let y = M;
 
-  // Header band
-  doc.setFillColor(15, 19, 28);
-  doc.rect(0, 0, W, 96, "F");
-  // Optional logo on a white plate (so dark logos stay visible), then title.
+  // Header: white background (printer-friendly; works with any logo,
+  // transparent or not), then a solid black rule separating it from the body.
+  const headerMid = 56;
   let titleX = M;
   if (from.logo) {
     const size = (await imageSize(from.logo)) ?? { w: 3, h: 1 };
-    const maxW = 150;
-    const maxH = 52;
+    const maxW = 170;
+    const maxH = 60;
     const scale = Math.min(maxW / size.w, maxH / size.h);
     const lw = size.w * scale;
     const lh = size.h * scale;
-    const pad = 8;
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(M - pad, 48 - lh / 2 - pad, lw + pad * 2, lh + pad * 2, 6, 6, "F");
     try {
-      doc.addImage(from.logo, "PNG", M, 48 - lh / 2, lw, lh, undefined, "FAST");
-      titleX = M + lw + pad * 2 + 14;
+      doc.addImage(from.logo, "PNG", M, headerMid - lh / 2, lw, lh, undefined, "FAST");
+      titleX = M + lw + 18;
     } catch (err) {
       console.error("logo addImage failed", err);
     }
   }
-  doc.setTextColor(245, 208, 32);
+  doc.setTextColor(20, 24, 33);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(26);
-  doc.text("INVOICE", titleX, 58);
-  doc.setTextColor(255, 255, 255);
+  doc.text("INVOICE", titleX, headerMid + 9);
   doc.setFontSize(11);
+  doc.text(invoice.number, W - M, headerMid - 14, { align: "right" });
   doc.setFont("helvetica", "normal");
-  doc.text(invoice.number, W - M, 42, { align: "right" });
-  doc.text(`Issued ${fmtDate(invoice.issue_date)}`, W - M, 58, { align: "right" });
-  doc.text(`Due ${fmtDate(invoice.due_date)}`, W - M, 74, { align: "right" });
+  doc.setTextColor(80, 86, 104);
+  doc.text(`Issued ${fmtDate(invoice.issue_date)}`, W - M, headerMid + 2, { align: "right" });
+  doc.text(`Due ${fmtDate(invoice.due_date)}`, W - M, headerMid + 18, { align: "right" });
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(2);
+  doc.line(M, 100, W - M, 100);
+  doc.setLineWidth(1);
   y = 130;
 
   // From / Bill to
