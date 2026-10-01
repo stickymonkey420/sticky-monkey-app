@@ -505,8 +505,7 @@ export default function MyBusinessPage() {
           {active && (
             <>
               <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-                <div className={`flex items-center gap-4 ${isRental ? "" : "mb-4"}`}>
-                  <CategoryIllustration categoryName={active.category_name} groupLabel={active.group_label} size={112} />
+                <div className={`flex items-start justify-between gap-4 ${isRental ? "" : "mb-4"}`}>
                   <div className="min-w-0">
                     <h3 className="mb-1 text-base font-semibold text-text-primary">
                       {active.business_name ?? active.category_name}
@@ -515,6 +514,7 @@ export default function MyBusinessPage() {
                       {active.category_name} · {active.group_label}
                     </p>
                   </div>
+                  <CategoryIllustration categoryName={active.category_name} groupLabel={active.group_label} size={112} />
                 </div>
                 {!isRental && (
                   <>
