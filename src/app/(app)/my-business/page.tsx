@@ -17,6 +17,7 @@ import {
   fetchBusinessJobs,
   fetchUserBusinesses,
   renameUserBusiness,
+  updateBusinessClient,
   updateJobStatus,
 } from "@/lib/business/queries";
 import { JOB_STATUSES, JOB_STATUS_LABELS } from "@/lib/business/types";
@@ -66,6 +67,9 @@ export default function MyBusinessPage() {
 
   const [clientForm, setClientForm] = useState({ name: "", email: "", phone: "", notes: "" });
   const [addingClient, setAddingClient] = useState(false);
+  const [editingClientId, setEditingClientId] = useState<string | null>(null);
+  const [clientEdit, setClientEdit] = useState({ name: "", email: "", phone: "" });
+  const [savingClient, setSavingClient] = useState(false);
 
   const [jobForm, setJobForm] = useState({ title: "", client_id: "", amount: "", start_at: "", location: "", notes: "" });
   // Inline "Schedule" on an existing job card: which job is open + its fields.
@@ -215,6 +219,28 @@ export default function MyBusinessPage() {
     }
     setClients((rows) => [...rows, client]);
     setClientForm({ name: "", email: "", phone: "", notes: "" });
+  }
+
+  function startEditClient(c: BusinessClient) {
+    setEditingClientId(c.id);
+    setClientEdit({ name: c.name, email: c.email ?? "", phone: c.phone ?? "" });
+  }
+
+  async function handleSaveClient(c: BusinessClient) {
+    if (savingClient || !clientEdit.name.trim()) return;
+    setSavingClient(true);
+    const { client, error } = await updateBusinessClient(createClient(), c.id, {
+      name: clientEdit.name.trim(),
+      email: clientEdit.email.trim() || null,
+      phone: clientEdit.phone.trim() || null,
+    });
+    setSavingClient(false);
+    if (error || !client) {
+      setMessage("Could not save that client. Please try again.");
+      return;
+    }
+    setClients((rows) => rows.map((r) => (r.id === c.id ? client : r)));
+    setEditingClientId(null);
   }
 
   async function handleDeleteClient(c: BusinessClient) {
@@ -494,15 +520,54 @@ export default function MyBusinessPage() {
                 ) : (
                   <div className="mb-4 flex flex-col gap-2">
                     {clients.map((c) => (
-                      <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/5 px-3.5 py-2.5">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm text-text-primary">{c.name}</div>
-                          <div className="truncate text-xs text-text-muted">{[c.email, c.phone].filter(Boolean).join(" · ")}</div>
+                      editingClientId === c.id ? (
+                        <div key={c.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-white/5 px-3.5 py-2.5">
+                          <input
+                            aria-label="Client name"
+                            value={clientEdit.name}
+                            onChange={(e) => setClientEdit((f) => ({ ...f, name: e.target.value }))}
+                            className={inputClass}
+                          />
+                          <input
+                            placeholder="Email (optional)"
+                            value={clientEdit.email}
+                            onChange={(e) => setClientEdit((f) => ({ ...f, email: e.target.value }))}
+                            className={inputClass}
+                          />
+                          <input
+                            placeholder="Phone (optional)"
+                            value={clientEdit.phone}
+                            onChange={(e) => setClientEdit((f) => ({ ...f, phone: e.target.value }))}
+                            className={inputClass}
+                          />
+                          <button
+                            type="button"
+                            disabled={savingClient || !clientEdit.name.trim()}
+                            onClick={() => handleSaveClient(c)}
+                            className="rounded-md bg-[#f5d020] px-3 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-60"
+                          >
+                            {savingClient ? "Saving…" : "Save"}
+                          </button>
+                          <button type="button" onClick={() => setEditingClientId(null)} className="text-sm text-text-muted hover:text-text-primary">
+                            Cancel
+                          </button>
                         </div>
-                        <button type="button" onClick={() => handleDeleteClient(c)} className="text-xs text-[#ff5c7a] hover:underline">
-                          Remove
-                        </button>
-                      </div>
+                      ) : (
+                        <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/5 px-3.5 py-2.5">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm text-text-primary">{c.name}</div>
+                            <div className="truncate text-xs text-text-muted">{[c.email, c.phone].filter(Boolean).join(" · ")}</div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <button type="button" onClick={() => startEditClient(c)} className="text-xs font-semibold text-[#f5d020] hover:underline">
+                              Edit
+                            </button>
+                            <button type="button" onClick={() => handleDeleteClient(c)} className="text-xs text-[#ff5c7a] hover:underline">
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      )
                     ))}
                   </div>
                 )}

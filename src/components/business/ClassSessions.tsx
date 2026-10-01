@@ -10,6 +10,7 @@ import {
   deleteSession,
   fetchAttendees,
   fetchSessions,
+  updateAttendee,
   updateAttendeePaid,
   updateSessionStatus,
 } from "@/lib/business/sessionQueries";
@@ -103,6 +104,10 @@ export default function ClassSessions({
     amount: "",
   });
   const [addingAtt, setAddingAtt] = useState(false);
+  // Inline edit of one roster line.
+  const [editAttId, setEditAttId] = useState<string | null>(null);
+  const [attEdit, setAttEdit] = useState({ name: "", payment_type: "drop_in" as PaymentType, payment_method: "", amount: "", paid: true });
+  const [savingAtt, setSavingAtt] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -253,6 +258,48 @@ export default function ClassSessions({
     setAttForm((f) => ({ ...f, clientChoice: "", newName: "" }));
   }
 
+  // Linked clients always show their current name from the Clients list.
+  const clientNameById = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
+  const displayName = (a: SessionAttendee) => (a.client_id && clientNameById.get(a.client_id)) || a.client_name;
+
+  function startEditAttendee(a: SessionAttendee) {
+    setEditAttId(a.id);
+    setAttEdit({
+      name: displayName(a),
+      payment_type: a.payment_type,
+      payment_method: a.payment_method ?? "",
+      amount: String(Number(a.amount)),
+      paid: a.paid,
+    });
+  }
+
+  async function handleSaveAttendee(a: SessionAttendee) {
+    if (savingAtt) return;
+    const amount = attEdit.amount.trim() ? Number(attEdit.amount) : 0;
+    if (!Number.isFinite(amount) || amount < 0) {
+      setMessage("Amount must be zero or more.");
+      return;
+    }
+    const name = a.client_id ? displayName(a) : attEdit.name.trim();
+    if (!name) return;
+    setSavingAtt(true);
+    setMessage(null);
+    const { attendee, error } = await updateAttendee(createClient(), a.id, {
+      client_name: name,
+      payment_type: attEdit.payment_type,
+      payment_method: (attEdit.payment_method || null) as PaymentMethod | null,
+      amount,
+      paid: attEdit.paid,
+    });
+    setSavingAtt(false);
+    if (error || !attendee) {
+      setMessage("Could not save that line. Please try again.");
+      return;
+    }
+    setAttendees((rows) => rows.map((r) => (r.id === a.id ? attendee : r)));
+    setEditAttId(null);
+  }
+
   async function togglePaid(a: SessionAttendee) {
     const prev = attendees;
     setAttendees((rows) => rows.map((r) => (r.id === a.id ? { ...r, paid: !a.paid } : r)));
@@ -264,7 +311,7 @@ export default function ClassSessions({
   }
 
   async function handleRemoveAttendee(a: SessionAttendee) {
-    if (!(await confirm({ message: `Remove ${a.client_name} from this session?`, danger: true }))) return;
+    if (!(await confirm({ message: `Remove ${displayName(a)} from this session?`, danger: true }))) return;
     const { error } = await deleteAttendee(createClient(), a.id);
     if (error) {
       setMessage("Could not remove that client. Please try again.");
@@ -452,33 +499,123 @@ export default function ClassSessions({
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-white/10">
-                            {roster.map((a) => (
-                              <tr key={a.id}>
-                                <td className="py-1.5 pr-3 text-text-primary">{a.client_name}</td>
-                                <td className="py-1.5 pr-3 text-text-muted">{PAYMENT_TYPE_LABELS[a.payment_type]}</td>
-                                <td className="py-1.5 pr-3 text-text-muted">
-                                  {a.payment_method ? PAYMENT_METHOD_LABELS[a.payment_method] : "—"}
-                                </td>
-                                <td className="py-1.5 pr-3 text-right text-text-primary">{money(Number(a.amount))}</td>
-                                <td className="py-1.5 pr-3">
-                                  <button
-                                    type="button"
-                                    onClick={() => togglePaid(a)}
-                                    className={`rounded-full px-2 py-0.5 font-semibold ${
-                                      a.paid ? "bg-[#3ddc97]/15 text-[#3ddc97]" : "bg-[#ff5c7a]/15 text-[#ff5c7a]"
-                                    }`}
-                                    title="Tap to toggle paid / unpaid"
-                                  >
-                                    {a.paid ? "Paid" : "Unpaid"}
-                                  </button>
-                                </td>
-                                <td className="py-1.5 text-right">
-                                  <button type="button" onClick={() => handleRemoveAttendee(a)} className="text-[#ff5c7a] hover:underline">
-                                    ×
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
+                            {roster.map((a) =>
+                              editAttId === a.id ? (
+                                <tr key={a.id} className="bg-white/[0.03]">
+                                  <td className="py-1.5 pr-3">
+                                    {a.client_id ? (
+                                      <span className="text-text-primary" title="Rename linked clients in the Clients list">
+                                        {displayName(a)}
+                                      </span>
+                                    ) : (
+                                      <input
+                                        aria-label="Name"
+                                        value={attEdit.name}
+                                        onChange={(e) => setAttEdit((f) => ({ ...f, name: e.target.value }))}
+                                        className={`${smallInput} w-32`}
+                                      />
+                                    )}
+                                  </td>
+                                  <td className="py-1.5 pr-3">
+                                    <select
+                                      aria-label="Payment type"
+                                      value={attEdit.payment_type}
+                                      onChange={(e) => setAttEdit((f) => ({ ...f, payment_type: e.target.value as PaymentType }))}
+                                      className={smallInput}
+                                    >
+                                      {PAYMENT_TYPES.map((t) => (
+                                        <option key={t} value={t}>
+                                          {PAYMENT_TYPE_LABELS[t]}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td className="py-1.5 pr-3">
+                                    <select
+                                      aria-label="Payment method"
+                                      value={attEdit.payment_method}
+                                      onChange={(e) => setAttEdit((f) => ({ ...f, payment_method: e.target.value }))}
+                                      className={smallInput}
+                                    >
+                                      <option value="">—</option>
+                                      {PAYMENT_METHODS.map((m) => (
+                                        <option key={m} value={m}>
+                                          {PAYMENT_METHOD_LABELS[m]}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td className="py-1.5 pr-3 text-right">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      aria-label="Amount"
+                                      value={attEdit.amount}
+                                      onChange={(e) => setAttEdit((f) => ({ ...f, amount: e.target.value }))}
+                                      className={`${smallInput} w-24 text-right`}
+                                    />
+                                  </td>
+                                  <td className="py-1.5 pr-3">
+                                    <select
+                                      aria-label="Paid status"
+                                      value={attEdit.paid ? "paid" : "unpaid"}
+                                      onChange={(e) => setAttEdit((f) => ({ ...f, paid: e.target.value === "paid" }))}
+                                      className={smallInput}
+                                    >
+                                      <option value="paid">Paid</option>
+                                      <option value="unpaid">Unpaid</option>
+                                    </select>
+                                  </td>
+                                  <td className="whitespace-nowrap py-1.5 text-right">
+                                    <button
+                                      type="button"
+                                      disabled={savingAtt || (!a.client_id && !attEdit.name.trim())}
+                                      onClick={() => handleSaveAttendee(a)}
+                                      className="mr-2 rounded bg-[#f5d020] px-2 py-1 font-semibold text-[#0f131c] disabled:opacity-60"
+                                    >
+                                      {savingAtt ? "Saving…" : "Save"}
+                                    </button>
+                                    <button type="button" onClick={() => setEditAttId(null)} className="text-text-muted hover:text-text-primary">
+                                      Cancel
+                                    </button>
+                                  </td>
+                                </tr>
+                              ) : (
+                                <tr key={a.id}>
+                                  <td className="py-1.5 pr-3 text-text-primary">{displayName(a)}</td>
+                                  <td className="py-1.5 pr-3 text-text-muted">{PAYMENT_TYPE_LABELS[a.payment_type]}</td>
+                                  <td className="py-1.5 pr-3 text-text-muted">
+                                    {a.payment_method ? PAYMENT_METHOD_LABELS[a.payment_method] : "—"}
+                                  </td>
+                                  <td className="py-1.5 pr-3 text-right text-text-primary">{money(Number(a.amount))}</td>
+                                  <td className="py-1.5 pr-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => togglePaid(a)}
+                                      className={`rounded-full px-2 py-0.5 font-semibold ${
+                                        a.paid ? "bg-[#3ddc97]/15 text-[#3ddc97]" : "bg-[#ff5c7a]/15 text-[#ff5c7a]"
+                                      }`}
+                                      title="Tap to toggle paid / unpaid"
+                                    >
+                                      {a.paid ? "Paid" : "Unpaid"}
+                                    </button>
+                                  </td>
+                                  <td className="whitespace-nowrap py-1.5 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => startEditAttendee(a)}
+                                      className="mr-3 font-semibold text-[#f5d020] hover:underline"
+                                    >
+                                      Edit
+                                    </button>
+                                    <button type="button" onClick={() => handleRemoveAttendee(a)} className="text-[#ff5c7a] hover:underline">
+                                      ×
+                                    </button>
+                                  </td>
+                                </tr>
+                              )
+                            )}
                           </tbody>
                         </table>
                       </div>

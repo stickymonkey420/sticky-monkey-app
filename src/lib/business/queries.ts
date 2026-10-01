@@ -98,6 +98,26 @@ export async function addBusinessClient(
   return { client: data as BusinessClient, error: null };
 }
 
+// Edit a client's details. A renamed client is also renamed on every
+// session roster line linked to them (business_session_attendees.client_name).
+export async function updateBusinessClient(
+  supabase: SupabaseClient,
+  id: string,
+  input: { name: string; email: string | null; phone: string | null }
+): Promise<{ client: BusinessClient | null; error: string | null }> {
+  const { data, error } = await supabase.from("business_clients").update(input).eq("id", id).select("*").single();
+  if (error) {
+    console.error("updateBusinessClient failed", error);
+    return { client: null, error: error.message };
+  }
+  const { error: rosterErr } = await supabase
+    .from("business_session_attendees")
+    .update({ client_name: input.name })
+    .eq("client_id", id);
+  if (rosterErr) console.error("updateBusinessClient roster rename failed", rosterErr);
+  return { client: data as BusinessClient, error: null };
+}
+
 export async function deleteBusinessClient(supabase: SupabaseClient, id: string): Promise<{ error: string | null }> {
   const { error } = await supabase.from("business_clients").delete().eq("id", id);
   return { error: error ? error.message : null };

@@ -112,6 +112,25 @@ export async function updateAttendeePaid(
   return { error: error ? error.message : null };
 }
 
+export async function updateAttendee(
+  supabase: SupabaseClient,
+  id: string,
+  input: {
+    client_name: string;
+    payment_type: PaymentType;
+    payment_method: PaymentMethod | null;
+    amount: number;
+    paid: boolean;
+  }
+): Promise<{ attendee: SessionAttendee | null; error: string | null }> {
+  const { data, error } = await supabase.from("business_session_attendees").update(input).eq("id", id).select("*").single();
+  if (error) {
+    console.error("updateAttendee failed", error);
+    return { attendee: null, error: error.message };
+  }
+  return { attendee: data as SessionAttendee, error: null };
+}
+
 export async function deleteAttendee(supabase: SupabaseClient, id: string): Promise<{ error: string | null }> {
   const { error } = await supabase.from("business_session_attendees").delete().eq("id", id);
   return { error: error ? error.message : null };
