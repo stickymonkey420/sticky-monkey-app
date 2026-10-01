@@ -30,6 +30,7 @@ export async function fetchLeagues(supabase: SupabaseClient): Promise<LeagueSumm
     pick_count: number;
     total_picks: number;
     created_at: string;
+    starting_balance: number | string | null;
   };
   return ((data ?? []) as Row[]).map((r) => ({
     id: r.id,
@@ -40,6 +41,7 @@ export async function fetchLeagues(supabase: SupabaseClient): Promise<LeagueSumm
     pickCount: Number(r.pick_count),
     totalPicks: r.total_picks,
     createdAt: r.created_at,
+    startingBalance: Number(r.starting_balance ?? 10000),
   }));
 }
 
@@ -199,7 +201,8 @@ export async function createLeague(
   supabase: SupabaseClient,
   name: string,
   rosterSize: number,
-  handles: string[]
+  handles: string[],
+  startingBalance = 10000
 ): Promise<{ ok: boolean; leagueId?: string; message: string }> {
   const { data, error } = await supabase.rpc("game_afi_league_create", {
     p_name: name,
@@ -207,6 +210,10 @@ export async function createLeague(
     p_handles: handles,
   });
   if (error) return { ok: false, message: error.message };
+  if (startingBalance !== 10000) {
+    const bal = await setLeagueBalance(supabase, data as string, startingBalance);
+    if (!bal.ok) return { ok: true, leagueId: data as string, message: `League created, but the balance didn't save: ${bal.message}` };
+  }
   return { ok: true, leagueId: data as string, message: "League created." };
 }
 
@@ -266,4 +273,12 @@ export async function deleteLeague(supabase: SupabaseClient, leagueId: string): 
   const { error } = await supabase.rpc("game_afi_league_delete", { p_league_id: leagueId });
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: "League deleted." };
+}
+
+// Paper-trading starting balance per member (default $10,000). Standings
+// show each manager's value as balance x (1 + equal-weight avg return).
+export async function setLeagueBalance(supabase: SupabaseClient, leagueId: string, balance: number): Promise<{ ok: boolean; message: string }> {
+  const { error } = await supabase.rpc("game_afi_league_set_balance", { p_league_id: leagueId, p_balance: balance });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: "Balance updated." };
 }

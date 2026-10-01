@@ -14,6 +14,7 @@ export type LeagueSummary = {
   pickCount: number;
   totalPicks: number;
   createdAt: string;
+  startingBalance: number;
 };
 
 export type LeagueMember = {

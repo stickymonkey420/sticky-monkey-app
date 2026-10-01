@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { createClient } from "@/lib/supabase/client";
-import { deleteLeague, updateLeague } from "@/lib/gameAfi/leagueQueries";
+import { deleteLeague, setLeagueBalance, updateLeague } from "@/lib/gameAfi/leagueQueries";
 import type { LeagueMember, LeagueSummary } from "@/lib/gameAfi/leagueTypes";
 
 const FIELD = "w-full rounded-md border border-card-border bg-[#0f131c] px-3 py-2 text-sm text-text-primary outline-none";
@@ -34,6 +34,7 @@ export default function LeagueEditModal({
   const [name, setName] = useState(league.name);
   const [rosterSize, setRosterSize] = useState(String(league.rosterSize));
   const [handlesText, setHandlesText] = useState(originalHandles);
+  const [balance, setBalance] = useState(String(league.startingBalance));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -45,6 +46,8 @@ export default function LeagueEditModal({
       .filter(Boolean);
     const membersChanged = !locked && handles.join("\n") !== originalHandles;
     if (membersChanged && handles.length < 2) return setErr("List at least 2 member handles.");
+    const bal = Number(balance);
+    if (!Number.isFinite(bal) || bal <= 0 || bal > 10000000) return setErr("Paper balance must be between $1 and $10,000,000.");
     setBusy(true);
     setErr(null);
     const res = await updateLeague(createClient(), league.id, {
@@ -52,6 +55,13 @@ export default function LeagueEditModal({
       rosterSize: locked ? league.rosterSize : Number(rosterSize) || league.rosterSize,
       handles: membersChanged ? handles : null,
     });
+    if (res.ok && bal !== league.startingBalance) {
+      const b = await setLeagueBalance(createClient(), league.id, bal);
+      if (!b.ok) {
+        setBusy(false);
+        return setErr(b.message);
+      }
+    }
     setBusy(false);
     if (!res.ok) return setErr(res.message);
     onSaved();
@@ -86,7 +96,12 @@ export default function LeagueEditModal({
         </label>
 
         <label className="mb-3 block text-xs text-text-muted">
-          Roster size (4–20)
+          Paper balance per member ($)
+          <input type="number" min="1" step="1000" value={balance} onChange={(e) => setBalance(e.target.value)} className={`${FIELD} mt-1.5`} />
+        </label>
+
+        <label className="mb-3 block text-xs text-text-muted">
+          Max tickers per member (4–20)
           <input
             type="number"
             min="4"

@@ -221,7 +221,7 @@ export default function LeaguePanel() {
 
       {(league.status === "active" || league.status === "completed") && (
         <>
-          <LeagueStandings standings={standings} />
+          <LeagueStandings standings={standings} startingBalance={league.startingBalance} />
           <LeagueHeatmap standings={standings} rosterSize={league.rosterSize} />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <LeagueSectorBattle rows={sectorBattle} />

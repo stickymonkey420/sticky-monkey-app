@@ -5,12 +5,16 @@ import PreviewStat from "./PreviewStat";
 // League Avg / Leader / 1st-to-last Spread / Best Position / In The Green
 // tiles, plus the ranked manager list -- the top-line summary a league
 // page opens with.
-export default function LeagueStandings({ standings }: { standings: ManagerStanding[] }) {
+export default function LeagueStandings({ standings, startingBalance }: { standings: ManagerStanding[]; startingBalance: number }) {
+  const usd = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
   const tiles = computeSummaryTiles(standings);
 
   return (
     <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-      <h3 className="mb-4 text-sm font-semibold text-text-primary">Standings</h3>
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <h3 className="text-sm font-semibold text-text-primary">Standings</h3>
+        <span className="text-xs text-text-muted">{usd(startingBalance)} paper balance each</span>
+      </div>
       <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <PreviewStat label="League Avg" value={formatPct(tiles.leagueAvgPct)} sub="mean of all managers" />
         <PreviewStat
@@ -43,11 +47,11 @@ export default function LeagueStandings({ standings }: { standings: ManagerStand
                 <span className="ml-2 text-xs text-text-muted">seed #{m.seed}</span>
               </div>
             </div>
-            <span
-              className="text-sm font-semibold"
-              style={{ color: m.avgReturnPct >= 0 ? "#3ddc97" : "#ff5c7a" }}
-            >
-              {formatPct(m.avgReturnPct)}
+            <span className="text-right">
+              <span className="block text-sm font-semibold" style={{ color: m.avgReturnPct >= 0 ? "#3ddc97" : "#ff5c7a" }}>
+                {formatPct(m.avgReturnPct)}
+              </span>
+              <span className="block text-xs text-text-muted">{usd(startingBalance * (1 + m.avgReturnPct / 100))}</span>
             </span>
           </li>
         ))}
