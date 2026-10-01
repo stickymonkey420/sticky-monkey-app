@@ -69,7 +69,7 @@ export async function downloadInvoicePdf(opts: {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(26);
   // Title centered on the page, above the divider rule.
-  doc.text("INVOICE", W / 2, headerMid + 9, { align: "center" });
+  doc.text("INVOICE", W / 2, 90, { align: "center" }); // baseline sits just above the rule (y=100)
   doc.setFontSize(11);
   doc.text(invoice.number, W - M, headerMid - 14, { align: "right" });
   doc.setFont("helvetica", "normal");
