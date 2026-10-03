@@ -146,9 +146,8 @@ function GettingStarted({ s }: { s: State }) {
     { done: s.hasPhoto, label: "Add a profile photo", hint: "Click your avatar, top right", href: null },
     { done: (s.snapshot?.trades ?? 0) > 0, label: "Make your first practice trade", hint: "Game-O-Fi · $0 at risk", href: "/game-a-fi-overview" },
     { done: s.challenges > 0, label: "Challenge a member", hint: "Head to Head match", href: "/game-a-fi-overview" },
-    { done: false, label: "Watch Abu's intro on SMU", hint: "Bonus · 2-minute welcome", href: "/smu" },
   ];
-  const tracked = steps.slice(0, 5);
+  const tracked = steps;
   const doneCount = tracked.filter((x) => x.done).length;
   const pct = Math.round((doneCount / tracked.length) * 100);
 
