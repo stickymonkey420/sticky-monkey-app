@@ -25,13 +25,7 @@ import SignOutButton from "./SignOutButton";
 import TopBar from "./TopBar";
 import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
 
-// Real Webflow-hosted logo assets (head icon + white script wordmark) --
-// hotlinked directly from Webflow's permanent S3 CDN rather than
-// downloaded/re-hosted, same pattern used for the Abu chatbot's avatar.
-const LOGO_HEAD_URL =
-  "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/665f61495d5be52dd1a1e71b_StickyMonkeyHead256.png";
-const LOGO_WORDMARK_URL =
-  "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/665f61d2c30be1663c636369_white%20StickyMonkey-p-500.png";
+import { LOGO_HEAD_URL, LOGO_WORDMARK_URL } from "@/lib/brand/logo";
 
 // Nested sidebar nav. The live Webflow site nests Stock Screener inside
 // Invest, but here "Investments" (Portfolio/Taxable/Retirement/Vault) is
