@@ -1,4 +1,4 @@
-// Game-a-Fi League: season-long snake-draft fantasy stock league. See
+// Fantasy Finance League: season-long snake-draft fantasy stock league. See
 // migration add_game_afi_league for the schema/RPC functions these types
 // mirror. Modeled on the draft/scoring mechanics of a well-known fantasy
 // stock draft site (mechanics aren't copyrightable -- only its code, text

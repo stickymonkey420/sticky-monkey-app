@@ -6,7 +6,7 @@ import type { PaperHolding } from "@/lib/gameAfi/paperTypes";
 
 // The "Holdings" table for the Monkey Monkey (paper trading) account --
 // extracted out of PaperTradeWidget so it can also stand alone on its own
-// nav page (Game-a-Fi > Holdings), for anyone who just wants to check
+// nav page (Fantasy Finance > Holdings), for anyone who just wants to check
 // their paper positions without the tiles/trade form.
 //
 // onEdit (optional): when passed, each row gets Edit / Delete actions.

@@ -5,9 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 import { computeHoldings, ensurePaperAccount, executeTrade, fetchPaperTrades } from "./paperQueries";
 import type { PaperAccount, PaperHolding, PaperTrade } from "./paperTypes";
 
-// Shared data layer for a paper trading account/holdings (Game-a-Fi Phase
+// Shared data layer for a paper trading account/holdings (Fantasy Finance Phase
 // 2), factored out of PaperTradingPanel so the same account + holdings +
-// trade-execution logic can back both the full Game-a-Fi page and the
+// trade-execution logic can back both the full Fantasy Finance page and the
 // compact "Buy" modal opened from a Stock Screener ticker card, without
 // duplicating the fetch/refresh code between them.
 //

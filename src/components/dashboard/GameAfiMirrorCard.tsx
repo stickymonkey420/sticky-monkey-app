@@ -14,9 +14,9 @@ import { fetchTickerColorOverrides, setTickerColorOverride } from "@/lib/gameAfi
 import type { ChallengeRow, MatchSummary } from "@/lib/gameAfi/challengeTypes";
 import type { PaperHolding } from "@/lib/gameAfi/paperTypes";
 
-// Condensed mirror of the Game-a-Fi Overview page's holdings + scoreboard
+// Condensed mirror of the Fantasy Finance Overview page's holdings + scoreboard
 // row, per your call to surface it on the Dashboard too instead of making
-// members navigate to Game-O-Fi to see it. Same three cards (Allocation,
+// members navigate to Fantasy Finance to see it. Same three cards (Allocation,
 // the Arena Jumbotron Head to Head scoreboard, opponent Holdings), same
 // data pipeline (game_afi_match_summary / game_afi_match_opponent_trades,
 // this member's own game_afi_ticker_colors overrides) -- just without the
@@ -159,9 +159,9 @@ export default function GameAfiMirrorCard() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-base font-semibold text-text-primary">Game-O-Fi</h2>
+        <h2 className="text-base font-semibold text-text-primary">Fantasy Finance</h2>
         <Link href="/game-a-fi-overview" className="text-xs font-semibold text-[#4f8cff] hover:underline">
-          View Game-O-Fi
+          View Fantasy Finance
         </Link>
       </div>
       <div className="grid grid-cols-1 gap-5 md:grid-cols-4">

@@ -1,4 +1,4 @@
-// Game-a-Fi "Sell Contracts" (wheel) mode: full wheel strategy, cash-secured
+// Fantasy Finance "Sell Contracts" (wheel) mode: full wheel strategy, cash-secured
 // puts AND covered calls, both with real Friday-close assignment simulation.
 // Row shape matches paper_contract_trades / game_afi_match_opponent_contract_trades
 // exactly -- see the add_game_afi_full_wheel_with_assignment migration.

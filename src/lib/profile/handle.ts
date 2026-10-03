@@ -1,6 +1,6 @@
 // Shared handle validation for both the self-service My Profile modal and
 // the admin Edit Profile modal. "Handle" is the new name/purpose for what
-// used to be a free-text `username` column: Game-a-Fi identifies players
+// used to be a free-text `username` column: Fantasy Finance identifies players
 // by it (leaderboards today; leagues, head-to-head matchups, and
 // tournaments once those exist), so it needs to actually be a stable,
 // unique, presentable identifier instead of arbitrary text -- several

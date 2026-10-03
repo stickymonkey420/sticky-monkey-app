@@ -1,7 +1,7 @@
 import { CATEGORICAL_PALETTE, MAX_CATEGORICAL_SLICES, OTHER_COLOR } from "@/lib/palette";
 import type { PaperHolding } from "./paperTypes";
 
-// Donut-grouping helpers for the Game-a-Fi Overview page's Allocation and
+// Donut-grouping helpers for the Fantasy Finance Overview page's Allocation and
 // Industry Concentration cards. Same shape/rendering as Invest's Portfolio
 // Allocation donuts (src/lib/invest/calc.ts, src/components/invest/
 // PortfolioDonutCard.tsx) -- this module builds the {name, value, color}

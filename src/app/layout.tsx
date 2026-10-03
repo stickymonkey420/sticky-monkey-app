@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Both scoped to a single spot: the Game-a-Fi Head to Head "Arena Jumbotron"
+// Both scoped to a single spot: the Fantasy Finance Head to Head "Arena Jumbotron"
 // card (components/gameAfi/HeadToHeadCard.tsx) -- VT323 for the LED-style
 // score/clock digits, Chakra Petch for its labels. Loaded here (rather than
 // inline) so next/font can self-host and subset them, same as Geist above;

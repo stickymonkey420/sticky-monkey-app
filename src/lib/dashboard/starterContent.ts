@@ -35,7 +35,7 @@ export const ABU_TIPS: string[] = [
   "Talk about money with people you trust. Silence is how bad deals stay hidden.",
   "Automate it: savings, bills and investing on autopilot beat willpower every time.",
   "Your net worth is what you own minus what you owe. Track it monthly, not daily.",
-  "Practice with fake money first. Game-O-Fi lets you make mistakes that cost nothing.",
+  "Practice with fake money first. Fantasy Finance lets you make mistakes that cost nothing.",
 ];
 
 export type LearningTopic = {
@@ -115,7 +115,7 @@ export const LEARNING_TIERS: LearningTier[] = [
         title: "Generating income with options",
         summary:
           "Covered calls and cash-secured puts (the 'wheel') collect premium on stocks you're happy to own. Learn the risks with practice money before going live.",
-        action: { label: "Practice in Game-O-Fi", href: "/game-a-fi-overview" },
+        action: { label: "Practice in Fantasy Finance", href: "/game-a-fi-overview" },
       },
       {
         title: "Keep more of what you earn",

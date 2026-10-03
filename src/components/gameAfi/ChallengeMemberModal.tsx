@@ -4,7 +4,7 @@ import ChallengeMemberForm from "./ChallengeMemberForm";
 
 // Popup wrapper around ChallengeMemberForm, opened from the Dashboard's
 // Quick Access panel (QuickAccessCard.tsx) so a member can send a Head to
-// Head challenge from anywhere, not just the Game-a-Fi page. Stays open
+// Head challenge from anywhere, not just the Fantasy Finance page. Stays open
 // after a successful send (the form shows its own "Challenge sent to
 // @handle." success line) -- the member closes it manually, same pattern
 // as NotificationsModal.

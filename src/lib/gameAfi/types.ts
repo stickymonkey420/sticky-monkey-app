@@ -1,4 +1,4 @@
-// Game-a-Fi Phase 1: a fantasy-football-style weekly standings board (not
+// Fantasy Finance Phase 1: a fantasy-football-style weekly standings board (not
 // head-to-head) ranking members by real portfolio return %. Row shape
 // matches the `game_afi_weekly_leaderboard` / `game_afi_season_leaderboard`
 // SQL functions exactly -- both are SECURITY DEFINER and return only

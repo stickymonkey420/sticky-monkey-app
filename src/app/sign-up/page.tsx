@@ -153,7 +153,7 @@ export default function SignUpPage() {
             placeholder="jdoe"
           />
           <p className="mt-1 text-xs text-text-muted/70">
-            Shown on Game-O-Fi leaderboards and matchups. {HANDLE_HINT} You can change it later.
+            Shown on Fantasy Finance leaderboards and matchups. {HANDLE_HINT} You can change it later.
           </p>
         </div>
         <div>

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// Per-user color overrides for the Game-a-Fi Overview donut legends -- see
+// Per-user color overrides for the Fantasy Finance Overview donut legends -- see
 // the `add_game_afi_ticker_colors` migration. Direct table reads/writes
 // (RLS: auth.uid() = user_id), same convention as paper_trades, since this
 // is purely the signed-in member's own data -- no cross-user join needed.

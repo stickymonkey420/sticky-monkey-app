@@ -6,7 +6,7 @@ import LeaguePanel from "@/components/gameAfi/LeaguePanel";
 import MyProfileModal from "@/components/profile/MyProfileModal";
 import { createClient } from "@/lib/supabase/client";
 
-// Game-a-Fi: head-to-head member challenges, with league play coming next.
+// Fantasy Finance: head-to-head member challenges, with league play coming next.
 // The weekly-standings "Live Portfolio" leaderboard and "Paper Trading"
 // sandbox are shelved for now (their code -- lib/gameAfi/queries.ts,
 // lib/gameAfi/paperQueries.ts, components/gameAfi/LeaderboardTable.tsx,
@@ -17,7 +17,7 @@ export default function GameAFiPage() {
   const [tab, setTab] = useState<"headtohead" | "league">("headtohead");
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-  // Whether the signed-in member has a Game-a-Fi handle set yet. Starts
+  // Whether the signed-in member has a Fantasy Finance handle set yet. Starts
   // `true` (rather than `false`) so the "set your handle" banner never
   // flashes on screen for the common case while the profile is still
   // loading -- it only appears once we've actually confirmed one is
@@ -60,7 +60,7 @@ export default function GameAFiPage() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-[21px] font-semibold text-text-primary">Game-a-Fi</h1>
+        <h1 className="text-[21px] font-semibold text-text-primary">Fantasy Finance</h1>
       </div>
       <div className="flex flex-col gap-6">
         <p className="text-sm text-text-muted">

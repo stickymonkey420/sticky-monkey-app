@@ -10,7 +10,7 @@ export type UseCase = {
 export const USE_CASES: UseCase[] = [
   { key: "personal_tracking", label: "Personal Tracking", desc: "Budgets, manual accounts, everyday money." },
   { key: "investment_income", label: "Investment Tracking & Income Generating", desc: "Portfolio, options income, market alerts." },
-  { key: "games_paper_trading_derby", label: "Games - Paper Trading Derby", desc: "Game-O-Fi paper trading contests and Trade Off leaderboards." },
+  { key: "games_paper_trading_derby", label: "Games - Paper Trading Derby", desc: "Fantasy Finance paper trading contests and Trade Off leaderboards." },
   { key: "financial_literacy", label: "Financial Literacy", desc: "Learn how money really works: SMU lessons, guides, and plain-language explainers." },
 ];
 

@@ -1077,7 +1077,7 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
   // all-$0 Dashboard with nothing else there to guide them. Fires at most
   // once ever per user (see WELCOME_TOUR_KEY_PREFIX) and only when there's
   // genuinely nothing set up yet: no manual accounts, no wheel trades, and
-  // no Game-a-Fi challenge (pending or accepted) either. Any query error is
+  // no Fantasy Finance challenge (pending or accepted) either. Any query error is
   // treated as "assume they're not new" rather than risk a false popup for
   // an existing user. Gated to /dashboard since that's where a new signup
   // actually lands -- checked only once the async lookups resolve, which is

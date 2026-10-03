@@ -12,7 +12,7 @@ import { ABU_AVATAR_URL, ABU_TIPS, LEARNING_TIERS, tierForLevel } from "@/lib/da
 // Starter dashboard for free members (whose other dashboard cards hide
 // themselves when there's no linked-account data): Getting Started
 // checklist, a learning path from their survey literacy score, Abu's daily
-// tip, and a Game-O-Fi practice snapshot. All reads are owner-scoped; no
+// tip, and a Fantasy Finance practice snapshot. All reads are owner-scoped; no
 // paid APIs.
 
 const CARD = "rounded-2xl border border-card-border bg-card-bg p-5";
@@ -144,7 +144,7 @@ function GettingStarted({ s }: { s: State }) {
     { done: s.hasSurvey, label: "Tell us about yourself", hint: "Onboarding survey", href: null },
     { done: s.hasHandle, label: "Pick your handle", hint: "Shown on leaderboards", href: null },
     { done: s.hasPhoto, label: "Add a profile photo", hint: "Click your avatar, top right", href: null },
-    { done: (s.snapshot?.trades ?? 0) > 0, label: "Make your first practice trade", hint: "Game-O-Fi · $0 at risk", href: "/game-a-fi-overview" },
+    { done: (s.snapshot?.trades ?? 0) > 0, label: "Make your first practice trade", hint: "Fantasy Finance · $0 at risk", href: "/game-a-fi-overview" },
     { done: s.challenges > 0, label: "Challenge a member", hint: "Head to Head match", href: "/game-a-fi-overview" },
   ];
   const tracked = steps;
@@ -274,9 +274,9 @@ function GameSnapshot({ s }: { s: State }) {
   return (
     <div className={CARD}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-text-primary">Game-O-Fi · Monkey Money practice</h3>
+        <h3 className="text-sm font-semibold text-text-primary">Fantasy Finance · Monkey Money practice</h3>
         <Link href="/game-a-fi-overview" className="rounded-lg bg-[#4f8cff] px-3 py-1.5 text-xs font-semibold text-white">
-          {snap && snap.trades > 0 ? "Open Game-O-Fi" : "Make your first trade"}
+          {snap && snap.trades > 0 ? "Open Fantasy Finance" : "Make your first trade"}
         </Link>
       </div>
       <div>

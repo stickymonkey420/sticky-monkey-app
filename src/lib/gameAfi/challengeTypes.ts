@@ -1,4 +1,4 @@
-// Game-a-Fi head-to-head challenges. Row shape matches
+// Fantasy Finance head-to-head challenges. Row shape matches
 // `game_afi_list_challenges()` exactly -- see the `add_game_afi_challenges`
 // migration. All reads/writes go through SECURITY DEFINER RPCs (never a
 // direct table select/insert/update) because profiles RLS only lets a

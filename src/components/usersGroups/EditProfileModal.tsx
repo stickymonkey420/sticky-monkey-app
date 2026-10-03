@@ -87,7 +87,7 @@ export default function EditProfileModal({
           <label className="mb-1.5 block text-xs text-text-muted">Handle</label>
           <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className={FIELD_CLASS} />
           <p className="mt-1 text-[11px] text-text-muted">
-            {HANDLE_HINT} Identifies this member on Game-a-Fi leaderboards, leagues, and tournaments.
+            {HANDLE_HINT} Identifies this member on Fantasy Finance leaderboards, leagues, and tournaments.
           </p>
         </div>
         <div className="mb-3">

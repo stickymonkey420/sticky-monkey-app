@@ -35,12 +35,12 @@ import { LOGO_HEAD_URL, LOGO_WORDMARK_URL } from "@/lib/brand/logo";
 // Investments up to free tier on an opt-in basis rather than keep it
 // fully paid-gated -- and Stock Screener is meant to stay visible to free
 // accounts unconditionally -- so it lives under the (also free-tier)
-// Game-a-Fi group instead of inside Investments, since nesting it there
+// Fantasy Finance group instead of inside Investments, since nesting it there
 // would hide it whenever that group's gate fails. Everything else follows
 // the live site's real
 // nesting (confirmed off its accessibility tree, not a screenshot), except
 // where reorganized per your explicit calls (Transactions folded into My
-// Wallet, Utilities renamed Settings, Stock Screener moved under Game-a-Fi,
+// Wallet, Utilities renamed Settings, Stock Screener moved under Fantasy Finance,
 // plus the 2026-09 reorg below):
 //   - "Income" was originally a paid-gated group containing the Income
 //     overview page plus a "Trade Options" sub-group. Per your call, Trade
@@ -61,9 +61,9 @@ import { LOGO_HEAD_URL, LOGO_WORDMARK_URL } from "@/lib/brand/logo";
 //   - Two plain divider rules (no label -- see the `divider` NavNode kind
 //     below) now break the once-uniform 12-item list into three visual
 //     bands per your call: money management (Dashboard through
-//     Businesses), extras (Game-O-Fi, SMU), then settings/admin (Settings,
+//     Businesses), extras (Fantasy Finance, SMU), then settings/admin (Settings,
 //     Owners, Users & Groups). Dividers carry no gate of their own -- they
-//     always sit directly above an always-visible node (Game-O-Fi is
+//     always sit directly above an always-visible node (Fantasy Finance is
 //     ungated; Settings always shows at least Edit Categories, which is
 //     free) so there's no risk of a dangling divider with nothing after it.
 // "My Wallet" is now also a group: "Overview" is the original wallet
@@ -116,7 +116,7 @@ import { LOGO_HEAD_URL, LOGO_WORDMARK_URL } from "@/lib/brand/logo";
 // List/Create Invoices Webflow pages, confirmed unused template
 // boilerplate, so it's omitted rather than shipped as a dead link.
 //
-// "Game-O-Fi" (href /game-a-fi, group label renamed from "Game-a-Fi" per
+// "Fantasy Finance" (href /game-a-fi, group label renamed from "Fantasy Finance" per
 // your call) was the live site's "Director test build"
 // stub -- restructured per your explicit call into a fantasy-football-
 // style weekly standings board (not head-to-head matchups): every
@@ -272,7 +272,7 @@ const NAV_TREE: NavNode[] = [
   },
   { label: "", divider: true },
   {
-    label: "Game-O-Fi",
+    label: "Fantasy Finance",
     icon: Trophy,
     children: [
       { href: "/game-a-fi-overview", label: "Overview" },

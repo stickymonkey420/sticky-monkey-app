@@ -1,4 +1,4 @@
-// Game-a-Fi Phase 2: paper trading competition. Simulated money (starts at
+// Fantasy Finance Phase 2: paper trading competition. Simulated money (starts at
 // $10,000), priced off the real `stock_universe` table -- so unlike Phase
 // 1's live leaderboard, dollar amounts are fine to show here since
 // nothing is actually at risk. See migration game_afi_paper_trading_phase2.

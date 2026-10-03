@@ -7,7 +7,7 @@ export type ProfileLite = {
   name: string | null;
   email: string | null;
   avatar_url: string | null;
-  username: string | null; // the Game-a-Fi "handle" -- see src/lib/profile/handle.ts
+  username: string | null; // the Fantasy Finance "handle" -- see src/lib/profile/handle.ts
 };
 
 const CACHE_KEY_PREFIX = "sm_profile_cache_";

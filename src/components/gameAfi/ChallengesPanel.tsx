@@ -2,7 +2,7 @@
 
 import ChallengeMemberForm from "./ChallengeMemberForm";
 
-// Head-to-head challenges tab (Game-a-Fi page). Used to also list every
+// Head-to-head challenges tab (Fantasy Finance page). Used to also list every
 // Received/Sent challenge with Accept/Decline/Cancel actions here, but per
 // your call that's redundant: Accept/Decline for a received invite lives in
 // both the Notifications bell (NotificationsModal.tsx) and the Dashboard's

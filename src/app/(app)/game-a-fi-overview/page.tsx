@@ -16,7 +16,7 @@ import { fetchTickerColorOverrides, setTickerColorOverride } from "@/lib/gameAfi
 import type { ChallengeRow, MatchSummary } from "@/lib/gameAfi/challengeTypes";
 import type { PaperHolding } from "@/lib/gameAfi/paperTypes";
 
-// Nav: Game-O-Fi > Overview (route flattened to /game-a-fi-overview,
+// Nav: Fantasy Finance > Overview (route flattened to /game-a-fi-overview,
 // matching this app's convention of flat top-level paths for nav leaves --
 // e.g. /invest-accounts, /closed-positions -- rather than nested folders).
 // Replaces the old standalone "Holdings" leaf (formerly
@@ -213,7 +213,7 @@ export default function GameAFiOverviewPage() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-[21px] font-semibold text-text-primary">Game-O-Fi -- Overview</h1>
+        <h1 className="text-[21px] font-semibold text-text-primary">Fantasy Finance -- Overview</h1>
       </div>
       <p className="mb-6 text-sm text-text-muted">
         Your paper trading holdings (practice account and Trade Off matches) -- simulated shares only, priced off the Stock Screener universe.

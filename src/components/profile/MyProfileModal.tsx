@@ -379,7 +379,7 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
                 className={FIELD_CLASS}
               />
               <p className="mt-1 text-[11px] text-text-muted">
-                {HANDLE_HINT} Used to identify you on Game-a-Fi leaderboards, leagues, and tournaments instead of
+                {HANDLE_HINT} Used to identify you on Fantasy Finance leaderboards, leagues, and tournaments instead of
                 your name.
               </p>
             </div>

@@ -13,7 +13,7 @@ type PortfolioDonutCardProps = {
   // renders without one.
   id?: string;
   // Defaults to the shared `money()` helper (always 2 decimals, matches
-  // every Invest page donut). Game-a-Fi's Overview page passes
+  // every Invest page donut). Fantasy Finance's Overview page passes
   // gameAfi/format's formatMoney instead, which rounds to whole dollars --
   // per your call that "$619,633.00" reads noisier than "$619,633" on a
   // portfolio-sized number.

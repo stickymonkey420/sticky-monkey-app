@@ -92,7 +92,7 @@ export function AverageCostOwnedCard({ ticker, userId, role }: { ticker: string;
 // Buy button, rendered as its own flex item (bottom-aligned against the
 // row's tallest sibling -- see TickerLookup) between the Average Cost
 // Owned card and the reserved/Sticky Monkey Score boxes. Opens the same
-// Monkey Monkey (paper trading) widget Game-a-Fi's own page uses, in a
+// Monkey Monkey (paper trading) widget Fantasy Finance's own page uses, in a
 // modal, pre-filled with this ticker.
 export function BuyButton({ ticker, userId }: { ticker: string; userId: string }) {
   const [buyOpen, setBuyOpen] = useState(false);

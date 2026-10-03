@@ -15,7 +15,7 @@ function todayIso(): string {
 }
 
 // The "Challenge a Member" form -- extracted out of ChallengesPanel so it
-// can be shown two places with one implementation: inline on the Game-a-Fi
+// can be shown two places with one implementation: inline on the Fantasy Finance
 // Head to Head tab (ChallengesPanel.tsx) and in a popup from the Dashboard's
 // Quick Access panel (ChallengeMemberModal.tsx). onSent fires after a
 // successful send (ChallengeMemberModal uses it to auto-close). Sending an

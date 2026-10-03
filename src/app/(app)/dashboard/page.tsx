@@ -24,9 +24,9 @@ import StarterDashboard from "@/components/dashboard/StarterDashboard";
 // component's own comment for its specific "no data" definition. That
 // means an established member sees their real Net Worth/Income/Expense/
 // History/Transactions cards, while a brand-new member (or one who's only
-// used Game-a-Fi) sees a much shorter page instead of five empty widgets.
+// used Fantasy Finance) sees a much shorter page instead of five empty widgets.
 //
-// GameAfiMirrorCard is new: the Game-a-Fi Overview page's holdings +
+// GameAfiMirrorCard is new: the Fantasy Finance Overview page's holdings +
 // scoreboard row (Allocation donut, Head to Head jumbotron, opponent
 // Holdings donut), mirrored here per your call so a member doesn't have to
 // leave the Dashboard to check their match. Same self-hiding rule -- it

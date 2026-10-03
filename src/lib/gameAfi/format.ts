@@ -1,4 +1,4 @@
-// Shared display formatting for Game-a-Fi challenge terms -- used by both
+// Shared display formatting for Fantasy Finance challenge terms -- used by both
 // ChallengesPanel (the Head to Head tab) and NotificationsModal (the bell
 // popup also surfaces pending invites), so the two stay visually identical.
 export function formatMoney(n: number): string {

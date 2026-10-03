@@ -112,7 +112,7 @@ export default function ProfileSummaryCard() {
         </div>
       </div>
 
-      {/* Funny Money -- Game-a-Fi paper cash across the practice account
+      {/* Funny Money -- Fantasy Finance paper cash across the practice account
           and every accepted Head to Head match. */}
       <ScoreboardCard />
 
