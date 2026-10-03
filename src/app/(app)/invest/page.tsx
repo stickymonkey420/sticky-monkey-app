@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import PortfolioDonutCard from "@/components/invest/PortfolioDonutCard";
 import VaultSummary from "@/components/invest/VaultSummary";
 import { createClient } from "@/lib/supabase/client";
-import { fetchHoldings, fetchMetalHoldings } from "@/lib/invest/queries";
+import { fetchHoldings, fetchMetalHoldings, fetchAccountNames } from "@/lib/invest/queries";
 import { groupByAccountDonut, groupMetalsDonut } from "@/lib/invest/calc";
 import type { Holding, MetalHolding } from "@/lib/invest/types";
 import EditHoldingModal from "@/components/holdings/EditHoldingModal";
@@ -40,6 +40,7 @@ const ACCOUNT_BUCKETS: { accountType: string; title: string; emptyLabel: string 
 export default function InvestPage() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [metalHoldings, setMetalHoldings] = useState<MetalHolding[]>([]);
+  const [accountNames, setAccountNames] = useState<Record<string, string>>({});
   const [accountTypes, setAccountTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
@@ -78,6 +79,9 @@ export default function InvestPage() {
       setAccountOptions(accountOpts.filter((o) => ["brokerage", "traditional", "roth", "crypto"].includes(o.id)));
       setHoldings(holdingRows);
       setMetalHoldings(metalRows);
+      const names = await fetchAccountNames(supabase, metalRows.map((m) => m.account_id ?? ""));
+      if (cancelled) return;
+      setAccountNames(names);
       setAccountTypes((profileRow.data as { account_types: string[] | null } | null)?.account_types ?? []);
       setLoading(false);
     }
@@ -177,7 +181,7 @@ export default function InvestPage() {
         )}
 
         <div id="vault-section">
-          <VaultSummary holdings={metalHoldings} loading={loading} />
+          <VaultSummary holdings={metalHoldings} accountNames={accountNames} loading={loading} />
         </div>
       </div>
     </>

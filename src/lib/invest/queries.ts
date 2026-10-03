@@ -27,6 +27,20 @@ export async function fetchMetalHoldings(supabase: SupabaseClient, userId: strin
 
 export { fetchHoldings } from "@/lib/holdings/queries";
 
+// Display names for the manual_accounts that metal holdings are tied to
+// (Vault "Account" column). Owner-scoped by manual_accounts RLS.
+export async function fetchAccountNames(supabase: SupabaseClient, ids: string[]): Promise<Record<string, string>> {
+  const unique = Array.from(new Set(ids.filter(Boolean)));
+  if (!unique.length) return {};
+  const { data, error } = await supabase.from("manual_accounts").select("id,account_name,institution_name").in("id", unique);
+  if (error || !data) return {};
+  const out: Record<string, string> = {};
+  for (const r of data as { id: string; account_name: string | null; institution_name: string | null }[]) {
+    out[r.id] = r.account_name || r.institution_name || "Account";
+  }
+  return out;
+}
+
 // Write side, added for Invest Accounts' "Add Metals" sub-form -- lets a
 // newly-created Self-Directed IRA account (manual_accounts,
 // category='retirement_account', retirement_type='self_directed_ira',
