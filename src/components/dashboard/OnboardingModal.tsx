@@ -48,6 +48,9 @@ export default function OnboardingModal({
   const [selected, setSelected] = useState<Record<string, boolean>>(() => toSelectedMap(initialUseCases));
   const [answers, setAnswers] = useState<OnboardingAnswers>(() => initialAnswers ?? {});
   const [saving, setSaving] = useState(false);
+  // First-run survey is mandatory (no skip, can't be dismissed). The
+  // "Retake Survey" flow from My Profile (forceOpen) keeps a Cancel button.
+  const isRetake = forceOpen !== undefined;
 
   useEffect(() => {
     if (forceOpen !== undefined) return; // controlled/retake mode -- caller decides visibility, not this check
@@ -62,11 +65,12 @@ export default function OnboardingModal({
       if (!user) return;
       const { data, error } = await supabase
         .from("profiles")
-        .select("onboarding_completed_at")
+        .select("onboarding_completed_at,onboarding_survey")
         .eq("id", user.id)
         .single();
       if (cancelled || error) return;
-      if (!data?.onboarding_completed_at) setVisible(true);
+      // Also re-prompt members who skipped the survey before it was mandatory.
+      if (!data?.onboarding_completed_at || !data?.onboarding_survey) setVisible(true);
     }
 
     check();
@@ -124,6 +128,15 @@ export default function OnboardingModal({
   if (!visible) return null;
 
   const showFollowup = answers.sell_options_income === true;
+  const hasUseCase = Object.values(selected).some(Boolean);
+  const unanswered =
+    YES_NO_QUESTIONS.filter((q) => answers[q.key] !== true && answers[q.key] !== false).length +
+    (showFollowup && answers.sell_options_track_in_app !== true && answers.sell_options_track_in_app !== false ? 1 : 0);
+
+  function cancelRetake() {
+    setVisible(false);
+    onClose?.();
+  }
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-5">
@@ -132,8 +145,8 @@ export default function OnboardingModal({
           <div>
             <h2 className="mb-1.5 text-xl font-bold">Welcome! What brings you here?</h2>
             <p className="mb-5 text-[13px] leading-relaxed text-text-muted">
-              Pick whatever applies — this just decides which dashboard features we show you. You
-              can pick more than one, and change your mind later.
+              Pick at least one — this decides which features we show you. You can pick more than
+              one, and change your mind later.
             </p>
 
             {USE_CASES.map((opt) => {
@@ -162,18 +175,22 @@ export default function OnboardingModal({
             })}
 
             <div className="mt-2 flex items-center justify-between gap-2.5">
-              <button
-                type="button"
-                onClick={() => save(false)}
-                disabled={saving}
-                className="rounded-xl bg-transparent px-5 py-2.5 text-[13px] font-semibold text-text-muted hover:text-text-primary"
-              >
-                Skip for now
-              </button>
+              {isRetake ? (
+                <button
+                  type="button"
+                  onClick={cancelRetake}
+                  className="rounded-xl bg-transparent px-5 py-2.5 text-[13px] font-semibold text-text-muted hover:text-text-primary"
+                >
+                  Cancel
+                </button>
+              ) : (
+                <span className="text-xs text-text-muted">{hasUseCase ? "Step 1 of 2" : "Choose at least one to continue"}</span>
+              )}
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="rounded-xl px-5 py-2.5 text-[13px] font-semibold text-white"
+                disabled={!hasUseCase}
+                className="rounded-xl px-5 py-2.5 text-[13px] font-semibold text-white disabled:opacity-40"
                 style={{ backgroundColor: "#4f8cff" }}
               >
                 Next
@@ -186,11 +203,13 @@ export default function OnboardingModal({
           <div>
             <h2 className="mb-1.5 text-xl font-bold">A few fun questions</h2>
             <p className="mb-5 text-[13px] leading-relaxed text-text-muted">
-              Totally optional — skip anything you&apos;d rather not answer.
+              Please answer each one — it helps us tailor the app to you. Nationality is optional.
             </p>
 
             <div className="mb-4">
-              <div className="mb-2 text-[13px]">What&apos;s your nationality? 🌎</div>
+              <div className="mb-2 text-[13px]">
+                What&apos;s your nationality? 🌎 <span className="text-text-muted">(optional)</span>
+              </div>
               <input
                 type="text"
                 placeholder="e.g. American, Canadian..."
@@ -260,20 +279,23 @@ export default function OnboardingModal({
               >
                 Back
               </button>
-              <div>
-                <button
-                  type="button"
-                  onClick={() => save(false)}
-                  disabled={saving}
-                  className="mr-2.5 rounded-xl bg-transparent px-5 py-2.5 text-[13px] font-semibold text-text-muted hover:text-text-primary"
-                >
-                  Skip
-                </button>
+              <div className="flex items-center">
+                {isRetake ? (
+                  <button
+                    type="button"
+                    onClick={cancelRetake}
+                    className="mr-2.5 rounded-xl bg-transparent px-5 py-2.5 text-[13px] font-semibold text-text-muted hover:text-text-primary"
+                  >
+                    Cancel
+                  </button>
+                ) : (
+                  unanswered > 0 && <span className="mr-3 text-xs text-text-muted">{unanswered} left</span>
+                )}
                 <button
                   type="button"
                   onClick={() => save(true)}
-                  disabled={saving}
-                  className="rounded-xl px-5 py-2.5 text-[13px] font-semibold text-white"
+                  disabled={saving || unanswered > 0}
+                  className="rounded-xl px-5 py-2.5 text-[13px] font-semibold text-white disabled:opacity-40"
                   style={{ backgroundColor: "#4f8cff" }}
                 >
                   {saving ? "Saving…" : "Finish"}

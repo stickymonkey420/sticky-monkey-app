@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import AuthCard from "@/components/auth/AuthCard";
+import AuthPromises from "@/components/auth/AuthPromises";
 
 const inputClass =
   "w-full rounded-lg border border-card-border bg-white/5 px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted/60 focus:border-[#4f8cff] focus:outline-none";
@@ -102,6 +103,8 @@ export default function SignInPage() {
           {loading ? "Signing in…" : "Sign in"}
         </button>
       </form>
+
+      <AuthPromises />
 
       <p className="mt-5 text-center text-sm text-text-muted">
         Don&apos;t have an account?{" "}

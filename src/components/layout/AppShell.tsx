@@ -23,6 +23,7 @@ import MarketStrip from "./MarketStrip";
 import { ProfileProvider } from "@/lib/profile/ProfileProvider";
 import SignOutButton from "./SignOutButton";
 import TopBar from "./TopBar";
+import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
 
 // Real Webflow-hosted logo assets (head icon + white script wordmark) --
 // hotlinked directly from Webflow's permanent S3 CDN rather than
@@ -706,6 +707,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         </div>
         <main className="relative flex-1 px-4 pb-6 pt-6 md:px-8 md:pt-5">
           <MarketStrip />
+          {/* Mandatory first-run welcome + survey, on every app page (not
+              just Dashboard) so it can't be bypassed by navigating away. */}
+          <OnboardingFlow />
           {children}
         </main>
       </div>

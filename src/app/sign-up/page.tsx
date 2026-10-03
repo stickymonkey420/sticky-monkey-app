@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import AuthCard from "@/components/auth/AuthCard";
+import AuthPromises from "@/components/auth/AuthPromises";
 import { HANDLE_HINT, isHandleTakenError, validateHandle } from "@/lib/profile/handle";
 
 const inputClass =
@@ -28,6 +29,10 @@ export default function SignUpPage() {
 
     if (!firstName.trim() || !lastName.trim()) {
       setError("First and last name are required.");
+      return;
+    }
+    if (!handle.trim()) {
+      setError("Choose a handle.");
       return;
     }
     const handleError = validateHandle(handle);
@@ -99,7 +104,7 @@ export default function SignUpPage() {
   }
 
   return (
-    <AuthCard title="Create an account" subtitle="Get started with Sticky Monkey Finance.">
+    <AuthCard title="Create an account" subtitle="Free to start. Your data stays yours.">
       <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
         <div className="flex gap-3">
           <div className="flex-1">
@@ -135,11 +140,12 @@ export default function SignUpPage() {
         </div>
         <div>
           <label className="mb-1.5 block text-xs font-medium text-text-muted" htmlFor="handle">
-            Handle <span className="text-text-muted/60">(optional)</span>
+            Handle
           </label>
           <input
             id="handle"
             type="text"
+            required
             autoComplete="off"
             value={handle}
             onChange={(e) => setHandle(e.target.value)}
@@ -147,7 +153,7 @@ export default function SignUpPage() {
             placeholder="jdoe"
           />
           <p className="mt-1 text-xs text-text-muted/70">
-            Shown on Game-O-Fi leaderboards and matchups. {HANDLE_HINT} You can set or change this later too.
+            Shown on Game-O-Fi leaderboards and matchups. {HANDLE_HINT} You can change it later.
           </p>
         </div>
         <div>
@@ -207,6 +213,8 @@ export default function SignUpPage() {
           {loading ? "Creating account…" : "Sign up"}
         </button>
       </form>
+
+      <AuthPromises />
 
       <p className="mt-5 text-center text-sm text-text-muted">
         Already have an account?{" "}
