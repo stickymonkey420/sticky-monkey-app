@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { USE_CASES, YES_NO_QUESTIONS, buildUseCasesArray, type OnboardingAnswers } from "@/lib/dashboard/onboarding";
+import { LITERACY_KEY, USE_CASES, YES_NO_QUESTIONS, buildUseCasesArray, type OnboardingAnswers } from "@/lib/dashboard/onboarding";
 
 const PILL_BASE =
   "inline-block rounded-full border px-4 py-1.5 text-xs cursor-pointer mr-2 bg-transparent text-text-primary";
@@ -117,7 +117,12 @@ export default function OnboardingModal({
       use_cases: useCases.length ? useCases : null,
       onboarding_completed_at: new Date().toISOString(),
     };
-    if (includeSurvey) payload.onboarding_survey = answers;
+    if (includeSurvey) {
+      // Drop retired questions (nationality, travel, nomad, abroad, citizenship) on save.
+      const clean: OnboardingAnswers = { ...answers };
+      for (const k of ["nationality", "travels_a_lot", "digital_nomad", "outside_us_50pct", "other_citizenship"]) delete clean[k];
+      payload.onboarding_survey = clean;
+    }
 
     await supabase.from("profiles").update(payload).eq("id", user.id);
     setSaving(false);
@@ -129,9 +134,11 @@ export default function OnboardingModal({
 
   const showFollowup = answers.sell_options_income === true;
   const hasUseCase = Object.values(selected).some(Boolean);
+  const literacy = typeof answers[LITERACY_KEY] === "number" ? (answers[LITERACY_KEY] as number) : null;
   const unanswered =
     YES_NO_QUESTIONS.filter((q) => answers[q.key] !== true && answers[q.key] !== false).length +
-    (showFollowup && answers.sell_options_track_in_app !== true && answers.sell_options_track_in_app !== false ? 1 : 0);
+    (showFollowup && answers.sell_options_track_in_app !== true && answers.sell_options_track_in_app !== false ? 1 : 0) +
+    (literacy == null ? 1 : 0);
 
   function cancelRetake() {
     setVisible(false);
@@ -203,20 +210,39 @@ export default function OnboardingModal({
           <div>
             <h2 className="mb-1.5 text-xl font-bold">A few fun questions</h2>
             <p className="mb-5 text-[13px] leading-relaxed text-text-muted">
-              Please answer each one — it helps us tailor the app to you. Nationality is optional.
+              Please answer each one — it helps us tailor the app and lessons to you.
             </p>
 
-            <div className="mb-4">
-              <div className="mb-2 text-[13px]">
-                What&apos;s your nationality? 🌎 <span className="text-text-muted">(optional)</span>
+            <div className="mb-5">
+              <div className="mb-2 flex items-baseline justify-between text-[13px]">
+                <span>How would you rate your financial literacy? 🧠</span>
+                <span className="text-lg font-bold" style={{ color: literacy == null ? undefined : "#4f8cff" }}>
+                  {literacy ?? "–"}
+                  <span className="text-xs font-normal text-text-muted">/10</span>
+                </span>
               </div>
               <input
-                type="text"
-                placeholder="e.g. American, Canadian..."
-                value={(answers.nationality as string) || ""}
-                onChange={(e) => setAnswers((prev) => ({ ...prev, nationality: e.target.value.trim() || null }))}
-                className="w-full rounded-[10px] border border-[rgba(148,158,189,0.5)] bg-[#0d0f17] px-3 py-2.5 text-[13px] text-text-primary"
+                type="range"
+                min={1}
+                max={10}
+                step={1}
+                value={literacy ?? 5}
+                onChange={(e) => setAnswers((prev) => ({ ...prev, [LITERACY_KEY]: Number(e.target.value) }))}
+                onClick={(e) => setAnswers((prev) => ({ ...prev, [LITERACY_KEY]: Number((e.target as HTMLInputElement).value) }))}
+                aria-label="Financial literacy, 1 to 10"
+                className={`w-full cursor-pointer accent-[#4f8cff] ${literacy == null ? "opacity-50" : ""}`}
               />
+              <div className="mt-1 flex justify-between px-[3px] text-[10px] text-text-muted">
+                {Array.from({ length: 10 }, (_, k) => (
+                  <span key={k} className={literacy === k + 1 ? "font-bold text-text-primary" : ""}>
+                    {k + 1}
+                  </span>
+                ))}
+              </div>
+              <div className="mt-0.5 flex justify-between text-[10px] text-text-muted">
+                <span>Just starting</span>
+                <span>Expert</span>
+              </div>
             </div>
 
             {YES_NO_QUESTIONS.map((item) => (

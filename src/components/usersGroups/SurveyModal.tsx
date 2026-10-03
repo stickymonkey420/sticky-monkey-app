@@ -32,7 +32,9 @@ export default function SurveyModal({
 }) {
   const survey = (profile.onboarding_survey ?? {}) as Record<string, unknown>;
   const [useCases, setUseCases] = useState<string[]>(profile.use_cases ?? []);
-  const [nationality, setNationality] = useState((survey.nationality as string) ?? "");
+  const [literacy, setLiteracy] = useState<string>(
+    typeof survey.financial_literacy_level === "number" ? String(survey.financial_literacy_level) : ""
+  );
   const [triStates, setTriStates] = useState<Record<string, TriState>>(() => {
     const init: Record<string, TriState> = {};
     for (const f of TRI_STATE_FIELD_DEFS) init[f.key] = triFromValue(survey[f.key]);
@@ -53,7 +55,13 @@ export default function SurveyModal({
   async function handleSave() {
     setSaving(true);
     setError(null);
-    const newSurvey: Record<string, unknown> = { ...triStates, nationality: nationality.trim() || null };
+    const newSurvey: Record<string, unknown> = {
+      ...survey,
+      ...triStates,
+      financial_literacy_level: literacy ? Number(literacy) : null,
+    };
+    // Retired questions (no longer asked) are dropped on save.
+    for (const k of ["nationality", "travels_a_lot", "digital_nomad", "outside_us_50pct", "other_citizenship"]) delete newSurvey[k];
     const { error: err } = await onSave(profile.id, {
       use_cases: useCases.length ? useCases : null,
       onboarding_survey: newSurvey,
@@ -92,16 +100,21 @@ export default function SurveyModal({
           ))}
         </div>
 
-        <h3 className="mb-2.5 mt-5 text-xs font-bold uppercase tracking-wide text-text-muted">Demographics</h3>
+        <h3 className="mb-2.5 mt-5 text-xs font-bold uppercase tracking-wide text-text-muted">About them</h3>
         <div className="mb-2 flex items-center gap-2.5 py-1.5 text-sm">
-          <label className="flex-1 text-text-primary">Nationality</label>
-          <input
-            type="text"
-            value={nationality}
-            onChange={(e) => setNationality(e.target.value)}
-            placeholder="e.g. American"
-            className="w-[150px] rounded-md border border-card-border bg-[#0d0f17] px-2 py-1.5 text-sm text-text-primary outline-none"
-          />
+          <label className="flex-1 text-text-primary">Financial literacy (1–10)</label>
+          <select
+            value={literacy}
+            onChange={(e) => setLiteracy(e.target.value)}
+            className="w-[150px] rounded-md border border-card-border bg-[#0d0f17] px-2 py-1.5 text-sm text-text-primary"
+          >
+            <option value="">— Not answered —</option>
+            {Array.from({ length: 10 }, (_, k) => (
+              <option key={k + 1} value={k + 1}>
+                {k + 1}
+              </option>
+            ))}
+          </select>
         </div>
         {TRI_STATE_FIELD_DEFS.map((f) => (
           <div key={f.key} className="flex items-center gap-2.5 py-1.5 text-sm">

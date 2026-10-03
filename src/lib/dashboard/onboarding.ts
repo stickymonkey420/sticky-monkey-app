@@ -11,6 +11,7 @@ export const USE_CASES: UseCase[] = [
   { key: "personal_tracking", label: "Personal Tracking", desc: "Budgets, manual accounts, everyday money." },
   { key: "investment_income", label: "Investment Tracking & Income Generating", desc: "Portfolio, options income, market alerts." },
   { key: "games_paper_trading_derby", label: "Games - Paper Trading Derby", desc: "Game-O-Fi paper trading contests and Trade Off leaderboards." },
+  { key: "financial_literacy", label: "Financial Literacy", desc: "Learn how money really works: SMU lessons, guides, and plain-language explainers." },
 ];
 
 export type YesNoQuestion = {
@@ -19,19 +20,19 @@ export type YesNoQuestion = {
 };
 
 export const YES_NO_QUESTIONS: YesNoQuestion[] = [
-  { key: "travels_a_lot", q: "Do you travel a lot? ✈️" },
   { key: "side_gigs", q: "Got any side gigs? (Uber, DoorDash, Etsy...) 💰" },
   { key: "owns_business", q: "Do you own your own business? 💼" },
-  { key: "digital_nomad", q: "Are you a digital nomad? 🌍" },
-  { key: "outside_us_50pct", q: "Outside the US more than half the year? 🌐" },
-  { key: "other_citizenship", q: "Hold any citizenships other than US? 📘" },
   { key: "sell_options_income", q: "Interested in selling options to generate income? 📈" },
 ];
 
+// Self-rated financial literacy, 1 (just starting) to 10 (expert). Stored in
+// profiles.onboarding_survey under this key.
+export const LITERACY_KEY = "financial_literacy_level";
+
 export type OnboardingAnswers = {
-  nationality?: string | null;
+  financial_literacy_level?: number | null;
   sell_options_track_in_app?: boolean | null;
-  [key: string]: string | boolean | null | undefined;
+  [key: string]: string | number | boolean | null | undefined;
 };
 
 export function buildUseCasesArray(selected: Record<string, boolean>, answers: OnboardingAnswers): string[] {

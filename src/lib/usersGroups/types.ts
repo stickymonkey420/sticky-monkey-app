@@ -48,15 +48,12 @@ export const USE_CASE_DEFS: { key: string; label: string }[] = [
   { key: "personal_tracking", label: "Personal Tracking" },
   { key: "investment_income", label: "Investment Tracking & Income Generating" },
   { key: "games_paper_trading_derby", label: "Games - Paper Trading Derby" },
+  { key: "financial_literacy", label: "Financial Literacy" },
 ];
 
 export const TRI_STATE_FIELD_DEFS: { key: string; label: string }[] = [
-  { key: "travels_a_lot", label: "Travels a lot" },
   { key: "side_gigs", label: "Has side gigs (Uber, DoorDash, Etsy...)" },
   { key: "owns_business", label: "Owns their own business" },
-  { key: "digital_nomad", label: "Digital nomad" },
-  { key: "outside_us_50pct", label: "Outside the US >50% of the year" },
-  { key: "other_citizenship", label: "Holds non-US citizenship" },
   { key: "sell_options_income", label: "Interested in selling options for income" },
   { key: "sell_options_track_in_app", label: "Wants to track that income in-app" },
 ];
