@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
-import { computeHoldings, ensurePaperAccount, fetchPaperTrades, fetchPaperWeeklyLeaderboard } from "@/lib/gameAfi/paperQueries";
+import { computeHoldings, ensurePaperAccount, fetchPaperTrades } from "@/lib/gameAfi/paperQueries";
 import { fetchChallenges } from "@/lib/gameAfi/challengeQueries";
-import type { PaperLeaderboardRow } from "@/lib/gameAfi/paperTypes";
 import { LITERACY_KEY } from "@/lib/dashboard/onboarding";
 import { ABU_AVATAR_URL, ABU_TIPS, LEARNING_TIERS, tierForLevel } from "@/lib/dashboard/starterContent";
 
@@ -36,8 +35,6 @@ type State = {
   literacy: number | null;
   snapshot: Snapshot | null;
   challenges: number;
-  leaders: PaperLeaderboardRow[];
-  myId: string | null;
 };
 
 const INITIAL: State = {
@@ -50,8 +47,6 @@ const INITIAL: State = {
   literacy: null,
   snapshot: null,
   challenges: 0,
-  leaders: [],
-  myId: null,
 };
 
 export default function StarterDashboard() {
@@ -88,10 +83,9 @@ export default function StarterDashboard() {
         return;
       }
 
-      const [account, trades, board, challenges] = await Promise.all([
+      const [account, trades, challenges] = await Promise.all([
         ensurePaperAccount(supabase),
         fetchPaperTrades(supabase, user.id),
-        fetchPaperWeeklyLeaderboard(supabase),
         fetchChallenges(supabase),
       ]);
       const holdings = trades.length ? await computeHoldings(supabase, trades) : [];
@@ -111,8 +105,6 @@ export default function StarterDashboard() {
           ? { value: account.cashBalance + invested, starting: account.startingBalance, positions: holdings.filter((h) => h.shares > 0).length, trades: trades.length }
           : null,
         challenges: challenges.length,
-        leaders: board.rows.slice(0, 5),
-        myId: user.id,
       });
     }
     load();
@@ -288,7 +280,7 @@ function GameSnapshot({ s }: { s: State }) {
           {snap && snap.trades > 0 ? "Open Game-O-Fi" : "Make your first trade"}
         </Link>
       </div>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div>
         <div className="grid grid-cols-3 gap-3">
           <Stat label="Portfolio value" value={snap ? usd(snap.value) : "—"} />
           <Stat
@@ -302,30 +294,6 @@ function GameSnapshot({ s }: { s: State }) {
             <p className="col-span-3 text-xs text-text-muted">
               You have {usd(snap.starting)} in practice money. Buy a few stocks and watch how they move. Nothing real is at risk.
             </p>
-          )}
-        </div>
-        <div>
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">This week&apos;s top 5</div>
-          {s.leaders.length === 0 ? (
-            <div className="text-sm text-text-muted">No ranked players yet this week. Be the first!</div>
-          ) : (
-            <ol className="flex flex-col gap-1">
-              {s.leaders.map((r) => (
-                <li
-                  key={r.user_id}
-                  className={`flex items-center justify-between rounded-lg px-2 py-1.5 text-sm ${r.user_id === s.myId ? "bg-[#4f8cff]/15" : ""}`}
-                >
-                  <span className="text-text-primary">
-                    <span className="mr-2 inline-block w-4 text-xs text-text-muted">{r.rank === 1 ? "♛" : r.rank}</span>
-                    {r.display_name}
-                  </span>
-                  <span className="text-xs font-semibold" style={{ color: Number(r.pct_return) >= 0 ? "#3ddc97" : "#ff5c7a" }}>
-                    {Number(r.pct_return) >= 0 ? "+" : ""}
-                    {Number(r.pct_return).toFixed(2)}%
-                  </span>
-                </li>
-              ))}
-            </ol>
           )}
         </div>
       </div>
