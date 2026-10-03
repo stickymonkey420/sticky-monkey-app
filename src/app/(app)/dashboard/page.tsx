@@ -3,6 +3,7 @@ import ExpenseCategoriesCard from "@/components/dashboard/ExpenseCategoriesCard"
 import NetWorthHistoryChart from "@/components/dashboard/NetWorthHistoryChart";
 import LastTransactionsCard from "@/components/dashboard/LastTransactionsCard";
 import GameAfiMirrorCard from "@/components/dashboard/GameAfiMirrorCard";
+import StarterDashboard from "@/components/dashboard/StarterDashboard";
 
 // Asset Allocation sits alongside a right-hand column that stacks the
 // Income History chart above the Income week/month/YTD/collateral card
@@ -35,6 +36,8 @@ export default function DashboardPage() {
     <>
       <h1 className="mb-6 text-[21px] font-semibold text-text-primary">Dashboard</h1>
       <div className="flex min-w-0 w-full flex-col gap-6">
+        {/* Free members only (renders nothing for paid/staff). */}
+        <StarterDashboard />
         <NetWorthCard />
         <NetWorthHistoryChart />
         <ExpenseCategoriesCard />
