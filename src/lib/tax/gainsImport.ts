@@ -211,7 +211,7 @@ function parseRobinhood(header: string[], body: string[][]): ParseResult {
   const iQty = ix("quantity");
   const iAmt = ix("amount");
 
-  type Tx = { date: string; inst: string; desc: string; code: string; qty: number; amount: number; order: number };
+  type Tx = { date: string; inst: string; desc: string; code: string; qty: number; removed: boolean; amount: number; order: number };
   const txs: Tx[] = [];
   body.forEach((r, order) => {
     const date = parseDate(r[iDate]);
@@ -223,6 +223,8 @@ function parseRobinhood(header: string[], body: string[][]): ParseResult {
       desc: (r[iDesc] ?? "").split("\n")[0].trim(),
       code,
       qty: Math.abs(parseMoney((r[iQty] ?? "").replace(/[A-Za-z]+$/, "")) ?? 0),
+      // Corporate-action rows mark the removed side with a trailing "S" (e.g. "2S").
+      removed: /\d\s*S$/i.test((r[iQty] ?? "").trim()),
       amount: parseMoney(r[iAmt]) ?? 0,
       order,
     });
@@ -237,8 +239,19 @@ function parseRobinhood(header: string[], body: string[][]): ParseResult {
   const skip: Record<string, number> = {};
   const bump = (k: string) => (skip[k] = (skip[k] ?? 0) + 1);
 
-  const optKey = (t: Tx) => (t.desc || t.inst).replace(/\s+/g, " ").toUpperCase();
-  const isOption = (t: Tx) => ["BTO", "STC", "STO", "BTC", "OEXP", "OASGN", "OEXCS"].includes(t.code);
+  // Expirations read "Option Expiration for FIG 10/2/2026 Call $24.00";
+  // the opening trade reads "FIG 10/2/2026 Call $24.00" -- normalize both.
+  const optKey = (t: Tx) =>
+    (t.desc || t.inst)
+      .replace(/^option (expiration|assignment|assigned|exercise) for\s+/i, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase();
+  const isOption = (t: Tx) => ["BTO", "STC", "STO", "BTC", "OEXP", "OASGN", "OEXCS", "OCA"].includes(t.code);
+  // OCA = option corporate action (e.g. UVIX contract renamed UVIX1 after a
+  // split): the "S" row removes the old contract, the other row adds the new
+  // one. Open lots carry over to the new contract name.
+  let ocaStash: { long: Lot[]; short: Lot[] } | null = null;
 
   function take(map: Map<string, Lot[]>, key: string, qty: number) {
     const lots = map.get(key) ?? [];
@@ -332,6 +345,19 @@ function parseRobinhood(header: string[], body: string[][]): ParseResult {
           const { used } = take(longLots, k, qty);
           emit(t, k, used, 0, false, qty); // expired long: lose the premium paid
         } else bump("expirations/assignments with no matching open in this file");
+        break;
+      }
+      case "OCA": {
+        const k = optKey(t);
+        if (t.removed) {
+          ocaStash = { long: longLots.get(k) ?? [], short: shortLots.get(k) ?? [] };
+          longLots.set(k, []);
+          shortLots.set(k, []);
+        } else if (ocaStash) {
+          longLots.set(k, [...(longLots.get(k) ?? []), ...ocaStash.long]);
+          shortLots.set(k, [...(shortLots.get(k) ?? []), ...ocaStash.short]);
+          ocaStash = null;
+        } else bump("option corporate actions that couldn't be matched");
         break;
       }
       case "OEXCS":
