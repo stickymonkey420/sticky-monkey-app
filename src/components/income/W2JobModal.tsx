@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { saveW2Job, w2Figures } from "@/lib/w2/queries";
-import { PAY_FREQUENCIES, PAY_FREQUENCY_LABELS, type PayFrequency, type W2Job } from "@/lib/w2/types";
+import { PAYSTUB_LINES, PAY_FREQUENCIES, PAY_FREQUENCY_LABELS, type PayFrequency, type PaystubFields, type PaystubLineKey, type W2Job } from "@/lib/w2/types";
 
 // Add / edit a W-2 job. Opened from the Income page's W-2 Jobs card and from
 // Quick Access ("Add W-2 Job"). Basic fields only: employer, job title,
-// annual salary, pay frequency, take-home per check (+ optional start date).
+// annual salary, pay frequency, take-home per check (+ optional start date),
+// plus the member's LAST PAYSTUB (this period + year-to-date), which the
+// Taxes page uses to project wages and withholding to year end.
 // Shows the per-check gross and yearly/monthly take-home live as you type.
 
 const inputClass =
@@ -26,6 +28,17 @@ export default function W2JobModal({ job, onClose }: { job?: W2Job | null; onClo
   const [net, setNet] = useState(job?.net_per_check != null ? String(Number(job.net_per_check)) : "");
   const [start, setStart] = useState(job?.start_date ?? "");
   const [active, setActive] = useState(job?.is_active ?? true);
+  const [stubDate, setStubDate] = useState(job?.paystub_date ?? "");
+  const [stub, setStub] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const l of PAYSTUB_LINES) {
+      const cur = job?.[`paystub_${l.key}` as keyof PaystubFields];
+      const ytd = job?.[`ytd_${l.key}` as keyof PaystubFields];
+      init[`paystub_${l.key}`] = cur == null ? "" : String(Number(cur));
+      init[`ytd_${l.key}`] = ytd == null ? "" : String(Number(ytd));
+    }
+    return init;
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,10 +58,21 @@ export default function W2JobModal({ job, onClose }: { job?: W2Job | null; onClo
     Number.isFinite(salaryNum) &&
     salaryNum >= 0 &&
     (netNum == null || (Number.isFinite(netNum) && netNum >= 0));
+  const stubNum = (k: string) => (stub[k]?.trim() ? Number(stub[k]) : null);
+  const stubValid = Object.values(stub).every((v) => v.trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0));
+  const stubStarted = !!stubDate || Object.values(stub).some((v) => v.trim() !== "");
   const fig = valid ? w2Figures({ annual_salary: salaryNum, pay_frequency: freq, net_per_check: netNum }) : null;
 
   async function submit() {
     if (!valid || saving) return;
+    if (!stubValid) {
+      setError("Paystub amounts must be zero or more.");
+      return;
+    }
+    if (stubStarted && (!stubDate || stubNum("paystub_gross") == null || stubNum("ytd_gross") == null)) {
+      setError("For the paystub, enter at least the pay date, gross pay this period, and YTD gross.");
+      return;
+    }
     setSaving(true);
     setError(null);
     const supabase = createClient();
@@ -71,6 +95,8 @@ export default function W2JobModal({ job, onClose }: { job?: W2Job | null; onClo
         net_per_check: netNum,
         start_date: start || null,
         is_active: active,
+        paystub_date: stubDate || null,
+        ...Object.fromEntries(Object.keys(stub).map((k) => [k, stubNum(k)])),
       },
       job?.id,
     );
@@ -94,7 +120,7 @@ export default function W2JobModal({ job, onClose }: { job?: W2Job | null; onClo
         role="dialog"
         aria-modal="true"
         aria-label={job ? "Edit W-2 job" : "Add W-2 job"}
-        className="w-full max-w-md rounded-2xl border border-card-border bg-card-bg p-5 shadow-2xl"
+        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-card-border bg-card-bg p-5 shadow-2xl"
       >
         <div className="mb-4 flex items-center justify-between gap-3">
           <h3 className="text-base font-semibold text-text-primary">{job ? "Edit W-2 Job" : "Add W-2 Job"}</h3>
@@ -145,6 +171,32 @@ export default function W2JobModal({ job, onClose }: { job?: W2Job | null; onClo
             Current job
           </label>
 
+          <div className="rounded-xl border border-[#4f8cff]/30 bg-[#4f8cff]/5 p-3.5">
+            <div className="mb-0.5 text-sm font-semibold text-text-primary">Your last paystub</div>
+            <p className="mb-3 text-xs text-text-muted">
+              Copy these from your most recent paystub. They let the Taxes page estimate what you&apos;ll owe or get back. You can add this
+              later too.
+            </p>
+            <div className="mb-3 max-w-[200px]">
+              <label className={labelClass} htmlFor="w2-stub-date">Pay date</label>
+              <input id="w2-stub-date" type="date" value={stubDate} onChange={(e) => setStubDate(e.target.value)} className={inputClass} />
+            </div>
+            <div className="grid grid-cols-[minmax(0,1fr)_110px_110px] items-center gap-x-2 gap-y-1.5 text-xs">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Line</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">This period</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Year to date</span>
+              {PAYSTUB_LINES.map((l) => (
+                <PaystubRow
+                  key={l.key}
+                  label={l.label}
+                  lineKey={l.key}
+                  stub={stub}
+                  onChange={(k, v) => setStub((p) => ({ ...p, [k]: v }))}
+                />
+              ))}
+            </div>
+          </div>
+
           {fig && (
             <div className="grid grid-cols-3 gap-2 rounded-xl bg-white/5 p-3 text-center">
               <div>
@@ -175,5 +227,42 @@ export default function W2JobModal({ job, onClose }: { job?: W2Job | null; onClo
         </div>
       </div>
     </div>
+  );
+}
+
+function PaystubRow({
+  label,
+  lineKey,
+  stub,
+  onChange,
+}: {
+  label: string;
+  lineKey: PaystubLineKey;
+  stub: Record<string, string>;
+  onChange: (key: string, value: string) => void;
+}) {
+  const cell =
+    "w-full rounded-md border border-card-border bg-[#0f131c] px-2 py-1.5 text-xs text-text-primary outline-none focus:border-[#4f8cff]/60";
+  return (
+    <>
+      <span className="text-text-primary">{label}</span>
+      {(["paystub", "ytd"] as const).map((p) => {
+        const k = `${p}_${lineKey}`;
+        return (
+          <input
+            key={k}
+            aria-label={`${label} ${p === "ytd" ? "year to date" : "this period"}`}
+            type="number"
+            min="0"
+            step="0.01"
+            inputMode="decimal"
+            value={stub[k] ?? ""}
+            onChange={(e) => onChange(k, e.target.value)}
+            placeholder="0.00"
+            className={cell}
+          />
+        );
+      })}
+    </>
   );
 }

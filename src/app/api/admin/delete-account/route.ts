@@ -123,6 +123,12 @@ async function handleDelete(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: `Could not delete option trades: ${tradesError.message}` }, { status: 500 });
   }
 
+  // 2d. tax_profiles has no FK to auth.users (kept FK-free), so purge it here.
+  const { error: taxError } = await admin.from("tax_profiles").delete().eq("user_id", userId);
+  if (taxError) {
+    return NextResponse.json({ error: `Could not delete tax profile: ${taxError.message}` }, { status: 500 });
+  }
+
   // 3. Delete the actual Supabase Auth user.
   const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
   if (deleteError) {

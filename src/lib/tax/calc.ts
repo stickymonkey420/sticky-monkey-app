@@ -19,6 +19,7 @@ export type TaxInput = {
   children: number; // under 17, for the child tax credit
   withheld: number; // federal withholding so far
   estimatesPaid: number; // federal estimated payments so far
+  stateWithheld?: number; // state tax withheld (W-2)
 };
 
 export const EMPTY_INPUT: TaxInput = {
@@ -80,6 +81,7 @@ export type TaxResult = {
   stateMarginal: number;
   paid: number;
   balanceDue: number; // federal only; negative = refund
+  stateBalanceDue: number; // state tax minus state withholding; negative = refund
 };
 
 export function estimateTax(i: TaxInput): TaxResult {
@@ -179,5 +181,6 @@ export function estimateTax(i: TaxInput): TaxResult {
     stateMarginal,
     paid,
     balanceDue: federalTotal - paid,
+    stateBalanceDue: stateTax - pos(i.stateWithheld ?? 0),
   };
 }

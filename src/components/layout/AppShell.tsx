@@ -262,7 +262,14 @@ const NAV_TREE: NavNode[] = [
     ],
   },
   { href: "/income", label: "Income", icon: CircleDollarSign, requires: "paid" },
-  { href: "/taxes", label: "Taxes", icon: Calculator },
+  {
+    label: "Taxes",
+    icon: Calculator,
+    children: [
+      { href: "/taxes", label: "Overview" },
+      { href: "/taxes/calculator", label: "Calculator" },
+    ],
+  },
   {
     label: "Businesses",
     icon: Briefcase,
@@ -376,9 +383,13 @@ function hrefQuery(href: string): string | null {
   return match ? match[1] : null;
 }
 
+const EXACT_MATCH_PATHS = new Set(["/taxes"]);
+
 function isLeafActive(href: string, pathname: string, search: string): boolean {
   const path = hrefPath(href);
-  const pathMatches = pathname === path || pathname.startsWith(`${path}/`);
+  // Parent pages whose sub-pages have their own menu item match exactly
+  // (e.g. /taxes vs /taxes/calculator) so only one item lights up.
+  const pathMatches = pathname === path || (!EXACT_MATCH_PATHS.has(path) && pathname.startsWith(`${path}/`));
   if (!pathMatches) return false;
   const query = hrefQuery(href);
   if (!query) return true;

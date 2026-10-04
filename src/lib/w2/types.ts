@@ -34,6 +34,24 @@ export type W2Job = {
   notes: string | null;
   created_at: string;
   updated_at: string;
+} & PaystubFields;
+
+// Last paystub: this period ("paystub_*") and year-to-date ("ytd_*").
+export const PAYSTUB_LINES = [
+  { key: "gross", label: "Gross pay" },
+  { key: "federal", label: "Federal income tax" },
+  { key: "social_security", label: "Social Security (FICA)" },
+  { key: "medicare", label: "Medicare" },
+  { key: "state", label: "State income tax" },
+  { key: "other", label: "Other taxes (SDI, local)" },
+  { key: "pretax", label: "Pre-tax 401(k) / HSA" },
+] as const;
+export type PaystubLineKey = (typeof PAYSTUB_LINES)[number]["key"];
+
+export type PaystubFields = {
+  paystub_date?: string | null;
+} & { [K in PaystubLineKey as `paystub_${K}`]?: number | string | null } & {
+  [K in PaystubLineKey as `ytd_${K}`]?: number | string | null;
 };
 
 export type W2JobInput = {
@@ -44,7 +62,7 @@ export type W2JobInput = {
   net_per_check: number | null;
   start_date: string | null;
   is_active: boolean;
-};
+} & PaystubFields;
 
 // Fired on window after any add/edit/delete so every mounted W-2 view
 // (Income page card, Quick Access) refreshes without a page reload.
