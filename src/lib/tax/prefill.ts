@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchW2Jobs, w2Totals } from "@/lib/w2/queries";
+import { TAXABLE_ACCOUNT_TYPES } from "./data2026";
 
 // Pulls what the app already knows for a rough "Fill from my data":
 // active W-2 salaries, and this year's realized options P/L in TAXABLE
@@ -24,13 +25,13 @@ export async function fetchTaxPrefill(supabase: SupabaseClient, userId: string, 
       .from("wheel_trades")
       .select("premium,contracts,status,close_date,exp_date,close_price,account_type")
       .eq("user_id", userId)
-      .eq("account_type", "brokerage")
+      .in("account_type", [...TAXABLE_ACCOUNT_TYPES])
       .neq("status", "open"),
     supabase
       .from("long_option_trades")
       .select("realized_pl,close_date,account_type,status")
       .eq("user_id", userId)
-      .eq("account_type", "brokerage")
+      .in("account_type", [...TAXABLE_ACCOUNT_TYPES])
       .eq("status", "closed")
       .gte("close_date", start)
       .lte("close_date", end),

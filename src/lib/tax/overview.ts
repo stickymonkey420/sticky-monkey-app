@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchW2Jobs } from "@/lib/w2/queries";
 import type { W2Job } from "@/lib/w2/types";
-import type { FilingStatus } from "./data2026";
+import { TAXABLE_ACCOUNT_TYPES, type FilingStatus } from "./data2026";
 import type { TaxInput } from "./calc";
 
 // Builds the Taxes Overview from what the member already tracks in the app:
@@ -136,8 +136,8 @@ export async function fetchTaxOverview(supabase: SupabaseClient, userId: string,
     supabase.from("rental_ledger").select("amount,kind,entry_date").eq("user_id", userId).eq("kind", "payment").gte("entry_date", start).lte("entry_date", end),
     supabase.from("rental_expenses").select("amount,expense_date").eq("user_id", userId).gte("expense_date", start).lte("expense_date", end),
     supabase.from("rental_maintenance").select("cost,completed_on").eq("user_id", userId).gte("completed_on", start).lte("completed_on", end),
-    supabase.from("wheel_trades").select("premium,contracts,status,close_date,exp_date,close_price").eq("user_id", userId).eq("account_type", "brokerage").neq("status", "open"),
-    supabase.from("long_option_trades").select("realized_pl,close_date").eq("user_id", userId).eq("account_type", "brokerage").eq("status", "closed").gte("close_date", start).lte("close_date", end),
+    supabase.from("wheel_trades").select("premium,contracts,status,close_date,exp_date,close_price").eq("user_id", userId).in("account_type", [...TAXABLE_ACCOUNT_TYPES]).neq("status", "open"),
+    supabase.from("long_option_trades").select("realized_pl,close_date").eq("user_id", userId).in("account_type", [...TAXABLE_ACCOUNT_TYPES]).eq("status", "closed").gte("close_date", start).lte("close_date", end),
   ]);
 
   const profile: TaxProfile = { ...DEFAULT_TAX_PROFILE };

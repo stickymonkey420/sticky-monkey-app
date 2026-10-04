@@ -144,7 +144,7 @@ export default function TaxesPage() {
 
             <div className="mb-5 rounded-xl bg-[#4f8cff]/10 p-3 text-xs">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-text-primary">Pull W-2 salary and this year&apos;s brokerage options P/L from your account.</span>
+                <span className="text-text-primary">Pull W-2 salary and this year&apos;s options P/L from taxable accounts (IRAs excluded).</span>
                 <button
                   type="button"
                   disabled={prefillBusy}

@@ -167,3 +167,8 @@ export const STATES: Record<string, StateTax> = {
 export const STATE_OPTIONS = Object.entries(STATES)
   .map(([code, s]) => ({ code, name: s.name }))
   .sort((a, b) => a.name.localeCompare(b.name));
+
+// Only these account types are taxed each year. Retirement accounts
+// (traditional, roth, sdira, 401k...) are tax-deferred/tax-free and are
+// NEVER counted -- allowlist, so any new account type is excluded by default.
+export const TAXABLE_ACCOUNT_TYPES = ["brokerage", "crypto"] as const;

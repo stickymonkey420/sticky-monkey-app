@@ -235,13 +235,16 @@ export default function TaxesOverviewPage() {
                   )}
 
                   {(view.rentalNet.ytd !== 0 || view.options.ytd !== 0 || draft.stock_short_term || draft.stock_long_term) && <Group label="Investments & rentals" />}
-                  {view.options.ytd !== 0 && <SourceRow label="Options (brokerage)" sub="Short-term · realized" pair={view.options} mode={mode} />}
+                  {view.options.ytd !== 0 && <SourceRow label="Options (taxable accounts)" sub="Short-term · realized · excludes IRAs" pair={view.options} mode={mode} />}
                   {!!draft.stock_short_term && <SourceRow label="Stock/crypto short-term" sub="Entered below" pair={{ ytd: draft.stock_short_term, projected: draft.stock_short_term }} mode={mode} />}
                   {!!draft.stock_long_term && <SourceRow label="Stock/crypto long-term" sub="Entered below" pair={{ ytd: draft.stock_long_term, projected: draft.stock_long_term }} mode={mode} />}
                   {view.rentalNet.ytd !== 0 && <SourceRow label="Rental net income" sub="Rent received minus expenses" pair={view.rentalNet} mode={mode} />}
                 </tbody>
               </table>
             </div>
+            <p className="mt-3 text-[11px] text-text-muted">
+              Retirement accounts (Traditional IRA, Roth IRA, SDIRA, 401(k)) are not included. Gains inside them aren&apos;t taxed each year.
+            </p>
             {missingStub && (
               <p className="mt-3 rounded-lg bg-[#f5d020]/10 p-2.5 text-xs text-[#f5d020]">
                 Add your last paystub to each W-2 job (Income → W-2 Jobs → edit) so withholding is counted and wages project accurately.
