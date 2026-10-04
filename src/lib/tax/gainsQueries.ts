@@ -9,6 +9,27 @@ export type RealizedGainRow = ParsedGain & {
   created_at: string;
 };
 
+// PostgREST caps every response at 1,000 rows, so page through with range().
+export async function fetchGainRows<T = Record<string, unknown>>(
+  supabase: SupabaseClient,
+  columns: string,
+  from: string,
+  to: string,
+  userId?: string
+): Promise<T[]> {
+  const PAGE = 1000;
+  const out: T[] = [];
+  for (let offset = 0; offset < 100_000; offset += PAGE) {
+    let q = supabase.from("realized_gains").select(columns).gte("date_sold", from).lte("date_sold", to);
+    if (userId) q = q.eq("user_id", userId);
+    const { data, error } = await q.order("date_sold", { ascending: false }).order("id").range(offset, offset + PAGE - 1);
+    if (error) throw new Error(error.message);
+    out.push(...((data ?? []) as T[]));
+    if (!data || data.length < PAGE) break;
+  }
+  return out;
+}
+
 const chunk = <T,>(arr: T[], n: number) => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));
 
 // Which of these fingerprints are already saved for this member (RLS-scoped).
@@ -49,18 +70,14 @@ export async function importGains(
 }
 
 export async function fetchGains(supabase: SupabaseClient, year: number): Promise<RealizedGainRow[]> {
-  const { data, error } = await supabase
-    .from("realized_gains")
-    .select("*")
-    .gte("date_sold", `${year}-01-01`)
-    .lte("date_sold", `${year}-12-31`)
-    .order("date_sold", { ascending: false })
-    .limit(5000);
-  if (error) {
-    console.error("fetchGains failed", error);
+  let rows: Record<string, unknown>[] = [];
+  try {
+    rows = await fetchGainRows(supabase, "*", `${year}-01-01`, `${year}-12-31`);
+  } catch (e) {
+    console.error("fetchGains failed", e);
     return [];
   }
-  return (data ?? []).map((r) => ({
+  return rows.map((r) => ({
     ...(r as RealizedGainRow),
     proceeds: Number(r.proceeds),
     cost_basis: Number(r.cost_basis),

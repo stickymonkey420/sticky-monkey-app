@@ -57,9 +57,17 @@ function isoWeekStart(d: Date): Date {
 // traditional/roth accounts enabled doesn't show three all-zero rows for
 // accounts that don't apply to it. Passing null/undefined keeps the old
 // "show all three" behavior for any caller that hasn't been updated yet.
+// Imported realized gains/dividends (Taxes > Imported Gains) for the taxable
+// brokerage row. When present they ARE the brokerage income up to the newest
+// imported date (stocks, long options, short options, dividends -- all
+// taxable activity); tracker premium only fills in after that date, so
+// nothing is counted twice.
+export type ImportedIncomeRow = { date_sold: string; gain: number | string };
+
 export function computeIncomeTable(
   trades: IncomeTableTrade[],
-  enabledAccountKeys?: string[] | null
+  enabledAccountKeys?: string[] | null,
+  imported: ImportedIncomeRow[] = []
 ): IncomeTableRow[] {
   const now = new Date();
   const weekStart = isoWeekStart(now);
@@ -97,6 +105,14 @@ export function computeIncomeTable(
     if (`${y}` === yearKey) buckets[acct].ytd += amount;
   };
 
+  const importCutoff = imported.reduce((m, r) => (r.date_sold > m ? r.date_sold : m), "");
+  if (buckets.brokerage) imported.forEach((r) => addOnDate("brokerage", r.date_sold, Number(r.gain) || 0));
+  // Tracker amounts for the brokerage row only count after the import covers.
+  const addTracked = (acct: string, dateStr: string | null | undefined, amount: number) => {
+    if (acct === "brokerage" && importCutoff && (!dateStr || dateStr <= importCutoff)) return;
+    addOnDate(acct, dateStr, amount);
+  };
+
   trades.forEach((t) => {
     const acct = (t.account_type || "").toString().trim().toLowerCase();
     if (!buckets[acct]) return;
@@ -111,10 +127,10 @@ export function computeIncomeTable(
     // earlier -- overstating Week/Month by the whole buy-back amount
     // instead of showing the roll's net credit/debit. Falls back to
     // entry_date only if close_date is missing (legacy rows).
-    addOnDate(acct, t.entry_date, premium * contracts * 100);
+    addTracked(acct, t.entry_date, premium * contracts * 100);
     if (t.status === "closed" || t.status === "rolled") {
       const closeCost = (Number(t.close_price) || 0) * contracts * 100;
-      addOnDate(acct, t.close_date || t.entry_date, -closeCost);
+      addTracked(acct, t.close_date || t.entry_date, -closeCost);
     }
 
     if (t.status === "open" && (t.trade_type || "").toString().toUpperCase() === "CSP") {

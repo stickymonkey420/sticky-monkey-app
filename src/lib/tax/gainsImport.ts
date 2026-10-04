@@ -363,8 +363,35 @@ function parseRobinhood(header: string[], body: string[][]): ParseResult {
       case "OEXCS":
         bump("exercised options (premium rolls into the stock's cost basis; not counted here)");
         break;
+      case "CDIV":
+      case "MDIV":
+      case "INT":
+      case "SLIP": {
+        // Taxable income that isn't a sale: cash/misc dividends, interest,
+        // stock-lending payments. Counted as ordinary (short-term) income,
+        // the conservative choice since the report doesn't say which
+        // dividends are qualified.
+        if (!t.amount) break;
+        const label = t.code === "INT" ? "Interest" : t.code === "SLIP" ? "Stock lending" : "Dividend";
+        const name = `${label}${t.inst ? " · " + t.inst : ""}`;
+        gains.push({
+          symbol: t.inst || null,
+          description: name,
+          is_option: false,
+          quantity: null,
+          date_acquired: null,
+          date_sold: t.date,
+          proceeds: r2(t.amount),
+          cost_basis: 0,
+          wash_sale: 0,
+          gain: r2(t.amount),
+          term: "short",
+          dedupe_key: keyed("rh", [t.code, t.inst, t.date, r2(t.amount)], seen),
+        });
+        break;
+      }
       default:
-        break; // dividends, transfers, fees, etc. are not sales
+        break; // transfers, fees, etc. are not income
     }
   }
 
@@ -375,6 +402,7 @@ function parseRobinhood(header: string[], body: string[][]): ParseResult {
     notes: [
       "Gains are calculated first-in-first-out from this report. Your Robinhood 1099-B is the official record.",
       "Assigned options are counted when assigned (simplified).",
+      "Dividends, interest and stock-lending payments are included as ordinary income.",
     ],
   };
 }

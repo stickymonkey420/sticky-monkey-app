@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { CATEGORY_COLORS, money, summarizeNetWorth } from "@/lib/dashboard/netWorth";
-import { computeIncomeTable, PROJECTED_ROW, type IncomeTableRow, type IncomeTableTrade } from "@/lib/dashboard/incomeTable";
+import { computeIncomeTable, PROJECTED_ROW, type ImportedIncomeRow, type IncomeTableRow, type IncomeTableTrade } from "@/lib/dashboard/incomeTable";
+import { fetchGainRows } from "@/lib/tax/gainsQueries";
 import { fetchPlaidTransactions } from "@/lib/wallet/queries";
 import { computeWalletOverview } from "@/lib/wallet/calc";
 import type { ManualAccount, NetWorthSummary } from "@/lib/types/dashboard";
@@ -41,6 +42,13 @@ const PIE_CARD_CLASS = `${CARD_CLASS} w-full shrink-0 md:w-[341px]`;
 // stacked below NetWorthHistoryChart inside their own column, so this only
 // needs to fill that column's width, not flex-grow against a row sibling.
 const NW_CARD_CLASS = `${CARD_CLASS} min-w-0 w-full`;
+
+function importWindowStart(): string {
+  const d = new Date(new Date().getFullYear(), 0, 1);
+  d.setDate(d.getDate() - 7);
+  const p = (n: number) => (n < 10 ? "0" + n : "" + n);
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
 
 export default function NetWorthCard() {
   const [summary, setSummary] = useState<NetWorthSummary>(EMPTY_SUMMARY);
@@ -79,6 +87,7 @@ export default function NetWorthCard() {
         { data: tradeData, error: tradeErr },
         { data: profileData },
         txs,
+        importedRows,
       ] = await Promise.all([
         supabase.from("manual_accounts").select("category,account_name,balance,retirement_type,account_subtype").eq("user_id", user.id),
         supabase
@@ -87,6 +96,8 @@ export default function NetWorthCard() {
           .eq("user_id", user.id),
         supabase.from("profiles").select("account_types").eq("id", user.id).maybeSingle(),
         fetchPlaidTransactions(supabase, user.id),
+        // Jan 1 minus a week so the Week column works in early January too.
+        fetchGainRows<ImportedIncomeRow>(supabase, "date_sold,gain", importWindowStart(), "9999-12-31", user.id).catch(() => [] as ImportedIncomeRow[]),
       ]);
 
       if (cancelled) return;
@@ -106,7 +117,7 @@ export default function NetWorthCard() {
       // traditional/roth turned on shouldn't see three all-zero rows for
       // accounts that don't apply to it.
       const enabledAccountKeys: string[] = profileData?.account_types || [];
-      setIncomeRows(computeIncomeTable(trades, enabledAccountKeys));
+      setIncomeRows(computeIncomeTable(trades, enabledAccountKeys, importedRows));
       setHasData(accounts.length > 0 || trades.length > 0);
       setLoading(false);
     }
