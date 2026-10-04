@@ -3,6 +3,7 @@ import { fetchW2Jobs } from "@/lib/w2/queries";
 import type { W2Job } from "@/lib/w2/types";
 import { TAXABLE_ACCOUNT_TYPES, type FilingStatus } from "./data2026";
 import type { TaxInput } from "./calc";
+import { totalGains, type GainTotals } from "./gainsQueries";
 
 // Builds the Taxes Overview from what the member already tracks in the app:
 // W-2 jobs (+ last paystub), business & gig income (paid invoices, paid
@@ -23,6 +24,7 @@ export type TaxProfile = {
   extra_pretax: number;
   itemized: number;
   estimates_paid: number;
+  use_tracker_options: boolean; // options P/L from the Options tracker (true) or from imported gains (false)
 };
 
 export const DEFAULT_TAX_PROFILE: TaxProfile = {
@@ -38,6 +40,7 @@ export const DEFAULT_TAX_PROFILE: TaxProfile = {
   extra_pretax: 0,
   itemized: 0,
   estimates_paid: 0,
+  use_tracker_options: true,
 };
 
 export type Pair = { ytd: number; projected: number };
@@ -63,6 +66,7 @@ export type TaxOverviewData = {
   businesses: BusinessSource[];
   rentalNet: Pair;
   options: Pair;
+  imported: GainTotals; // realized gains imported from CSV (actual, not annualized)
 };
 
 const n = (v: unknown) => (v == null || v === "" ? 0 : Number(v) || 0);
@@ -126,7 +130,7 @@ export async function fetchTaxOverview(supabase: SupabaseClient, userId: string,
   const monthsElapsed = now.getFullYear() === year ? Math.max(1, now.getMonth() + 1) : now.getFullYear() > year ? 12 : 1;
   const project = (ytd: number): Pair => ({ ytd, projected: monthsElapsed >= 12 ? ytd : (ytd / monthsElapsed) * 12 });
 
-  const [profileRes, jobs, bizRes, invRes, attRes, bjobRes, ledgerRes, rexpRes, maintRes, wheelRes, longRes] = await Promise.all([
+  const [profileRes, jobs, bizRes, invRes, attRes, bjobRes, ledgerRes, rexpRes, maintRes, wheelRes, longRes, gainsRes] = await Promise.all([
     supabase.from("tax_profiles").select("*").eq("user_id", userId).maybeSingle(),
     fetchW2Jobs(supabase, userId),
     supabase.from("user_businesses").select("id,business_name,category_name").eq("user_id", userId),
@@ -138,6 +142,7 @@ export async function fetchTaxOverview(supabase: SupabaseClient, userId: string,
     supabase.from("rental_maintenance").select("cost,completed_on").eq("user_id", userId).gte("completed_on", start).lte("completed_on", end),
     supabase.from("wheel_trades").select("premium,contracts,status,close_date,exp_date,close_price").eq("user_id", userId).in("account_type", [...TAXABLE_ACCOUNT_TYPES]).neq("status", "open"),
     supabase.from("long_option_trades").select("realized_pl,close_date").eq("user_id", userId).in("account_type", [...TAXABLE_ACCOUNT_TYPES]).eq("status", "closed").gte("close_date", start).lte("close_date", end),
+    supabase.from("realized_gains").select("gain,term,is_option").eq("user_id", userId).gte("date_sold", start).lte("date_sold", end).limit(10000),
   ]);
 
   const profile: TaxProfile = { ...DEFAULT_TAX_PROFILE };
@@ -184,7 +189,14 @@ export async function fetchTaxOverview(supabase: SupabaseClient, userId: string,
   }
   for (const l of (longRes.data ?? []) as { realized_pl: unknown }[]) optionsYtd += n(l.realized_pl);
 
-  return { year, monthsElapsed, profile, w2, businesses, rentalNet: project(rentIn - rentOut), options: project(optionsYtd) };
+  const imported = totalGains(
+    ((gainsRes.data ?? []) as { gain: unknown; term: string; is_option: boolean }[]).map((g) => ({
+      gain: n(g.gain),
+      term: g.term === "long" ? "long" : "short",
+      is_option: !!g.is_option,
+    }))
+  );
+  return { year, monthsElapsed, profile, w2, businesses, rentalNet: project(rentIn - rentOut), options: project(optionsYtd), imported };
 }
 
 export function buildTaxInput(d: TaxOverviewData, mode: "ytd" | "projected"): TaxInput {
@@ -196,8 +208,11 @@ export function buildTaxInput(d: TaxOverviewData, mode: "ytd" | "projected"): Ta
     state: p.state,
     wages: sum(d.w2.map((w) => w.gross)),
     selfEmployment: sum(d.businesses.map((b) => b.income)) - p.business_expenses,
-    shortTermGains: v(d.options) + p.stock_short_term,
-    longTermGains: p.stock_long_term,
+    // Options come from ONE source to avoid double counting: the Options
+    // tracker, or imported gains (which already include option sales).
+    shortTermGains:
+      (p.use_tracker_options ? v(d.options) + d.imported.short - d.imported.shortOptions : d.imported.short) + p.stock_short_term,
+    longTermGains: (p.use_tracker_options ? d.imported.long - d.imported.longOptions : d.imported.long) + p.stock_long_term,
     qualifiedDividends: p.qualified_dividends,
     interestOrdinaryDividends: p.interest_income,
     otherIncome: v(d.rentalNet) + p.other_income,

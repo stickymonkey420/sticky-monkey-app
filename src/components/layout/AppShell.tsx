@@ -267,6 +267,7 @@ const NAV_TREE: NavNode[] = [
     icon: Calculator,
     children: [
       { href: "/taxes", label: "Overview" },
+      { href: "/taxes/gains", label: "Imported Gains" },
       { href: "/taxes/calculator", label: "Calculator" },
     ],
   },

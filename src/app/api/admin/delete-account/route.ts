@@ -123,7 +123,11 @@ async function handleDelete(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: `Could not delete option trades: ${tradesError.message}` }, { status: 500 });
   }
 
-  // 2d. tax_profiles has no FK to auth.users (kept FK-free), so purge it here.
+  // 2d. tax_profiles and realized_gains have no FK to auth.users (kept FK-free), so purge them here.
+  const { error: gainsError } = await admin.from("realized_gains").delete().eq("user_id", userId);
+  if (gainsError) {
+    return NextResponse.json({ error: `Could not delete imported gains: ${gainsError.message}` }, { status: 500 });
+  }
   const { error: taxError } = await admin.from("tax_profiles").delete().eq("user_id", userId);
   if (taxError) {
     return NextResponse.json({ error: `Could not delete tax profile: ${taxError.message}` }, { status: 500 });

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { estimateTax } from "@/lib/tax/calc";
 import { FILING_STATUS_LABELS, STATE_OPTIONS, TAX_YEAR, type FilingStatus } from "@/lib/tax/data2026";
@@ -43,6 +44,7 @@ const EXTRA_FIELDS: { key: keyof TaxProfile; label: string; hint?: string; negat
 ];
 
 export default function TaxesOverviewPage() {
+  const router = useRouter();
   const [data, setData] = useState<TaxOverviewData | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [draft, setDraft] = useState<TaxProfile | null>(null);
@@ -234,14 +236,62 @@ export default function TaxesOverviewPage() {
                     <SourceRow label="Business expenses" sub="Entered below" pair={{ ytd: -draft.business_expenses, projected: -draft.business_expenses }} mode={mode} />
                   )}
 
-                  {(view.rentalNet.ytd !== 0 || view.options.ytd !== 0 || draft.stock_short_term || draft.stock_long_term) && <Group label="Investments & rentals" />}
-                  {view.options.ytd !== 0 && <SourceRow label="Options (taxable accounts)" sub="Short-term · realized · excludes IRAs" pair={view.options} mode={mode} />}
+                  <Group label="Investments & rentals" />
+                  {view.options.ytd !== 0 && (
+                    <SourceRow
+                      label="Options (Options tracker)"
+                      sub={draft.use_tracker_options ? "Short-term · realized · taxable accounts only" : "Not counted: using imported gains for options"}
+                      warn={!draft.use_tracker_options}
+                      pair={draft.use_tracker_options ? view.options : { ytd: 0, projected: 0 }}
+                      mode={mode}
+                    />
+                  )}
+                  {view.imported.count > 0 && (
+                    <>
+                      <SourceRow
+                        label="Imported gains · short-term"
+                        sub={`${view.imported.count} sales imported${draft.use_tracker_options && view.imported.shortOptions ? " · option sales excluded (tracker used)" : ""}`}
+                        pair={importedPair(draft.use_tracker_options ? view.imported.short - view.imported.shortOptions : view.imported.short)}
+                        mode={mode}
+                      />
+                      <SourceRow
+                        label="Imported gains · long-term"
+                        sub="Held over 1 year"
+                        pair={importedPair(draft.use_tracker_options ? view.imported.long - view.imported.longOptions : view.imported.long)}
+                        mode={mode}
+                      />
+                    </>
+                  )}
+                  {view.imported.count === 0 && (
+                    <Empty text="No stock sales imported." action={{ label: "Import gains CSV", onClick: () => router.push("/taxes/gains") }} />
+                  )}
                   {!!draft.stock_short_term && <SourceRow label="Stock/crypto short-term" sub="Entered below" pair={{ ytd: draft.stock_short_term, projected: draft.stock_short_term }} mode={mode} />}
                   {!!draft.stock_long_term && <SourceRow label="Stock/crypto long-term" sub="Entered below" pair={{ ytd: draft.stock_long_term, projected: draft.stock_long_term }} mode={mode} />}
                   {view.rentalNet.ytd !== 0 && <SourceRow label="Rental net income" sub="Rent received minus expenses" pair={view.rentalNet} mode={mode} />}
                 </tbody>
               </table>
             </div>
+            {view.imported.count > 0 && view.options.ytd !== 0 && (view.imported.shortOptions !== 0 || view.imported.longOptions !== 0) && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-white/5 p-2.5 text-xs text-text-primary">
+                <span>Your imported file also has option sales. Count options from:</span>
+                {(
+                  [
+                    [true, "Options tracker"],
+                    [false, "Imported file"],
+                  ] as const
+                ).map(([val, label]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => set({ use_tracker_options: val })}
+                    className={`rounded-full px-3 py-1 font-semibold ${draft.use_tracker_options === val ? "bg-[#4f8cff] text-white" : "bg-white/10 text-text-muted"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+                <span className="text-text-muted">(never both, so nothing is counted twice; Save to keep)</span>
+              </div>
+            )}
             <p className="mt-3 text-[11px] text-text-muted">
               Retirement accounts (Traditional IRA, Roth IRA, SDIRA, 401(k)) are not included. Gains inside them aren&apos;t taxed each year.
             </p>
@@ -360,6 +410,11 @@ export default function TaxesOverviewPage() {
       {w2Open && <W2JobModal onClose={() => setW2Open(false)} />}
     </>
   );
+}
+
+// Imported gains are actual realized sales: same number in both columns.
+function importedPair(v: number): Pair {
+  return { ytd: v, projected: v };
 }
 
 function Group({ label }: { label: string }) {
