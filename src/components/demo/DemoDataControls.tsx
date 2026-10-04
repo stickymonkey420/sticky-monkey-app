@@ -5,7 +5,9 @@ import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { createClient } from "@/lib/supabase/client";
 
 // Self-serve demo data.
-//  - DemoBanner (every app page): shown while profiles.is_demo is on, with a
+//  - DemoBanner (bottom of every app page): shown only to members who loaded
+//    the demo themselves (is_demo + demo_restore_role; not admin demo
+//    accounts like jdoe), with a
 //    one-click "Clear demo data" (clear_demo_data RPC: wipes the sample data
 //    and restores the account's original plan).
 //  - DemoLoadCard (Dashboard): offered only to an account with no data of
@@ -27,8 +29,11 @@ export function DemoBanner() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from("profiles").select("is_demo").eq("id", user.id).maybeSingle();
-      if (!cancelled) setIsDemo(!!(data as { is_demo?: boolean } | null)?.is_demo);
+      const { data } = await supabase.from("profiles").select("is_demo,demo_restore_role").eq("id", user.id).maybeSingle();
+      const p = data as { is_demo?: boolean; demo_restore_role?: string | null } | null;
+      // Only members who loaded the demo themselves (demo_restore_role set).
+      // Admin-assigned demo accounts (e.g. jdoe) never see it.
+      if (!cancelled) setIsDemo(!!p?.is_demo && !!p?.demo_restore_role);
     }
     load();
     return () => {
@@ -61,7 +66,7 @@ export function DemoBanner() {
 
   if (!isDemo) return null;
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#f5d020]/40 bg-[#f5d020]/10 px-4 py-3 text-sm">
+    <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#f5d020]/30 bg-[#f5d020]/5 px-4 py-3 text-sm">
       <div className="text-text-primary">
         <b className="text-[#f5d020]">🐒 You&apos;re exploring demo data.</b>{" "}
         <span className="text-text-muted">Nothing here is real. Look around every feature, then clear it when you&apos;re ready to add your own.</span>

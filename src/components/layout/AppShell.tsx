@@ -719,8 +719,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           {/* Mandatory first-run welcome + survey, on every app page (not
               just Dashboard) so it can't be bypassed by navigating away. */}
           <OnboardingFlow />
-          <DemoBanner />
           {children}
+          {/* Parked at the very bottom of the page, out of the way. */}
+          <DemoBanner />
         </main>
       </div>
 
