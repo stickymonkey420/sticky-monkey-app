@@ -15,6 +15,7 @@ import {
   Briefcase,
   Trophy,
   MessageSquare,
+  Calculator,
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -261,6 +262,7 @@ const NAV_TREE: NavNode[] = [
     ],
   },
   { href: "/income", label: "Income", icon: CircleDollarSign, requires: "paid" },
+  { href: "/taxes", label: "Taxes", icon: Calculator },
   {
     label: "Businesses",
     icon: Briefcase,
