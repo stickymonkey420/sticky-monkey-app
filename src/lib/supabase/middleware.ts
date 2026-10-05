@@ -40,7 +40,10 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/sign-up") ||
     request.nextUrl.pathname.startsWith("/forgot-password") ||
     request.nextUrl.pathname.startsWith("/update-password") ||
-    request.nextUrl.pathname.startsWith("/auth");
+    request.nextUrl.pathname.startsWith("/auth") ||
+    // Email unsubscribe links must work without signing in.
+    request.nextUrl.pathname.startsWith("/api/unsubscribe") ||
+    request.nextUrl.pathname.startsWith("/unsubscribed");
 
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone();

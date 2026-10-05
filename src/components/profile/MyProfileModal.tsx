@@ -30,7 +30,7 @@ const SHOW_X_HANDLE_FIELD = false;
 // Only the columns this modal needs -- a subset of EditProfileModal's admin
 // PROFILE_COLUMNS, plus use_cases/onboarding_survey to seed a survey retake.
 const SELF_PROFILE_COLUMNS =
-  "id,name,email,username,date_of_birth,present_address,permanent_address,postal_code,avatar_url,account_types,use_cases,onboarding_survey,x_handle,is_demo";
+  "id,name,email,username,date_of_birth,present_address,permanent_address,postal_code,avatar_url,account_types,use_cases,onboarding_survey,x_handle,is_demo,marketing_opt_in";
 
 type SelfProfile = {
   id: string;
@@ -43,6 +43,7 @@ type SelfProfile = {
   postal_code: string | null;
   avatar_url: string | null;
   account_types: string[] | null;
+  marketing_opt_in?: boolean | null;
   use_cases: string[] | null;
   onboarding_survey: Record<string, unknown> | null;
   x_handle: string | null;
@@ -77,6 +78,7 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [accountTypes, setAccountTypes] = useState<string[]>([]);
   const [xHandle, setXHandle] = useState("");
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +118,7 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
         setAvatarUrl(p.avatar_url ?? "");
         setAccountTypes(p.account_types ?? []);
         setXHandle(p.x_handle ?? "");
+        setMarketingOptIn(!!p.marketing_opt_in);
         setIsDemo(p.is_demo ?? false);
       }
       setLoading(false);
@@ -161,6 +164,7 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
       avatar_url: avatarUrl || null,
       account_types: accountTypes,
       x_handle: normalizedXHandle || null,
+      marketing_opt_in: marketingOptIn,
     };
     const { error: err } = await saveProfileDetails(supabase, userId, input);
     setSaving(false);
@@ -435,6 +439,19 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
                 className={FIELD_CLASS}
               />
             </div>
+            <h3 className="mb-2.5 mt-5 text-xs font-bold uppercase tracking-wide text-text-muted">Email Updates</h3>
+            <label className="mb-2 flex items-start gap-2.5 py-1.5 text-sm text-text-primary">
+              <input
+                type="checkbox"
+                checked={marketingOptIn}
+                onChange={(e) => setMarketingOptIn(e.target.checked)}
+                className="mt-0.5 h-4 w-4 cursor-pointer"
+              />
+              <span>
+                Email me Sticky Monkey news and new features.{" "}
+                <span className="text-text-muted">Only from us, never shared or sold. Unsubscribe anytime.</span>
+              </span>
+            </label>
             <h3 className="mb-2.5 mt-5 text-xs font-bold uppercase tracking-wide text-text-muted">Account Types</h3>
             <div className="mb-2 flex flex-col gap-1">
               {ACCOUNT_TYPE_DEFS.map((t) => (

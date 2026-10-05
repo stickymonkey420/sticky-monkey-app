@@ -85,6 +85,7 @@ export type ProfileDetailsInput = {
   avatar_url: string | null;
   account_types: string[];
   x_handle: string | null;
+  marketing_opt_in?: boolean;
 };
 
 export async function saveProfileDetails(

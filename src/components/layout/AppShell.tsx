@@ -14,6 +14,7 @@ import {
   Wrench,
   Briefcase,
   Trophy,
+  Megaphone,
   MessageSquare,
   Calculator,
   type LucideIcon,
@@ -303,6 +304,7 @@ const NAV_TREE: NavNode[] = [
   { href: "/investors", label: "Owners", requires: "owner", icon: Crown },
   { href: "/users-groups", label: "Users & Groups", requires: "admin", icon: ShieldCheck },
   { href: "/feedback", label: "Feedback", requires: "owner", icon: MessageSquare },
+  { href: "/marketing", label: "Marketing", requires: "owner", icon: Megaphone },
 ];
 
 function passesGate(requires: NavNode["requires"], role: Role | null, accountTypes: string[] | null): boolean {
