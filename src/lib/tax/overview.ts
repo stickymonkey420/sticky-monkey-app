@@ -5,6 +5,9 @@ import { TAXABLE_ACCOUNT_TYPES, type FilingStatus } from "./data2026";
 import type { TaxInput } from "./calc";
 import { fetchGainRows, totalGains, type GainTotals } from "./gainsQueries";
 
+// Gig types whose income is property rent (Schedule E), not self-employment.
+const RENTAL_GIG_TYPES = /airbnb|short-term rental|philippines property|storage \/ parking/i;
+
 // Builds the Taxes Overview from what the member already tracks in the app:
 // W-2 jobs (+ last paystub), business & gig income (paid invoices, paid
 // class attendees, completed jobs), rentals (rent received minus expenses),
@@ -174,12 +177,39 @@ export async function fetchTaxOverview(supabase: SupabaseClient, userId: string,
     const d = r.due_date ?? r.created_at.slice(0, 10);
     if (d >= start && d <= end) add(r.business_id, n(r.amount));
   }
-  const businesses: BusinessSource[] = ((bizRes.data ?? []) as { id: string; business_name: string | null; category_name: string }[])
+  // Tailored gig workspaces (gig_records): net profit (income - expense)
+  // per business, dated by each record's date. Property-rental gig types
+  // go to rental income (Schedule E) instead of business income.
+  const bizRows = (bizRes.data ?? []) as { id: string; business_name: string | null; category_name: string }[];
+  const rentalBizIds = new Set(bizRows.filter((b) => RENTAL_GIG_TYPES.test(b.category_name)).map((b) => b.id));
+  let gigRentIn = 0;
+  let gigRentOut = 0;
+  for (let offset = 0; offset < 50_000; offset += 1000) {
+    const { data, error } = await supabase
+      .from("gig_records")
+      .select("business_id,income,expense")
+      .eq("user_id", userId)
+      .gte("record_date", start)
+      .lte("record_date", end)
+      .order("id")
+      .range(offset, offset + 999);
+    if (error) break;
+    for (const r of (data ?? []) as { business_id: string; income: unknown; expense: unknown }[]) {
+      if (rentalBizIds.has(r.business_id)) {
+        gigRentIn += n(r.income);
+        gigRentOut += n(r.expense);
+      } else add(r.business_id, n(r.income) - n(r.expense));
+    }
+    if (!data || data.length < 1000) break;
+  }
+
+  const businesses: BusinessSource[] = bizRows
     .map((b) => ({ id: b.id, name: b.business_name ?? b.category_name, category: b.category_name, income: project(bizIncome.get(b.id) ?? 0) }))
     .filter((b) => b.income.ytd !== 0);
 
-  const rentIn = ((ledgerRes.data ?? []) as { amount: unknown }[]).reduce((s, r) => s + n(r.amount), 0);
+  const rentIn = ((ledgerRes.data ?? []) as { amount: unknown }[]).reduce((s, r) => s + n(r.amount), 0) + gigRentIn;
   const rentOut =
+    gigRentOut +
     ((rexpRes.data ?? []) as { amount: unknown }[]).reduce((s, r) => s + n(r.amount), 0) +
     ((maintRes.data ?? []) as { cost: unknown }[]).reduce((s, r) => s + n(r.cost), 0);
 

@@ -43,6 +43,8 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/auth") ||
     // Email unsubscribe links must work without signing in.
     request.nextUrl.pathname.startsWith("/api/unsubscribe") ||
+    // Gig integration webhooks (Printful, Shopify) carry their own token / HMAC.
+    request.nextUrl.pathname.startsWith("/api/webhooks/") ||
     request.nextUrl.pathname.startsWith("/unsubscribed");
 
   if (!user && !isAuthPage) {

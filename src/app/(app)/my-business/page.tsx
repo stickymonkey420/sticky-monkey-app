@@ -31,6 +31,8 @@ import CategoryIllustration from "@/components/business/CategoryIllustration";
 import FeedbackButton from "@/components/feedback/FeedbackButton";
 import { isClassBasedBusiness } from "@/lib/business/sessionTypes";
 import { isRentalBusiness } from "@/lib/rentals/types";
+import { getGigConfig } from "@/lib/gigs/registry";
+import GigWorkspace from "@/components/gigs/GigWorkspace";
 import type { BusinessAppointment, BusinessClient, BusinessJob, JobStatus, UserBusiness } from "@/lib/business/types";
 
 function fmtDateTime(iso: string): string {
@@ -155,6 +157,14 @@ export default function MyBusinessPage() {
   const isDev = !isRental && !isClassBased && isDevBusiness(active?.category_name);
   // IT / Tech Support: tickets + SLAs, time (15-min), parts, contracts, assets.
   const isIt = !isRental && !isClassBased && !isDev && isItBusiness(active?.category_name);
+  // Every other gig type gets a tailored workspace from lib/gigs/configs
+  // (its own records, KPIs, checklist and integrations) in place of the
+  // generic board. Some trades keep the job pipeline, renamed.
+  const gig = !isRental && !isClassBased && !isDev && !isIt ? getGigConfig(active?.category_name) : null;
+  const showClients = !isRental && (!gig || gig.usesClients);
+  const showJobsBoard = !isRental && !isClassBased && !isDev && !isIt && (!gig || !!gig.jobsBoard);
+  const jobsLabel = gig && gig.jobsBoard ? gig.jobsBoard.label : "Jobs";
+  const jobPlaceholder = gig && gig.jobsBoard ? gig.jobsBoard.placeholder : "Job title";
   // Each job's appointments (soonest first), for the date/time shown on its card.
   const apptsByJob = useMemo(() => {
     const map = new Map<string, BusinessAppointment[]>();
@@ -514,7 +524,7 @@ export default function MyBusinessPage() {
           {active && (
             <>
               <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-                <div className={`flex items-start justify-between gap-4 ${isRental ? "" : "mb-4"}`}>
+                <div className={`flex items-start justify-between gap-4 ${showClients ? "mb-4" : ""}`}>
                   <div className="min-w-0">
                     <h3 className="mb-1 text-base font-semibold text-text-primary">
                       {active.business_name ?? active.category_name}
@@ -535,9 +545,9 @@ export default function MyBusinessPage() {
                   </div>
                   <CategoryIllustration categoryName={active.category_name} groupLabel={active.group_label} size={112} />
                 </div>
-                {!isRental && (
+                {showClients && (
                   <>
-                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Clients</h4>
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">{gig?.clientLabel ?? "Clients"}</h4>
                 {loadingDetail ? (
                   <div className="mb-4 text-sm text-text-muted">Loading…</div>
                 ) : clients.length === 0 ? (
@@ -647,9 +657,13 @@ export default function MyBusinessPage() {
                 />
               )}
 
-              {!isRental && !isClassBased && !isDev && !isIt && (
+              {gig && userId && (
+                <GigWorkspace key={active.id} userId={userId} businessId={active.id} config={gig} clients={clients} />
+              )}
+
+              {showJobsBoard && (
               <div className="rounded-2xl border border-card-border bg-card-bg p-5">
-                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">Jobs</h4>
+                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">{jobsLabel}</h4>
                 <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                   {JOB_STATUSES.map((status) => (
                     <div key={status} className="rounded-xl bg-white/5 p-2.5">
@@ -732,7 +746,7 @@ export default function MyBusinessPage() {
                   ))}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <input placeholder="Job title" value={jobForm.title} onChange={(e) => setJobForm((f) => ({ ...f, title: e.target.value }))} className={inputClass} />
+                  <input placeholder={jobPlaceholder} value={jobForm.title} onChange={(e) => setJobForm((f) => ({ ...f, title: e.target.value }))} className={inputClass} />
                   <select value={jobForm.client_id} onChange={(e) => setJobForm((f) => ({ ...f, client_id: e.target.value }))} className={inputClass}>
                     <option value="">No client</option>
                     {clients.map((c) => (
@@ -780,6 +794,13 @@ export default function MyBusinessPage() {
                   <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
                     Scheduler (showings, inspections, move-ins)
                   </h4>
+                  {scheduleSection}
+                </div>
+              )}
+
+              {gig && !gig.jobsBoard && gig.schedule && (
+                <div className="rounded-2xl border border-card-border bg-card-bg p-5">
+                  <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">{gig.schedule.label}</h4>
                   {scheduleSection}
                 </div>
               )}
