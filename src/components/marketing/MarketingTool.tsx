@@ -66,13 +66,13 @@ export default function MarketingTool({ onStatus }: { onStatus: Status }) {
       supabase.from("profiles").select("email").not("email", "is", null).limit(5000),
     ]);
     setHistory((data ?? []) as Campaign[]);
-    setOptedIn(count ?? 0);
     // Anyone on the list who has signed up since shows as Joined (and is skipped when sending).
     const joined = new Set(((members ?? []) as { email: string }[]).map((m) => m.email.toLowerCase()));
     const rows = ((inv ?? []) as Invitee[]).map((r) => (r.status !== "unsubscribed" && joined.has(r.email.toLowerCase()) ? { ...r, status: "joined" as const } : r));
     const newlyJoined = rows.filter((r, i) => r.status === "joined" && (inv as Invitee[])[i].status !== "joined").map((r) => r.id);
     if (newlyJoined.length) await supabase.from("marketing_invitees").update({ status: "joined" }).in("id", newlyJoined);
     setInvitees(rows);
+    setOptedIn(count ?? 0); // last, so the composer mounts with the invite list already loaded
   }, []);
 
   useEffect(() => {
@@ -112,12 +112,15 @@ export default function MarketingTool({ onStatus }: { onStatus: Status }) {
           </button>
         ))}
       </div>
-      {tab === "email" && (
+      {tab === "email" && optedIn === null && <div className={`${CARD} text-sm text-text-muted`}>Loading…</div>}
+      {tab === "email" && optedIn !== null && (
         <EmailComposer
           key={composer.nonce}
           optedIn={optedIn}
           invitees={invitees}
-          initialAudience={composer.audience}
+          // With no opted-in members yet, start on the invite list so the
+          // preview (and its "personally invited" footer) matches who gets it.
+          initialAudience={composer.nonce === 0 && optedIn === 0 && invitees.some((i) => i.status === "pending" || i.status === "invited") ? "invitees" : composer.audience}
           initialIds={composer.ids}
           sentToday={sentToday}
           onStatus={onStatus}
