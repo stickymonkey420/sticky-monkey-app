@@ -13,8 +13,10 @@ import { directorAal2Error } from "@/lib/auth/mfaGuard";
 //   MARKETING_POSTAL_ADDRESS  mailing address for the footer (CAN-SPAM)
 //   MARKETING_DAILY_CAP       optional, default 100 (Resend free-tier daily limit)
 
-type Body = { subject?: string; body?: string; ctaLabel?: string; ctaUrl?: string; mode?: "test" | "all" };
-type Recipient = { email: string; name: string | null; token: string };
+// mode: "test" (just you), "all" (opted-in members), "invitees" (invite list:
+// people not signed up yet; optional inviteeIds limits it to a selection).
+type Body = { subject?: string; body?: string; ctaLabel?: string; ctaUrl?: string; mode?: "test" | "all" | "invitees"; inviteeIds?: string[]; testAudience?: "members" | "invitees" };
+type Recipient = { email: string; name: string | null; token: string; inviteeId?: string };
 
 const BATCH = 100;
 
@@ -33,7 +35,8 @@ async function handle(request: Request): Promise<NextResponse> {
   const body = (input.body ?? "").trim();
   const ctaLabel = (input.ctaLabel ?? "").trim();
   const ctaUrl = (input.ctaUrl ?? "").trim();
-  const mode = input.mode === "all" ? "all" : "test";
+  const mode = input.mode === "all" || input.mode === "invitees" ? input.mode : "test";
+  const audience = mode === "invitees" || (mode === "test" && input.testAudience === "invitees") ? "invitees" : "members";
   if (!subject || subject.length > 150) return bad("Subject is required (150 characters max).");
   if (!body || body.length > 20000) return bad("Message is required.");
   if (ctaUrl && !/^https:\/\/\S+$/.test(ctaUrl)) return bad("Button link must start with https://");
@@ -63,6 +66,27 @@ async function handle(request: Request): Promise<NextResponse> {
     const email = me.email || user.email;
     if (!email) return bad("Your profile has no email address.");
     recipients = [{ email, name: me.name ?? null, token: me.marketing_unsub_token }];
+  } else if (mode === "invitees") {
+    const admin = createAdminClient();
+    // Anyone on the list who has since signed up is marked joined and skipped.
+    const members = new Set<string>();
+    for (let offset = 0; offset < 50000; offset += 1000) {
+      const { data } = await admin.from("profiles").select("email").not("email", "is", null).order("id").range(offset, offset + 999);
+      for (const r of data ?? []) if (r.email) members.add(String(r.email).toLowerCase());
+      if (!data || data.length < 1000) break;
+    }
+    let q = admin.from("marketing_invitees").select("id,email,name,unsub_token,status").in("status", ["pending", "invited"]);
+    const ids = Array.isArray(input.inviteeIds) ? input.inviteeIds.filter((x) => typeof x === "string").slice(0, 1000) : [];
+    if (ids.length) q = q.in("id", ids);
+    const { data: rows, error } = await q;
+    if (error) return bad(`Couldn't load the invite list: ${error.message}`, 500);
+    const joined: string[] = [];
+    for (const r of rows ?? []) {
+      if (members.has(String(r.email).toLowerCase())) joined.push(r.id);
+      else recipients.push({ email: r.email, name: r.name, token: r.unsub_token, inviteeId: r.id });
+    }
+    if (joined.length) await admin.from("marketing_invitees").update({ status: "joined" }).in("id", joined);
+    if (!recipients.length) return bad("No one left to invite (everyone selected has joined or unsubscribed).");
   } else {
     const admin = createAdminClient();
     for (let offset = 0; offset < 50000; offset += 1000) {
@@ -108,6 +132,7 @@ async function handle(request: Request): Promise<NextResponse> {
         name: r.name,
         unsubscribeUrl,
         postalAddress: postal,
+        audience,
       });
       return {
         from,
@@ -127,7 +152,16 @@ async function handle(request: Request): Promise<NextResponse> {
       if (!res.ok) {
         const j = (await res.json().catch(() => null)) as { message?: string } | null;
         errors.push(j?.message || `Resend error ${res.status}`);
-      } else sent += payload.length;
+      } else {
+        sent += payload.length;
+        if (mode === "invitees") {
+          const batchIds = recipients.slice(i, i + BATCH).map((r) => r.inviteeId).filter(Boolean) as string[];
+          const admin = createAdminClient();
+          const { data: cur } = await admin.from("marketing_invitees").select("id,invite_count").in("id", batchIds);
+          const now = new Date().toISOString();
+          for (const r of cur ?? []) await admin.from("marketing_invitees").update({ status: "invited", invited_at: now, invite_count: (r.invite_count ?? 0) + 1 }).eq("id", r.id);
+        }
+      }
     } catch (e) {
       errors.push(e instanceof Error ? e.message : "Network error");
     }
@@ -136,7 +170,7 @@ async function handle(request: Request): Promise<NextResponse> {
   // Log (tests are logged too so they count toward the daily cap).
   await supabase.from("marketing_campaigns").insert({
     channel: "email",
-    subject: mode === "test" ? `[Test] ${subject}` : subject,
+    subject: mode === "test" ? `[Test] ${subject}` : mode === "invitees" ? `[Invite] ${subject}` : subject,
     body,
     link: ctaUrl || null,
     status: sent > 0 ? "sent" : "failed",

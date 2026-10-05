@@ -27,6 +27,12 @@ export type EmailParts = {
   name?: string | null;
   unsubscribeUrl: string;
   postalAddress: string;
+  audience?: "members" | "invitees"; // footer wording: opted-in member vs personally invited
+};
+
+const FOOTER = {
+  members: "You're getting this because you turned on email updates in your Sticky Monkey profile.",
+  invitees: "You're getting this because Gary invited you personally to Sticky Monkey Finance. We won't email you again unless you join or ask.",
 };
 
 export function renderMarketingEmail(p: EmailParts): { html: string; text: string } {
@@ -50,7 +56,7 @@ ${cta}
 <p style="margin:0 0 8px;font-size:15px;color:#e6e8ee">Abu &amp; the Sticky Monkey team</p>
 </td></tr>
 <tr><td style="padding:16px 28px 24px;border-top:1px solid #262d3d;font-size:12px;line-height:1.6;color:#8a93a6">
-You're getting this because you turned on email updates in your Sticky Monkey profile. We never sell your data or send third-party ads.<br>
+${esc(FOOTER[p.audience ?? "members"])} We never sell your data or send third-party ads.<br>
 <a href="${esc(p.unsubscribeUrl)}" style="color:#8a93a6">Unsubscribe</a> · ${esc(p.postalAddress)}
 </td></tr></table></td></tr></table></body></html>`;
   const text = [
@@ -62,7 +68,7 @@ You're getting this because you turned on email updates in your Sticky Monkey pr
     "Abu & the Sticky Monkey team",
     "",
     "---",
-    "You're getting this because you turned on email updates in your Sticky Monkey profile.",
+    FOOTER[p.audience ?? "members"],
     `Unsubscribe: ${p.unsubscribeUrl}`,
     p.postalAddress,
   ].join("\n");

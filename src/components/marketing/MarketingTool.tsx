@@ -14,7 +14,36 @@ import {
   type SocialPlatform,
 } from "@/lib/marketing/platforms";
 
-type Tab = "email" | "social" | "history";
+type Tab = "email" | "invites" | "social" | "history";
+type Audience = "members" | "invitees";
+
+export type Invitee = {
+  id: string;
+  email: string;
+  name: string | null;
+  notes: string | null;
+  status: "pending" | "invited" | "joined" | "unsubscribed";
+  invite_count: number;
+  invited_at: string | null;
+  created_at: string;
+};
+
+const INVITE_SUBJECT = "You're invited: be one of the first members of Sticky Monkey Finance";
+const INVITE_BODY = `I'm opening Sticky Monkey Finance to a small group of first members, and I'd like you to be one of them.
+
+Sticky Monkey puts your whole money picture in one place: net worth, investments and options income, side gigs and small businesses, rentals, and a running federal and state tax estimate that updates as you go.
+
+A few things I care about:
+- We will never sell your data.
+- No ads, no third-party marketing. Ever.
+- You can explore everything with demo data first, before entering anything of your own.
+
+As a founding member, your feedback shapes what gets built next. Every business and gig page has a Feedback button that comes straight to me.
+
+It takes about two minutes to sign up. Pick a handle, answer a short survey, and you're in.
+
+Thanks for being early,
+Gary`;
 type Status = (text: string, isError: boolean) => void;
 
 const CARD = "rounded-2xl border border-card-border bg-card-bg p-5";
@@ -26,15 +55,25 @@ export default function MarketingTool({ onStatus }: { onStatus: Status }) {
   const [tab, setTab] = useState<Tab>("email");
   const [history, setHistory] = useState<Campaign[]>([]);
   const [optedIn, setOptedIn] = useState<number | null>(null);
+  const [invitees, setInvitees] = useState<Invitee[]>([]);
+  const [composer, setComposer] = useState<{ audience: Audience; ids: string[]; nonce: number }>({ audience: "members", ids: [], nonce: 0 });
 
   const reload = useCallback(async () => {
     const supabase = createClient();
-    const [{ data }, { count }] = await Promise.all([
+    const [{ data }, { count }, { data: inv }, { data: members }] = await Promise.all([
       supabase.from("marketing_campaigns").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.from("profiles").select("id", { count: "exact", head: true }).eq("marketing_opt_in", true).eq("is_demo", false),
+      supabase.from("marketing_invitees").select("id,email,name,notes,status,invite_count,invited_at,created_at").order("created_at", { ascending: false }).limit(2000),
+      supabase.from("profiles").select("email").not("email", "is", null).limit(5000),
     ]);
     setHistory((data ?? []) as Campaign[]);
     setOptedIn(count ?? 0);
+    // Anyone on the list who has signed up since shows as Joined (and is skipped when sending).
+    const joined = new Set(((members ?? []) as { email: string }[]).map((m) => m.email.toLowerCase()));
+    const rows = ((inv ?? []) as Invitee[]).map((r) => (r.status !== "unsubscribed" && joined.has(r.email.toLowerCase()) ? { ...r, status: "joined" as const } : r));
+    const newlyJoined = rows.filter((r, i) => r.status === "joined" && (inv as Invitee[])[i].status !== "joined").map((r) => r.id);
+    if (newlyJoined.length) await supabase.from("marketing_invitees").update({ status: "joined" }).in("id", newlyJoined);
+    setInvitees(rows);
   }, []);
 
   useEffect(() => {
@@ -59,6 +98,7 @@ export default function MarketingTool({ onStatus }: { onStatus: Status }) {
         {(
           [
             ["email", "Email"],
+            ["invites", `Invite list (${invitees.filter((i) => i.status === "pending" || i.status === "invited").length})`],
             ["social", "Social posts"],
             ["history", `History (${history.length})`],
           ] as [Tab, string][]
@@ -73,20 +113,77 @@ export default function MarketingTool({ onStatus }: { onStatus: Status }) {
           </button>
         ))}
       </div>
-      {tab === "email" && <EmailComposer optedIn={optedIn} sentToday={sentToday} onStatus={onStatus} onSent={reload} />}
+      {tab === "email" && (
+        <EmailComposer
+          key={composer.nonce}
+          optedIn={optedIn}
+          invitees={invitees}
+          initialAudience={composer.audience}
+          initialIds={composer.ids}
+          sentToday={sentToday}
+          onStatus={onStatus}
+          onSent={reload}
+        />
+      )}
+      {tab === "invites" && (
+        <InviteList
+          invitees={invitees}
+          onStatus={onStatus}
+          onChanged={reload}
+          onCompose={(ids) => {
+            setComposer((c) => ({ audience: "invitees", ids, nonce: c.nonce + 1 }));
+            setTab("email");
+          }}
+        />
+      )}
       {tab === "social" && <SocialComposer onStatus={onStatus} onLaunched={reload} />}
       {tab === "history" && <History rows={history} />}
     </>
   );
 }
 
-function EmailComposer({ optedIn, sentToday, onStatus, onSent }: { optedIn: number | null; sentToday: number; onStatus: Status; onSent: () => void }) {
+function EmailComposer({
+  optedIn,
+  invitees,
+  initialAudience,
+  initialIds,
+  sentToday,
+  onStatus,
+  onSent,
+}: {
+  optedIn: number | null;
+  invitees: Invitee[];
+  initialAudience: Audience;
+  initialIds: string[];
+  sentToday: number;
+  onStatus: Status;
+  onSent: () => void;
+}) {
   const confirm = useConfirm();
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
-  const [ctaLabel, setCtaLabel] = useState("Open Sticky Monkey");
-  const [ctaUrl, setCtaUrl] = useState("");
+  const [audience, setAudience] = useState<Audience>(initialAudience);
+  const [ids, setIds] = useState<string[]>(initialIds);
+  const inviting = audience === "invitees";
+  const [subject, setSubject] = useState(inviting ? INVITE_SUBJECT : "");
+  const [body, setBody] = useState(inviting ? INVITE_BODY : "");
+  const [ctaLabel, setCtaLabel] = useState(inviting ? "Join as a founding member" : "Open Sticky Monkey");
+  const [ctaUrl, setCtaUrl] = useState(inviting ? "https://app.stickymonkey.net/sign-up" : "");
   const [busy, setBusy] = useState<"test" | "all" | null>(null);
+
+  const sendable = invitees.filter((i) => i.status === "pending" || i.status === "invited");
+  const inviteTargets = ids.length ? sendable.filter((i) => ids.includes(i.id)) : sendable;
+  const count = inviting ? inviteTargets.length : optedIn ?? 0;
+  const who = inviting ? `invite${count === 1 ? "" : "s"}` : `member${count === 1 ? "" : "s"}`;
+
+  function switchAudience(a: Audience) {
+    setAudience(a);
+    setIds([]);
+    if (a === "invitees" && !subject.trim() && !body.trim()) {
+      setSubject(INVITE_SUBJECT);
+      setBody(INVITE_BODY);
+      setCtaLabel("Join as a founding member");
+      setCtaUrl("https://app.stickymonkey.net/sign-up");
+    }
+  }
 
   const preview = useMemo(
     () =>
@@ -95,30 +192,34 @@ function EmailComposer({ optedIn, sentToday, onStatus, onSent }: { optedIn: numb
         body: body || "Your message will appear here.",
         ctaLabel: ctaUrl ? ctaLabel : undefined,
         ctaUrl: ctaUrl || undefined,
-        name: "Alex Member",
+        name: inviting ? inviteTargets[0]?.name || "Alex" : "Alex Member",
         unsubscribeUrl: "#",
         postalAddress: "Your mailing address",
+        audience,
       }).html,
-    [subject, body, ctaLabel, ctaUrl]
+    [subject, body, ctaLabel, ctaUrl, audience, inviting, inviteTargets]
   );
 
   const ready = subject.trim() && body.trim() && (!ctaUrl || /^https:\/\/\S+$/.test(ctaUrl.trim()));
 
-  async function send(mode: "test" | "all") {
+  async function send(kind: "test" | "all") {
     if (!ready || busy) return;
-    if (mode === "all") {
+    if (kind === "all") {
       const ok = await confirm({
-        title: `Send to ${optedIn ?? 0} member${optedIn === 1 ? "" : "s"}?`,
-        message: `"${subject.trim()}" goes to every member who opted in to email updates. This can't be undone.`,
-        confirmLabel: "Send email",
+        title: inviting ? `Send ${count} invite${count === 1 ? "" : "s"}?` : `Send to ${count} member${count === 1 ? "" : "s"}?`,
+        message: inviting
+          ? `"${subject.trim()}" goes to ${ids.length ? "the selected people" : "everyone on your invite list who hasn't joined or unsubscribed"}. This can't be undone.`
+          : `"${subject.trim()}" goes to every member who opted in to email updates. This can't be undone.`,
+        confirmLabel: inviting ? "Send invites" : "Send email",
       });
       if (!ok) return;
     }
-    setBusy(mode);
+    setBusy(kind);
+    const mode = kind === "test" ? "test" : inviting ? "invitees" : "all";
     const res = await fetch("/api/admin/marketing/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject, body, ctaLabel, ctaUrl: ctaUrl.trim(), mode }),
+      body: JSON.stringify({ subject, body, ctaLabel, ctaUrl: ctaUrl.trim(), mode, testAudience: audience, inviteeIds: inviting ? ids : undefined }),
     }).catch(() => null);
     const j = (await res?.json().catch(() => null)) as { sent?: number; failed?: number; error?: string } | null;
     setBusy(null);
@@ -126,18 +227,44 @@ function EmailComposer({ optedIn, sentToday, onStatus, onSent }: { optedIn: numb
       onStatus(j?.error || "Couldn't send.", true);
       return;
     }
-    onStatus(mode === "test" ? "Test sent to your email." : `Sent to ${j?.sent ?? 0} member${j?.sent === 1 ? "" : "s"}${j?.failed ? ` (${j.failed} failed)` : ""}.`, !!j?.failed);
+    const n = j?.sent ?? 0;
+    onStatus(
+      kind === "test" ? "Test sent to your email." : `Sent ${n} ${inviting ? `invite${n === 1 ? "" : "s"}` : `email${n === 1 ? "" : "s"}`}${j?.failed ? ` (${j.failed} failed)` : ""}.`,
+      !!j?.failed
+    );
     onSent();
   }
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       <div className={CARD}>
+        <label className={LABEL}>Send to</label>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {(
+            [
+              ["members", `Opted-in members (${optedIn ?? "…"})`],
+              ["invitees", `Invite list, not signed up (${sendable.length})`],
+            ] as [Audience, string][]
+          ).map(([a, label]) => (
+            <button
+              key={a}
+              type="button"
+              onClick={() => switchAudience(a)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${audience === a ? "bg-[#4f8cff] text-white" : "bg-white/5 text-text-muted hover:text-text-primary"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {inviting && ids.length > 0 && (
+          <p className="-mt-2 mb-3 text-xs text-text-muted">
+            {inviteTargets.length} selected from the invite list.{" "}
+            <button type="button" onClick={() => setIds([])} className="text-[#4f8cff] hover:underline">
+              Send to everyone not signed up instead
+            </button>
+          </p>
+        )}
         <div className="mb-4 flex flex-wrap gap-4 text-sm">
-          <div>
-            <div className="text-xs text-text-muted">Opted-in members</div>
-            <div className="text-lg font-semibold text-text-primary">{optedIn ?? "…"}</div>
-          </div>
           <div>
             <div className="text-xs text-text-muted">Sent today</div>
             <div className="text-lg font-semibold text-text-primary">{sentToday} / 100</div>
@@ -163,15 +290,18 @@ function EmailComposer({ optedIn, sentToday, onStatus, onSent }: { optedIn: numb
           </button>
           <button
             type="button"
-            disabled={!ready || !!busy || !optedIn}
+            disabled={!ready || !!busy || !count}
             onClick={() => send("all")}
             className="rounded-lg bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-40"
           >
-            {busy === "all" ? "Sending…" : `Send to ${optedIn ?? 0} member${optedIn === 1 ? "" : "s"}`}
+            {busy === "all" ? "Sending…" : inviting ? `Send ${count} ${who}` : `Send to ${count} ${who}`}
           </button>
         </div>
         <p className="mt-3 text-xs text-text-muted">
-          Only members who turned on Email Updates in their profile receive this. Every email includes an unsubscribe link and your mailing address.
+          {inviting
+            ? "Only invite people you know who'd want this (no bought or scraped lists). Anyone who has already joined or unsubscribed is skipped automatically."
+            : "Only members who turned on Email Updates in their profile receive this."}{" "}
+          Every email includes an unsubscribe link and your mailing address.
         </p>
       </div>
       <div className={CARD}>
@@ -284,6 +414,218 @@ function History({ rows }: { rows: Campaign[] }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// People you want to invite who haven't signed up yet. Add one at a time or
+// paste a list; anyone who later signs up with that email shows as Joined.
+const INVITE_STATUS_STYLE: Record<Invitee["status"], string> = {
+  pending: "text-text-muted",
+  invited: "text-[#4f8cff]",
+  joined: "text-[#3ddc97]",
+  unsubscribed: "text-[#ff5c7a]",
+};
+const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+
+// "Jane Doe <jane@x.com>", "jane@x.com, Jane Doe", "Jane Doe, jane@x.com" or just an email; one per line.
+function parseInviteLines(text: string): { email: string; name: string | null }[] {
+  const out = new Map<string, { email: string; name: string | null }>();
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(EMAIL_RE);
+    if (!m) continue;
+    const email = m[0].toLowerCase();
+    const name = line.replace(m[0], "").replace(/[<>",;\t]/g, " ").replace(/\s+/g, " ").trim() || null;
+    if (!out.has(email)) out.set(email, { email, name });
+  }
+  return [...out.values()];
+}
+
+function InviteList({
+  invitees,
+  onStatus,
+  onChanged,
+  onCompose,
+}: {
+  invitees: Invitee[];
+  onStatus: Status;
+  onChanged: () => void;
+  onCompose: (ids: string[]) => void;
+}) {
+  const confirm = useConfirm();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [bulk, setBulk] = useState("");
+  const [showBulk, setShowBulk] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState<"" | Invitee["status"]>("");
+
+  const counts = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const i of invitees) m[i.status] = (m[i.status] ?? 0) + 1;
+    return m;
+  }, [invitees]);
+  const visible = filter ? invitees.filter((i) => i.status === filter) : invitees;
+  const selectable = (i: Invitee) => i.status === "pending" || i.status === "invited";
+
+  async function add(rows: { email: string; name: string | null }[]) {
+    if (!rows.length || busy) return;
+    setBusy(true);
+    const existing = new Set(invitees.map((i) => i.email.toLowerCase()));
+    const fresh = rows.filter((r) => !existing.has(r.email));
+    if (fresh.length) {
+      const { error } = await createClient().from("marketing_invitees").insert(fresh.map((r) => ({ email: r.email, name: r.name })));
+      setBusy(false);
+      if (error) {
+        onStatus(`Couldn't add: ${error.message}`, true);
+        return;
+      }
+    } else setBusy(false);
+    const skipped = rows.length - fresh.length;
+    onStatus(`Added ${fresh.length}${skipped ? `, ${skipped} already on the list` : ""}.`, false);
+    setName("");
+    setEmail("");
+    setBulk("");
+    setShowBulk(false);
+    onChanged();
+  }
+
+  async function remove(i: Invitee) {
+    if (!(await confirm({ message: `Remove ${i.email} from the invite list?`, danger: true }))) return;
+    const { error } = await createClient().from("marketing_invitees").delete().eq("id", i.id);
+    if (error) onStatus("Couldn't remove that person.", true);
+    else onChanged();
+  }
+
+  const parsed = useMemo(() => parseInviteLines(bulk), [bulk]);
+  const emailOk = EMAIL_RE.test(email.trim());
+
+  return (
+    <div className={CARD}>
+      <div className="mb-4 flex flex-wrap items-end gap-2">
+        <div className="min-w-[160px] flex-1">
+          <label className={LABEL}>Name</label>
+          <input className={INPUT} value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" />
+        </div>
+        <div className="min-w-[200px] flex-[1.4]">
+          <label className={LABEL}>Email</label>
+          <input
+            className={INPUT}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && emailOk) add([{ email: email.trim().toLowerCase(), name: name.trim() || null }]);
+            }}
+            placeholder="jane@example.com"
+          />
+        </div>
+        <button
+          type="button"
+          disabled={!emailOk || busy}
+          onClick={() => add([{ email: email.trim().toLowerCase(), name: name.trim() || null }])}
+          className="rounded-lg bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-40"
+        >
+          Add
+        </button>
+        <button type="button" onClick={() => setShowBulk((v) => !v)} className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-text-primary">
+          {showBulk ? "Hide paste" : "Paste a list"}
+        </button>
+      </div>
+
+      {showBulk && (
+        <div className="mb-4 rounded-xl bg-white/5 p-3">
+          <label className={LABEL}>One person per line: &quot;Jane Doe &lt;jane@example.com&gt;&quot;, &quot;jane@example.com, Jane Doe&quot; or just the email. Works with a column pasted from a spreadsheet or contacts export.</label>
+          <textarea className={`${INPUT} min-h-[120px] font-mono text-xs`} value={bulk} onChange={(e) => setBulk(e.target.value)} />
+          <div className="mt-2 flex items-center gap-3">
+            <button type="button" disabled={!parsed.length || busy} onClick={() => add(parsed)} className="rounded-lg bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-40">
+              Add {parsed.length || ""}
+            </button>
+            <span className="text-xs text-text-muted">{parsed.length} email{parsed.length === 1 ? "" : "s"} found</span>
+          </div>
+        </div>
+      )}
+
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          {(["", "pending", "invited", "joined", "unsubscribed"] as const).map((f) => (
+            <button
+              key={f || "all"}
+              type="button"
+              onClick={() => setFilter(f)}
+              className={`rounded-full px-3 py-1 text-xs capitalize ${filter === f ? "bg-[#4f8cff] text-white" : "bg-white/5 text-text-muted hover:text-text-primary"}`}
+            >
+              {f || "All"} {f ? counts[f] ?? 0 : invitees.length}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          disabled={!invitees.some(selectable)}
+          onClick={() => onCompose([...selected].filter((id) => invitees.some((i) => i.id === id && selectable(i))))}
+          className="rounded-lg bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-40"
+        >
+          {selected.size ? `Write invite to ${selected.size} selected` : "Write invite to everyone not signed up"}
+        </button>
+      </div>
+
+      {invitees.length === 0 ? (
+        <p className="rounded-xl bg-white/5 p-6 text-center text-sm text-text-muted">No one on your invite list yet. Add the people you want as your first members.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead>
+              <tr className="text-left text-[11px] uppercase tracking-wide text-text-muted">
+                <th className="w-8 py-2" />
+                <th className="py-2 pr-3">Name</th>
+                <th className="py-2 pr-3">Email</th>
+                <th className="py-2 pr-3">Status</th>
+                <th className="py-2 pr-3">Last invited</th>
+                <th className="py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((i) => (
+                <tr key={i.id} className="border-t border-white/5">
+                  <td className="py-2">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${i.email}`}
+                      disabled={!selectable(i)}
+                      checked={selected.has(i.id)}
+                      onChange={(e) =>
+                        setSelected((s) => {
+                          const n = new Set(s);
+                          if (e.target.checked) n.add(i.id);
+                          else n.delete(i.id);
+                          return n;
+                        })
+                      }
+                      className="h-4 w-4"
+                    />
+                  </td>
+                  <td className="py-2 pr-3 text-text-primary">{i.name || <span className="text-text-muted">—</span>}</td>
+                  <td className="py-2 pr-3 text-text-primary">{i.email}</td>
+                  <td className={`py-2 pr-3 capitalize ${INVITE_STATUS_STYLE[i.status]}`}>
+                    {i.status}
+                    {i.invite_count > 1 ? ` (${i.invite_count}x)` : ""}
+                  </td>
+                  <td className="py-2 pr-3 text-text-muted">{i.invited_at ? new Date(i.invited_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—"}</td>
+                  <td className="py-2 text-right">
+                    <button type="button" onClick={() => remove(i)} className="text-xs text-[#ff5c7a] hover:underline">
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="mt-3 text-xs text-text-muted">
+        Invite only people you know. Joined and unsubscribed people are never emailed. Statuses update when someone signs up with the same email.
+      </p>
     </div>
   );
 }

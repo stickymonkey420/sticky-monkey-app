@@ -25,8 +25,13 @@ export async function POST(request: Request) {
   }
   if (!UUID.test(t)) return NextResponse.json({ error: "Invalid link" }, { status: 400 });
   try {
-    const { error } = await createAdminClient().from("profiles").update({ marketing_opt_in: false }).eq("marketing_unsub_token", t);
-    if (error) return NextResponse.json({ error: "Couldn't unsubscribe. Try again." }, { status: 500 });
+    const admin = createAdminClient();
+    const [{ error }, { error: invErr }] = await Promise.all([
+      admin.from("profiles").update({ marketing_opt_in: false }).eq("marketing_unsub_token", t),
+      // People on the invite list (not members yet) unsubscribe the same way.
+      admin.from("marketing_invitees").update({ status: "unsubscribed" }).eq("unsub_token", t),
+    ]);
+    if (error || invErr) return NextResponse.json({ error: "Couldn't unsubscribe. Try again." }, { status: 500 });
   } catch {
     return NextResponse.json({ error: "Couldn't unsubscribe. Try again." }, { status: 500 });
   }
