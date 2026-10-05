@@ -1,3 +1,5 @@
+import { LOGO_HEAD_URL, LOGO_WORDMARK_URL } from "@/lib/brand/logo";
+
 // Builds the marketing email (HTML + plain text). Server-side only use, but
 // has no secrets so it is safe to import from the preview UI as well.
 
@@ -36,7 +38,11 @@ export function renderMarketingEmail(p: EmailParts): { html: string; text: strin
   const html = `<!doctype html><html><body style="margin:0;background:#0f131c;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0f131c;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#161b26;border:1px solid #262d3d;border-radius:16px">
-<tr><td style="padding:24px 28px 8px;font-size:18px;font-weight:700;color:#f5d020">🐒 Sticky Monkey Finance</td></tr>
+<tr><td align="center" style="padding:28px 28px 12px;border-bottom:1px solid #262d3d">
+<img src="${LOGO_HEAD_URL}" alt="" width="56" height="56" style="display:block;margin:0 auto 6px;border:0;height:56px;width:auto">
+<img src="${LOGO_WORDMARK_URL}" alt="Sticky Monkey" width="170" style="display:block;margin:0 auto;border:0;width:170px;height:auto">
+<div style="margin-top:6px;font-size:11px;font-weight:300;letter-spacing:4px;color:#8a93a6">FINANCE</div>
+</td></tr>
 <tr><td style="padding:12px 28px 8px">
 <p style="margin:0 0 16px;font-size:15px;color:#e6e8ee">${esc(greeting)}</p>
 ${bodyHtml(p.body)}
