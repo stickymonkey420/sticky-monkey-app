@@ -14,6 +14,9 @@ import W2JobModal from "@/components/income/W2JobModal";
 // Accounts" (formerly "Connect Finance") Quick Access buttons
 // (dashboard-quick-actions-js edge function).
 
+const FREE_TIER_MESSAGE =
+  "Connecting your bank and brokerage accounts automatically is for paid members. Right now only the free tier is available, so add your accounts manually for now.";
+
 export default function QuickAccessCard() {
   const router = useRouter();
   const [showAddTrade, setShowAddTrade] = useState(true);
@@ -22,6 +25,7 @@ export default function QuickAccessCard() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [w2Open, setW2Open] = useState(false);
   const [capMessage, setCapMessage] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const connectingRef = useRef(false);
 
   useEffect(() => {
@@ -35,8 +39,9 @@ export default function QuickAccessCard() {
       if (!user) return; // fail open -- keep the button visible/usable
       const { data, error } = await supabase.from("profiles").select("role").eq("id", user.id).single();
       if (cancelled || error) return;
-      const role = (data?.role || "").toString().trim().toLowerCase();
-      if (role === "free") setShowAddTrade(false);
+      const r = (data?.role || "").toString().trim().toLowerCase();
+      setRole(r);
+      if (r === "free") setShowAddTrade(false);
     }
 
     checkRole();
@@ -64,6 +69,14 @@ export default function QuickAccessCard() {
       return;
     }
 
+    // Automatic account connection (Plaid) is a paid feature. Only the free
+    // tier is open right now, so free members get a clear note instead.
+    if (role !== "paid" && role !== "app_director") {
+      setCapMessage(FREE_TIER_MESSAGE);
+      connectingRef.current = false;
+      return;
+    }
+
     setConnectLabel("Loading…");
     setCapMessage(null);
     const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -77,8 +90,9 @@ export default function QuickAccessCard() {
       // Plaid slots are used (removing a connection does NOT free a slot).
       if (tokenRes.status === 409 && tokenBody?.error === "plaid_item_cap_reached") {
         setCapMessage(
-          (tokenBody.message as string) ||
-            "All free Plaid connections are used. To fix a broken connection, use Reconnect on the Banking page.",
+          role === "app_director"
+            ? (tokenBody.message as string) || "All free Plaid connections are used. To fix a broken connection, use Reconnect on the Banking page."
+            : FREE_TIER_MESSAGE,
         );
         setConnectLabel("Connect Accounts");
         return;
@@ -154,9 +168,15 @@ export default function QuickAccessCard() {
       {capMessage && (
         <div role="status" className="-mt-1 rounded-lg bg-[#f5d020]/10 px-3 py-2 text-xs text-text-primary">
           {capMessage}{" "}
-          <Link href="/accounts" className="font-semibold text-[#f5d020] hover:underline">
-            Go to Banking
-          </Link>
+          {role === "app_director" ? (
+            <Link href="/accounts" className="font-semibold text-[#f5d020] hover:underline">
+              Go to Banking
+            </Link>
+          ) : (
+            <Link href="/invest-accounts" className="font-semibold text-[#f5d020] hover:underline">
+              Add accounts manually
+            </Link>
+          )}
         </div>
       )}
       <button
