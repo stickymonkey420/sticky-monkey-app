@@ -79,8 +79,13 @@ export function computeIncomeTable(
   const monthKey = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
   const yearKey = `${now.getFullYear()}`;
 
+  // Accounts the profile has turned on, plus any account that actually has
+  // trades (e.g. demo data loaded into a profile with no account types
+  // ticked yet), so real income is never hidden.
+  const withTrades = new Set(trades.map((t) => (t.account_type || "").toString().trim().toLowerCase()));
+  if (imported.length) withTrades.add("brokerage");
   const accountOrder = enabledAccountKeys
-    ? ACCOUNT_ORDER.filter((a) => enabledAccountKeys.includes(a.key))
+    ? ACCOUNT_ORDER.filter((a) => enabledAccountKeys.includes(a.key) || withTrades.has(a.key))
     : ACCOUNT_ORDER;
 
   const buckets: Record<string, { week: number; month: number; ytd: number; collateral: number }> = {};
