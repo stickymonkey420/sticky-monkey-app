@@ -193,17 +193,33 @@ function EmailComposer({
     }
   }
 
-  const previewName = inviteTargets[0]?.name ?? null;
+  // Preview renders exactly what one real recipient gets: their name, the
+  // real From line, subject and footer address (from the server settings).
+  const [previewId, setPreviewId] = useState<string>("");
+  const [cfg, setCfg] = useState<{ from: string | null; postal: string | null; ready: boolean } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const res = await fetch("/api/admin/marketing/config").catch(() => null);
+      const j = res?.ok ? ((await res.json().catch(() => null)) as { from: string | null; postal: string | null; ready: boolean } | null) : null;
+      if (!cancelled) setCfg(j);
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const previewPerson = inviting ? inviteTargets.find((i) => i.id === previewId) ?? inviteTargets[0] ?? null : null;
   const preview = renderMarketingEmail({
-        subject,
-        body: body || "Your message will appear here.",
-        ctaLabel: ctaUrl ? ctaLabel : undefined,
-        ctaUrl: ctaUrl || undefined,
-        name: inviting ? previewName || "Alex" : "Alex Member",
-        unsubscribeUrl: "#",
-        postalAddress: "Your mailing address",
-        audience,
-      }).html;
+    subject,
+    body: body || "Your message will appear here.",
+    ctaLabel: ctaUrl ? ctaLabel : undefined,
+    ctaUrl: ctaUrl || undefined,
+    name: inviting ? previewPerson?.name ?? null : null,
+    unsubscribeUrl: "#",
+    postalAddress: cfg?.postal || "(mailing address not set in Vercel yet)",
+    audience,
+  }).html;
 
   const ready = subject.trim() && body.trim() && (!ctaUrl || /^https:\/\/\S+$/.test(ctaUrl.trim()));
 
@@ -335,8 +351,41 @@ function EmailComposer({
         </p>
       </div>
       <div className={CARD}>
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Preview</div>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Preview</div>
+          {inviting && inviteTargets.length > 1 && (
+            <select
+              aria-label="Preview as"
+              value={previewPerson?.id ?? ""}
+              onChange={(e) => setPreviewId(e.target.value)}
+              className="rounded border border-card-border bg-[#0f131c] px-2 py-1 text-xs text-text-primary outline-none"
+            >
+              {inviteTargets.map((i) => (
+                <option key={i.id} value={i.id}>
+                  Preview as {i.name || i.email}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+        <div className="mb-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs leading-relaxed">
+          <div>
+            <span className="text-text-muted">From: </span>
+            <span className="text-text-primary">{cfg?.from || "(sender not set in Vercel yet)"}</span>
+          </div>
+          <div>
+            <span className="text-text-muted">To: </span>
+            <span className="text-text-primary">
+              {inviting ? (previewPerson ? previewPerson.email : "(no one selected)") : `each opted-in member (${optedIn ?? 0})`}
+            </span>
+          </div>
+          <div>
+            <span className="text-text-muted">Subject: </span>
+            <span className="font-semibold text-text-primary">{subject || "(no subject)"}</span>
+          </div>
+        </div>
         <iframe title="Email preview" srcDoc={preview} className="h-[560px] w-full rounded-lg border border-white/10 bg-[#0f131c]" sandbox="" />
+        {!inviting && <p className="mt-2 text-xs text-text-muted">Each member sees their own first name in the greeting.</p>}
       </div>
     </div>
   );
