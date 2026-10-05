@@ -31,8 +31,8 @@ export type EmailParts = {
 };
 
 const FOOTER = {
-  members: "You're getting this because you turned on email updates in your Sticky Monkey profile.",
-  invitees: "You're getting this because you were personally invited to Sticky Monkey Finance. We won't email you again unless you join or ask.",
+  members: "This email is from Sticky Monkey Finance.",
+  invitees: "This email is from Sticky Monkey Finance.",
 };
 
 export function renderMarketingEmail(p: EmailParts): { html: string; text: string } {
