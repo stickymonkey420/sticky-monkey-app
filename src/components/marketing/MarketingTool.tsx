@@ -161,7 +161,8 @@ function EmailComposer({
 }) {
   const confirm = useConfirm();
   const [audience, setAudience] = useState<Audience>(initialAudience);
-  const [ids, setIds] = useState<string[]>(initialIds);
+  // Chosen invitees; null = everyone not signed up (also covers the list still loading).
+  const [picked, setPicked] = useState<string[] | null>(initialIds.length ? initialIds : null);
   const inviting = audience === "invitees";
   const [subject, setSubject] = useState(inviting ? INVITE_SUBJECT : "");
   const [body, setBody] = useState(inviting ? INVITE_BODY : "");
@@ -170,13 +171,18 @@ function EmailComposer({
   const [busy, setBusy] = useState<"test" | "all" | null>(null);
 
   const sendable = invitees.filter((i) => i.status === "pending" || i.status === "invited");
-  const inviteTargets = ids.length ? sendable.filter((i) => ids.includes(i.id)) : sendable;
+  const inviteTargets = picked ? sendable.filter((i) => picked.includes(i.id)) : sendable;
+  const isPicked = (id: string) => (picked ? picked.includes(id) : true);
+  function togglePick(id: string) {
+    const cur = picked ?? sendable.map((i) => i.id);
+    setPicked(cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]);
+  }
   const count = inviting ? inviteTargets.length : optedIn ?? 0;
   const who = inviting ? `invite${count === 1 ? "" : "s"}` : `member${count === 1 ? "" : "s"}`;
 
   function switchAudience(a: Audience) {
     setAudience(a);
-    setIds([]);
+    setPicked(null);
     if (a === "invitees" && !subject.trim() && !body.trim()) {
       setSubject(INVITE_SUBJECT);
       setBody(INVITE_BODY);
@@ -185,20 +191,17 @@ function EmailComposer({
     }
   }
 
-  const preview = useMemo(
-    () =>
-      renderMarketingEmail({
+  const previewName = inviteTargets[0]?.name ?? null;
+  const preview = renderMarketingEmail({
         subject,
         body: body || "Your message will appear here.",
         ctaLabel: ctaUrl ? ctaLabel : undefined,
         ctaUrl: ctaUrl || undefined,
-        name: inviting ? inviteTargets[0]?.name || "Alex" : "Alex Member",
+        name: inviting ? previewName || "Alex" : "Alex Member",
         unsubscribeUrl: "#",
         postalAddress: "Your mailing address",
         audience,
-      }).html,
-    [subject, body, ctaLabel, ctaUrl, audience, inviting, inviteTargets]
-  );
+      }).html;
 
   const ready = subject.trim() && body.trim() && (!ctaUrl || /^https:\/\/\S+$/.test(ctaUrl.trim()));
 
@@ -208,7 +211,7 @@ function EmailComposer({
       const ok = await confirm({
         title: inviting ? `Send ${count} invite${count === 1 ? "" : "s"}?` : `Send to ${count} member${count === 1 ? "" : "s"}?`,
         message: inviting
-          ? `"${subject.trim()}" goes to ${ids.length ? "the selected people" : "everyone on your invite list who hasn't joined or unsubscribed"}. This can't be undone.`
+          ? `"${subject.trim()}" goes to ${inviteTargets.length === sendable.length ? "everyone on your invite list who hasn't joined or unsubscribed" : inviteTargets.map((i) => i.name || i.email).join(", ")}. This can't be undone.`
           : `"${subject.trim()}" goes to every member who opted in to email updates. This can't be undone.`,
         confirmLabel: inviting ? "Send invites" : "Send email",
       });
@@ -219,7 +222,7 @@ function EmailComposer({
     const res = await fetch("/api/admin/marketing/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject, body, ctaLabel, ctaUrl: ctaUrl.trim(), mode, testAudience: audience, inviteeIds: inviting ? ids : undefined }),
+      body: JSON.stringify({ subject, body, ctaLabel, ctaUrl: ctaUrl.trim(), mode, testAudience: audience, inviteeIds: inviting ? inviteTargets.map((i) => i.id) : undefined }),
     }).catch(() => null);
     const j = (await res?.json().catch(() => null)) as { sent?: number; failed?: number; error?: string } | null;
     setBusy(null);
@@ -256,13 +259,38 @@ function EmailComposer({
             </button>
           ))}
         </div>
-        {inviting && ids.length > 0 && (
-          <p className="-mt-2 mb-3 text-xs text-text-muted">
-            {inviteTargets.length} selected from the invite list.{" "}
-            <button type="button" onClick={() => setIds([])} className="text-[#4f8cff] hover:underline">
-              Send to everyone not signed up instead
-            </button>
-          </p>
+        {inviting && (
+          <div className="mb-4 rounded-xl bg-white/5 p-3">
+            <div className="mb-2 flex items-center justify-between gap-2 text-xs">
+              <span className="text-text-muted">
+                {inviteTargets.length} of {sendable.length} selected
+              </span>
+              <span className="flex gap-3">
+                <button type="button" onClick={() => setPicked(null)} className="text-[#4f8cff] hover:underline">
+                  All
+                </button>
+                <button type="button" onClick={() => setPicked([])} className="text-[#4f8cff] hover:underline">
+                  None
+                </button>
+              </span>
+            </div>
+            {sendable.length === 0 ? (
+              <p className="text-xs text-text-muted">No one to invite. Add people in the Invite list tab.</p>
+            ) : (
+              <div className="flex max-h-48 flex-col gap-0.5 overflow-y-auto pr-1">
+                {sendable.map((i) => (
+                  <label key={i.id} className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-white/5">
+                    <input type="checkbox" checked={isPicked(i.id)} onChange={() => togglePick(i.id)} className="h-4 w-4 shrink-0" />
+                    <span className="min-w-0 flex-1 truncate text-text-primary">
+                      {i.name || i.email}
+                      {i.name && <span className="text-text-muted"> · {i.email}</span>}
+                    </span>
+                    {i.status === "invited" && <span className="shrink-0 text-[11px] text-[#4f8cff]">invited{i.invite_count > 1 ? ` ${i.invite_count}x` : ""}</span>}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
         )}
         <div className="mb-4 flex flex-wrap gap-4 text-sm">
           <div>
