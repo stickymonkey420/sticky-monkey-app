@@ -29,21 +29,20 @@ export type Invitee = {
 };
 
 const INVITE_SUBJECT = "You're invited: be one of the first members of Sticky Monkey Finance";
-const INVITE_BODY = `I'm opening Sticky Monkey Finance to a small group of first members, and I'd like you to be one of them.
+const INVITE_BODY = `We're opening Sticky Monkey Finance to a small group of first members, and we'd like you to be one of them.
 
 Sticky Monkey puts your whole money picture in one place: net worth, investments and options income, side gigs and small businesses, rentals, and a running federal and state tax estimate that updates as you go.
 
-A few things I care about:
+A few things we stand by:
 - We will never sell your data.
 - No ads, no third-party marketing. Ever.
 - You can explore everything with demo data first, before entering anything of your own.
 
-As a founding member, your feedback shapes what gets built next. Every business and gig page has a Feedback button that comes straight to me.
+As a founding member, your feedback shapes what gets built next. Every business and gig page has a Feedback button that comes straight to us.
 
 It takes about two minutes to sign up. Pick a handle, answer a short survey, and you're in.
 
-Thanks for being early,
-Gary`;
+Thanks for being early!`;
 type Status = (text: string, isError: boolean) => void;
 
 const CARD = "rounded-2xl border border-card-border bg-card-bg p-5";
