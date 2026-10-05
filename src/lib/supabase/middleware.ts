@@ -51,6 +51,33 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Two-factor step-up (server-side, before any page renders): a member who
+  // has an authenticator set up but hasn't entered the 6-digit code this
+  // session (AAL1 while AAL2 is available) is held at /sign-in?mfa=1 for
+  // every page, and API routes get a 401. A password alone never gets in.
+  if (user) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    const needsMfa = aal?.nextLevel === "aal2" && aal?.currentLevel !== "aal2";
+    if (needsMfa) {
+      const path = request.nextUrl.pathname;
+      const allowed =
+        path.startsWith("/sign-in") ||
+        path.startsWith("/auth/signout") ||
+        path.startsWith("/api/unsubscribe") ||
+        path.startsWith("/unsubscribed");
+      if (!allowed) {
+        if (path.startsWith("/api/")) {
+          return NextResponse.json({ error: "Two-factor verification required." }, { status: 401 });
+        }
+        const url = request.nextUrl.clone();
+        url.pathname = "/sign-in";
+        url.search = "?mfa=1";
+        return NextResponse.redirect(url);
+      }
+      return supabaseResponse;
+    }
+  }
+
   // A signed-in user landing on Sign In/Sign Up/Forgot Password is almost
   // always a stale-session mixup -- a previous account left logged in on
   // this browser, then someone types a *different* account's credentials

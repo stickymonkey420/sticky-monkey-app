@@ -571,6 +571,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   // Investors/Users & Groups). Starts null so gated items stay hidden
   // rather than flashing before the role is known.
   const [role, setRole] = useState<Role | null>(null);
+  const [mfaPassed, setMfaPassed] = useState(false);
   // account_types drives the "investOptIn" nav gate above -- null (not yet
   // loaded) is deliberately distinct from [] (loaded, nothing ticked) so
   // passesGate hides Investments until we actually know, not just while
@@ -721,9 +722,14 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           <MarketStrip />
           {/* Mandatory first-run welcome + survey, on every app page (not
               just Dashboard) so it can't be bypassed by navigating away. */}
-          <DirectorMfaGate role={role} />
-          <OnboardingFlow />
-          {children}
+          <DirectorMfaGate role={role} onPass={setMfaPassed} />
+          {/* Directors see nothing until two-factor passes (first-time setup). */}
+          {role === "app_director" && !mfaPassed ? null : (
+            <>
+              <OnboardingFlow />
+              {children}
+            </>
+          )}
           {/* Parked at the very bottom of the page, out of the way. */}
           <DemoBanner />
         </main>

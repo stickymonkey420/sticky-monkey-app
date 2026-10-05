@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import AuthCard from "@/components/auth/AuthCard";
@@ -19,6 +19,59 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaKey, setCaptchaKey] = useState(0);
+  // Two-factor step: shown after a correct password when the account has an
+  // authenticator, or when the server sent us here (?mfa=1) mid-session.
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+
+  async function startMfaIfNeeded(): Promise<boolean> {
+    const supabase = createClient();
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (!(aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2")) return false;
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    const factor = factors?.totp?.[0];
+    if (!factor) return false;
+    setMfaFactorId(factor.id);
+    return true;
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!new URLSearchParams(window.location.search).has("mfa")) return;
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      if (!data.user || cancelled) return;
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (cancelled || !(aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2")) return;
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      if (!cancelled && factors?.totp?.[0]) setMfaFactorId(factors.totp[0].id);
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function finishSignIn() {
+    const supabase = createClient();
+    // No-op for a normal account (the RPC checks profiles.is_demo itself
+    // and returns immediately if false). For a demo account, this wipes
+    // and reseeds its "core money views" data back to the fabricated
+    // baseline every time it signs in, so edits made last session never
+    // stick around. Fire-and-forget-ish: awaited so the dashboard never
+    // renders a half-reset demo account, but a failure here shouldn't
+    // block a real sign-in, so it's logged rather than surfaced as an
+    // error.
+    const { error: resetError } = await supabase.rpc("reset_demo_data_if_needed");
+    if (resetError) {
+      console.error("[sign-in] reset_demo_data_if_needed failed", resetError);
+    }
+    setLoading(false);
+    router.push("/dashboard");
+    router.refresh();
+  }
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,21 +103,69 @@ export default function SignInPage() {
       setError(error.message);
       return;
     }
-    // No-op for a normal account (the RPC checks profiles.is_demo itself
-    // and returns immediately if false). For a demo account, this wipes
-    // and reseeds its "core money views" data back to the fabricated
-    // baseline every time it signs in, so edits made last session never
-    // stick around. Fire-and-forget-ish: awaited so the dashboard never
-    // renders a half-reset demo account, but a failure here shouldn't
-    // block a real sign-in, so it's logged rather than surfaced as an
-    // error.
-    const { error: resetError } = await supabase.rpc("reset_demo_data_if_needed");
-    if (resetError) {
-      console.error("[sign-in] reset_demo_data_if_needed failed", resetError);
+    if (await startMfaIfNeeded()) {
+      setLoading(false);
+      return;
     }
+    await finishSignIn();
+  }
+
+  async function verifyMfa(e: React.FormEvent) {
+    e.preventDefault();
+    if (!mfaFactorId || loading) return;
+    setLoading(true);
+    setError(null);
+    const { error } = await createClient().auth.mfa.challengeAndVerify({ factorId: mfaFactorId, code: mfaCode.trim() });
+    if (error) {
+      setLoading(false);
+      setMfaCode("");
+      setError("That code didn't work. Check your authenticator app and try again.");
+      return;
+    }
+    await finishSignIn();
+  }
+
+  async function cancelMfa() {
+    await createClient().auth.signOut();
+    setMfaFactorId(null);
+    setMfaCode("");
+    setPassword("");
+    setError(null);
     setLoading(false);
-    router.push("/dashboard");
-    router.refresh();
+  }
+
+
+  if (mfaFactorId) {
+    return (
+      <AuthCard title="Two-factor verification" subtitle="Enter the 6-digit code from your authenticator app.">
+        <form onSubmit={verifyMfa} className="flex flex-col gap-3.5">
+          <input
+            value={mfaCode}
+            onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            autoFocus
+            placeholder="123456"
+            aria-label="Authenticator code"
+            className={`${inputClass} text-center font-mono text-lg tracking-[0.4em]`}
+          />
+          {error && <div className="text-sm" style={{ color: "#ff6b6b" }}>{error}</div>}
+          <button
+            type="submit"
+            disabled={loading || mfaCode.length !== 6}
+            className="mt-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            style={{ backgroundColor: "#4f8cff" }}
+          >
+            {loading ? "Verifying…" : "Verify"}
+          </button>
+        </form>
+        <p className="mt-5 text-center text-sm text-text-muted">
+          <button type="button" onClick={cancelMfa} style={{ color: "#4f8cff" }}>
+            Use a different account
+          </button>
+        </p>
+      </AuthCard>
+    );
   }
 
   return (

@@ -9,12 +9,15 @@ import { createClient } from "@/lib/supabase/client";
 // (AAL2) the app is covered by this screen:
 //   - no authenticator yet -> set one up (scan QR, enter the 6-digit code)
 //   - authenticator set up -> enter the current 6-digit code
-// The admin API routes check AAL2 on the server too (lib/auth/mfaGuard.ts).
+// The admin API routes check AAL2 on the server too (lib/auth/mfaGuard.ts),
+// and the middleware holds any member who HAS an authenticator at the sign-in
+// code step before a page renders. This screen covers first-time setup, and
+// AppShell hides the page content until it passes.
 // Free on every Supabase plan (TOTP).
 
 type Mode = "checking" | "ok" | "enroll" | "verify";
 
-export default function DirectorMfaGate({ role }: { role: string | null }) {
+export default function DirectorMfaGate({ role, onPass }: { role: string | null; onPass: (ok: boolean) => void }) {
   const [mode, setMode] = useState<Mode>("checking");
   const [factorId, setFactorId] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
@@ -84,6 +87,11 @@ export default function DirectorMfaGate({ role }: { role: string | null }) {
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign("/sign-in");
   }
+
+  const passed = role !== null && (role !== "app_director" || mode === "ok");
+  useEffect(() => {
+    onPass(passed);
+  }, [passed, onPass]);
 
   if (role !== "app_director" || mode === "ok") return null;
 
