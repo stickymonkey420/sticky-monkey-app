@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { renderMarketingEmail } from "@/lib/marketing/email";
+import { directorAal2Error } from "@/lib/auth/mfaGuard";
 
 // App Director only: sends a marketing email to members who opted in
 // (profiles.marketing_opt_in) via Resend's batch API.
@@ -45,6 +46,8 @@ async function handle(request: Request): Promise<NextResponse> {
   if (!user) return bad("Not signed in", 401);
   const { data: me } = await supabase.from("profiles").select("role,email,name,marketing_unsub_token").eq("id", user.id).maybeSingle();
   if (me?.role !== "app_director") return bad("Not authorized.", 403);
+  const mfaErr = await directorAal2Error(supabase);
+  if (mfaErr) return bad(mfaErr, 403);
 
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.MARKETING_FROM_EMAIL;

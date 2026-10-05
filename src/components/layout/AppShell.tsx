@@ -26,6 +26,7 @@ import { ProfileProvider } from "@/lib/profile/ProfileProvider";
 import SignOutButton from "./SignOutButton";
 import TopBar from "./TopBar";
 import OnboardingFlow from "@/components/dashboard/OnboardingFlow";
+import DirectorMfaGate from "@/components/auth/DirectorMfaGate";
 import { DemoBanner } from "@/components/demo/DemoDataControls";
 
 import { LOGO_HEAD_URL, LOGO_WORDMARK_URL } from "@/lib/brand/logo";
@@ -720,6 +721,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           <MarketStrip />
           {/* Mandatory first-run welcome + survey, on every app page (not
               just Dashboard) so it can't be bypassed by navigating away. */}
+          <DirectorMfaGate role={role} />
           <OnboardingFlow />
           {children}
           {/* Parked at the very bottom of the page, out of the way. */}

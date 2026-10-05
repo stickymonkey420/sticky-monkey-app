@@ -569,6 +569,9 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
   const stageEl = panel.querySelector<HTMLDivElement>("#abu-stage")!;
 
   const history: ChatHistoryEntry[] = [];
+  // Conversation id for abu-chat's server-side history (security: the server never trusts
+  // history sent from the browser). New id per page load = new chat session.
+  const sessionId = crypto.randomUUID();
   let waiting = false;
   let muted = false;
   let currentAudio: HTMLAudioElement | null = null;
@@ -982,7 +985,7 @@ function mountAbu(getAccessToken: () => Promise<string | null>): () => void {
         },
         body: JSON.stringify({
           message: text,
-          history: history.slice(0, -1),
+          session_id: sessionId,
           page: window.location.pathname,
           ...(snap ? { image: snap, image_type: "image/jpeg" } : {}),
         }),

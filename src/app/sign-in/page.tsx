@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import AuthCard from "@/components/auth/AuthCard";
 import AuthPromises from "@/components/auth/AuthPromises";
+import Turnstile, { CAPTCHA_ENABLED } from "@/components/auth/Turnstile";
 
 const inputClass =
   "w-full rounded-lg border border-card-border bg-white/5 px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted/60 focus:border-[#4f8cff] focus:outline-none";
@@ -16,9 +17,15 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (CAPTCHA_ENABLED && !captchaToken) {
+      setError("Please wait for the security check to finish.");
+      return;
+    }
     setError(null);
     setLoading(true);
     const supabase = createClient();
@@ -30,8 +37,15 @@ export default function SignInPage() {
     // in, matching the error shown on screen. (Signing in with account A's
     // own correct credentials afterward is a normal no-op re-login.)
     await supabase.auth.signOut();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: captchaToken ? { captchaToken } : undefined,
+    });
     if (error) {
+      // Tokens are single-use: get a fresh one for the next attempt.
+      setCaptchaToken(null);
+      setCaptchaKey((k) => k + 1);
       setLoading(false);
       setError(error.message);
       return;
@@ -91,6 +105,8 @@ export default function SignInPage() {
             placeholder="••••••••"
           />
         </div>
+
+        <Turnstile onToken={setCaptchaToken} resetKey={captchaKey} />
 
         {error && <div className="text-sm" style={{ color: "#ff6b6b" }}>{error}</div>}
 

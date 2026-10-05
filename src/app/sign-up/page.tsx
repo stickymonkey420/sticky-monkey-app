@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import AuthCard from "@/components/auth/AuthCard";
 import AuthPromises from "@/components/auth/AuthPromises";
+import Turnstile, { CAPTCHA_ENABLED } from "@/components/auth/Turnstile";
 import { HANDLE_HINT, isHandleTakenError, validateHandle } from "@/lib/profile/handle";
 
 const inputClass =
@@ -22,6 +23,8 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [checkEmail, setCheckEmail] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,6 +52,11 @@ export default function SignUpPage() {
       return;
     }
 
+    if (CAPTCHA_ENABLED && !captchaToken) {
+      setError("Please wait for the security check to finish.");
+      return;
+    }
+
     setLoading(true);
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
@@ -56,6 +64,7 @@ export default function SignUpPage() {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/confirm?next=/dashboard`,
+        ...(captchaToken ? { captchaToken } : {}),
         // Read by the handle_new_user() trigger (public.handle_new_user)
         // to seed profiles.name/username on insert -- "name" is the
         // combined display name used everywhere else in the app (Users &
@@ -74,6 +83,8 @@ export default function SignUpPage() {
     setLoading(false);
 
     if (error) {
+      setCaptchaToken(null);
+      setCaptchaKey((k) => k + 1);
       // A taken handle fails the whole signUp() call (the handle_new_user
       // trigger runs inside the same transaction as the auth.users
       // insert, so a unique-index violation there rolls the signup back
@@ -201,6 +212,8 @@ export default function SignUpPage() {
             placeholder="••••••••"
           />
         </div>
+
+        <Turnstile onToken={setCaptchaToken} resetKey={captchaKey} />
 
         {error && <div className="text-sm" style={{ color: "#ff6b6b" }}>{error}</div>}
 

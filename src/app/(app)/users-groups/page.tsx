@@ -129,8 +129,7 @@ export default function UsersGroupsPage() {
   async function handleResetPassword(profile: Profile) {
     if (!profile.email) return;
     if (!(await confirm({ message: `Send a password reset email to ${profile.email}?`, danger: false }))) return;
-    const supabase = createClient();
-    const { error } = await sendPasswordReset(supabase, profile.email);
+    const { error } = await sendPasswordReset(profile.email);
     if (error) {
       showStatus("Could not send reset email.", true);
       return;

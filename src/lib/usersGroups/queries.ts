@@ -152,12 +152,20 @@ export async function deleteAccount(id: string): Promise<MutationResult> {
   }
 }
 
-// Same Supabase Auth recovery flow as the standalone forgot-password page
-// -- an admin-initiated send of the same reset email a user could request
-// themselves, not a privileged bypass.
-export async function sendPasswordReset(supabase: SupabaseClient, email: string): Promise<MutationResult> {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/auth/confirm?next=/update-password`,
-  });
-  return { error: error ? error.message : null };
+// Same Supabase Auth recovery email a user could request themselves, sent
+// via /api/admin/send-reset (server-side, role-checked) so it keeps working
+// with CAPTCHA required on the public auth endpoints.
+export async function sendPasswordReset(email: string): Promise<MutationResult> {
+  try {
+    const res = await fetch("/api/admin/send-reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (res.ok) return { error: null };
+    const j = (await res.json().catch(() => null)) as { error?: string } | null;
+    return { error: j?.error || "Could not send reset email." };
+  } catch {
+    return { error: "Could not send reset email." };
+  }
 }

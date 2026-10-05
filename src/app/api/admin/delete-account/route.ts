@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { directorAal2Error } from "@/lib/auth/mfaGuard";
 
 // Audit-trail columns across the schema that reference auth.users(id)
 // WITHOUT cascading (pg_constraint confdeltype='a') -- they record "who
@@ -72,6 +73,10 @@ async function handleDelete(request: Request): Promise<NextResponse> {
   if (callerProfile?.role !== "app_director") {
     return NextResponse.json({ error: "Not authorized." }, { status: 403 });
   }
+  const mfaErr = await directorAal2Error(supabase);
+  if (mfaErr) {
+    return NextResponse.json({ error: mfaErr }, { status: 403 });
+  }
 
   // 2. Everything from here uses the service-role client -- this is the
   // only way to actually remove a Supabase Auth user. Throws if
@@ -131,6 +136,11 @@ async function handleDelete(request: Request): Promise<NextResponse> {
   const { error: taxError } = await admin.from("tax_profiles").delete().eq("user_id", userId);
   if (taxError) {
     return NextResponse.json({ error: `Could not delete tax profile: ${taxError.message}` }, { status: 500 });
+  }
+  // abu_messages (Abu's 24h chat history) is FK-free too.
+  const { error: abuError } = await admin.from("abu_messages").delete().eq("user_id", userId);
+  if (abuError) {
+    return NextResponse.json({ error: `Could not delete Abu chat history: ${abuError.message}` }, { status: 500 });
   }
 
   // 3. Delete the actual Supabase Auth user.

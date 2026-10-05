@@ -22,13 +22,13 @@ const isDev = process.env.NODE_ENV !== "production";
 
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://cdn.plaid.com`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://cdn.plaid.com https://challenges.cloudflare.com`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self' ${supabaseUrl} ${supabaseWss} https://*.plaid.com`,
+  `connect-src 'self' ${supabaseUrl} ${supabaseWss} https://*.plaid.com https://challenges.cloudflare.com`,
   "media-src 'self' data: blob: https://s3.amazonaws.com/webflow-prod-assets/",
-  "frame-src https://cdn.plaid.com https://*.plaid.com",
+  "frame-src https://cdn.plaid.com https://*.plaid.com https://challenges.cloudflare.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

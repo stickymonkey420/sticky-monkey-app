@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import AuthCard from "@/components/auth/AuthCard";
+import Turnstile, { CAPTCHA_ENABLED } from "@/components/auth/Turnstile";
 
 const inputClass =
   "w-full rounded-lg border border-card-border bg-white/5 px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted/60 focus:border-[#4f8cff] focus:outline-none";
@@ -13,17 +14,26 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (CAPTCHA_ENABLED && !captchaToken) {
+      setError("Please wait for the security check to finish.");
+      return;
+    }
     setError(null);
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/confirm?next=/update-password`,
+      ...(captchaToken ? { captchaToken } : {}),
     });
     setLoading(false);
     if (error) {
+      setCaptchaToken(null);
+      setCaptchaKey((k) => k + 1);
       setError(error.message);
       return;
     }
@@ -64,6 +74,8 @@ export default function ForgotPasswordPage() {
             placeholder="you@example.com"
           />
         </div>
+
+        <Turnstile onToken={setCaptchaToken} resetKey={captchaKey} />
 
         {error && <div className="text-sm" style={{ color: "#ff6b6b" }}>{error}</div>}
 
