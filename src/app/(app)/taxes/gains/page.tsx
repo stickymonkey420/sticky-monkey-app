@@ -27,6 +27,7 @@ const CARD = "rounded-2xl border border-card-border bg-card-bg p-5";
 const FORMAT_LABEL = {
   robinhood_activity: "Robinhood account activity report",
   gains_csv: "Realized gains / 1099-B CSV",
+  manual_sale: "Sold from Holdings",
 } as const;
 
 type Preview = { fileName: string; parsed: ParseResult; dupes: Set<string> };

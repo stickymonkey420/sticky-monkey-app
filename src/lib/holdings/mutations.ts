@@ -84,3 +84,68 @@ export async function deleteHolding(supabase: SupabaseClient, id: string): Promi
   const { error } = await supabase.from("positions").delete().eq("id", id);
   return { error: error ? error.message : null };
 }
+
+// Sell from Holdings: reduces (or closes) the position and, for taxable
+// accounts (brokerage / crypto), records the realized gain in
+// realized_gains (source "manual_sale") so Taxes > Imported Gains and the
+// tax estimate pick it up. Retirement-account sales aren't taxable events.
+export type SellInput = {
+  shares: number;
+  price: number;
+  fees: number;
+  dateSold: string; // YYYY-MM-DD
+  dateAcquired: string | null;
+};
+
+export const TAXABLE_HOLDING_ACCOUNTS = ["brokerage", "crypto"];
+
+export async function sellHolding(
+  supabase: SupabaseClient,
+  userId: string,
+  holding: { id: string; ticker: string; shares: number | string; cost_basis: number | string | null; account_type: string },
+  input: SellInput
+): Promise<MutationResult & { gain?: number }> {
+  const held = Number(holding.shares) || 0;
+  const qty = Math.min(input.shares, held);
+  if (!(qty > 0)) return { error: "Enter how many shares to sell." };
+  if (!(input.price >= 0)) return { error: "Enter the sell price." };
+  const round = (n: number) => Math.round(n * 100) / 100;
+  const proceeds = round(qty * input.price - (input.fees || 0));
+  const cost = round(qty * (holding.cost_basis == null ? 0 : Number(holding.cost_basis)));
+  const gain = round(proceeds - cost);
+
+  if (TAXABLE_HOLDING_ACCOUNTS.includes(holding.account_type)) {
+    let term: "short" | "long" = "short";
+    if (input.dateAcquired) {
+      const a = new Date(input.dateAcquired + "T00:00:00");
+      a.setFullYear(a.getFullYear() + 1);
+      if (new Date(input.dateSold + "T00:00:00") > a) term = "long";
+    }
+    const { error: gErr } = await supabase.from("realized_gains").insert({
+      user_id: userId,
+      source: "manual_sale",
+      import_batch: `holdings-sales-${input.dateSold.slice(0, 4)}`,
+      file_name: "Sold from Holdings",
+      symbol: holding.ticker,
+      description: `Sold ${qty} ${holding.ticker} @ ${input.price}`,
+      is_option: false,
+      quantity: qty,
+      date_acquired: input.dateAcquired,
+      date_sold: input.dateSold,
+      proceeds,
+      cost_basis: cost,
+      wash_sale: 0,
+      gain,
+      term,
+      dedupe_key: `sale|${holding.id}|${input.dateSold}|${qty}|${input.price}|${Date.now()}`,
+    });
+    if (gErr) return { error: gErr.message };
+  }
+
+  const remaining = held - qty;
+  const { error } =
+    remaining > 1e-9
+      ? await supabase.from("positions").update({ shares: remaining }).eq("id", holding.id)
+      : await supabase.from("positions").delete().eq("id", holding.id);
+  return { error: error ? error.message : null, gain };
+}

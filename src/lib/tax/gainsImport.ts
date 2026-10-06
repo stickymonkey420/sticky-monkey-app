@@ -9,7 +9,7 @@
 // Every row gets a deterministic dedupe_key so re-importing the same (or an
 // overlapping) file never creates duplicates (unique index user_id+dedupe_key).
 
-export type GainSource = "robinhood_activity" | "gains_csv";
+export type GainSource = "robinhood_activity" | "gains_csv" | "manual_sale";
 
 export type ParsedGain = {
   symbol: string | null;

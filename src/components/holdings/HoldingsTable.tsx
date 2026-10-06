@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { createClient } from "@/lib/supabase/client";
 import { fetchHoldings } from "@/lib/holdings/queries";
-import { deleteHolding, updateHolding, type HoldingFormInput } from "@/lib/holdings/mutations";
+import { deleteHolding, sellHolding, updateHolding, type HoldingFormInput } from "@/lib/holdings/mutations";
 import { compareHoldings, withDerived, type SortColumn, type SortDirection } from "@/lib/holdings/calc";
 import { money } from "@/lib/options/queries";
 import type { AccountTypeOption, HoldingWithDerived } from "@/lib/holdings/types";
 import EditHoldingModal from "./EditHoldingModal";
+import SellHoldingModal from "./SellHoldingModal";
 
 type HoldingsTableProps = {
   accountType: string | null;
@@ -52,6 +53,8 @@ export default function HoldingsTable({ accountType, accountOptions, refreshKey 
   const [sortColumn, setSortColumn] = useState<SortColumn>("ticker");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [editingHolding, setEditingHolding] = useState<HoldingWithDerived | null>(null);
+  const [sellingHolding, setSellingHolding] = useState<HoldingWithDerived | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   // Bumped by afterMutation() so this table always reloads its own rows
   // after a row-level mutation, independent of whether the parent also
   // passed an `onChanged` (which only needs to reload the sibling
@@ -128,6 +131,7 @@ export default function HoldingsTable({ accountType, accountOptions, refreshKey 
     <div className="rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-4 text-sm font-semibold text-text-primary">Holdings</h3>
       {actionError && <div className="mb-3 text-xs text-[#ff5c7a]">{actionError}</div>}
+      {notice && <div className="mb-3 text-xs text-[#3ddc97]">{notice}</div>}
       {loading ? (
         <div className="text-sm text-text-muted">Loading…</div>
       ) : sortedHoldings.length === 0 ? (
@@ -190,6 +194,13 @@ export default function HoldingsTable({ accountType, accountOptions, refreshKey 
                   </td>
                   <td className="whitespace-nowrap py-2.5 pr-4">
                     <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        className="rounded-md border border-[#f5d020]/50 px-2 py-1 text-xs font-semibold text-[#f5d020] hover:bg-[#f5d020]/10"
+                        onClick={() => setSellingHolding(h)}
+                      >
+                        Sell
+                      </button>
                       <button type="button" className={ACTION_BTN_CLASS} onClick={() => setEditingHolding(h)}>
                         Edit
                       </button>
@@ -203,6 +214,28 @@ export default function HoldingsTable({ accountType, accountOptions, refreshKey 
             </tbody>
           </table>
         </div>
+      )}
+
+      {sellingHolding && (
+        <SellHoldingModal
+          holding={sellingHolding}
+          onClose={() => setSellingHolding(null)}
+          onSubmit={async (input) => {
+            const supabase = createClient();
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            if (!user) return { error: "Not signed in." };
+            const r = await sellHolding(supabase, user.id, sellingHolding, input);
+            if (!r.error) {
+              const g = r.gain ?? 0;
+              setNotice(`Sold ${input.shares} ${sellingHolding.ticker} for a ${g >= 0 ? "gain" : "loss"} of ${money(Math.abs(g))}.`);
+              setTimeout(() => setNotice(null), 6000);
+              afterMutation();
+            }
+            return r;
+          }}
+        />
       )}
 
       {editingHolding && (
