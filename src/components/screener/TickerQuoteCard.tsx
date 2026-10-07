@@ -73,8 +73,6 @@ export default function TickerQuoteCard({
               </div>
             )}
 
-            <GrowthEpsRow result={result} />
-
             {/* Average Cost Owned: left-justified under the quote time,
                 same column as the price info above it. flex-1 stretches it
                 down so its bottom edge lines up with the buttons, Score
@@ -110,14 +108,19 @@ export default function TickerQuoteCard({
             {/* Price/Free Cash Flow gauge, moved up from the gauge grid
                 below into the slot that used to be a reserved placeholder
                 card. The left quote column (flex-1) gives up the width. */}
-            <div className="flex w-full shrink-0 sm:w-[300px] [&>div]:flex [&>div]:w-full [&>div]:flex-col [&>div]:justify-center">
-              {hasPriceFcf ? (
-                <Gauge value={result.priceToFreeCashFlow as number} config={PRICE_FCF_GAUGE_CONFIG} />
-              ) : (
-                <div className="rounded-[14px] border border-white/[0.12] bg-white/[0.03] p-5 text-center text-sm text-text-muted opacity-60">
-                  Price/Free Cash Flow not available for this ticker.
-                </div>
-              )}
+            {/* Revenue Growth (YoY) + EPS sit on top; the compact P/FCF
+                gauge fills the rest of the column. */}
+            <div className="flex w-full shrink-0 flex-col gap-3 sm:w-[300px]">
+              <GrowthEpsRow result={result} />
+              <div className="flex flex-1 [&>div]:flex [&>div]:w-full [&>div]:flex-col [&>div]:justify-center">
+                {hasPriceFcf ? (
+                  <Gauge value={result.priceToFreeCashFlow as number} config={PRICE_FCF_GAUGE_CONFIG} compact />
+                ) : (
+                  <div className="rounded-[14px] border border-white/[0.12] bg-white/[0.03] p-5 text-center text-sm text-text-muted opacity-60">
+                    Price/Free Cash Flow not available for this ticker.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -260,9 +263,9 @@ function GrowthEpsRow({ result }: { result: TickerQuoteResult }) {
   const pct = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
   const tone = (v: number) => (v >= 0 ? "#3ddc97" : "#ff5c5c");
   return (
-    <div className="mt-3 grid max-w-[360px] grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-3">
       {rev !== null && (
-        <div className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-3 py-2">
+        <div className="rounded-[14px] border border-white/[0.12] bg-white/[0.03] px-3 py-2.5">
           <div className="text-[11px] text-text-muted">Revenue growth (YoY)</div>
           <div className="text-base font-semibold" style={{ color: tone(rev) }}>
             {pct(rev)}
@@ -270,7 +273,7 @@ function GrowthEpsRow({ result }: { result: TickerQuoteResult }) {
         </div>
       )}
       {eps !== null && (
-        <div className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-3 py-2">
+        <div className="rounded-[14px] border border-white/[0.12] bg-white/[0.03] px-3 py-2.5">
           <div className="text-[11px] text-text-muted">EPS (TTM)</div>
           <div className="text-base font-semibold" style={{ color: eps < 0 ? "#ff5c5c" : undefined }}>
             {eps < 0 ? `-${money(Math.abs(eps))}` : money(eps)}
