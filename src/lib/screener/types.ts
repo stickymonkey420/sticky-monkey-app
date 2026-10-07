@@ -96,6 +96,11 @@ export type TickerQuoteResult = {
   intrinsicValueMethod: "growth" | "asset" | "graham" | null; // "graham" = pre-2026-09-28 responses
   intrinsicValueNote: string | null; // why intrinsicValue is null, when it is
   industry: IndustryComparison | null;
+  // 2026-10-07 (edge fn v18): overall revenue growth YoY (%), trailing EPS
+  // ($/share, as reported) and EPS growth YoY (%). Optional for older responses.
+  revenueGrowthYoY?: number | null;
+  epsTTM?: number | null;
+  epsGrowthYoY?: number | null;
   // Present when reported earnings were boosted by a one-time tax benefit
   // (after-tax margin above before-tax margin). Net margin, ROE, ROA, P/E and
   // the Graham Number in this result are already re-based on a normal tax rate.

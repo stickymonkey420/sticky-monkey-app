@@ -73,6 +73,8 @@ export default function TickerQuoteCard({
               </div>
             )}
 
+            <GrowthEpsRow result={result} />
+
             {/* Average Cost Owned: left-justified under the quote time,
                 same column as the price info above it. flex-1 stretches it
                 down so its bottom edge lines up with the buttons, Score
@@ -244,6 +246,42 @@ function StickyMonkeyScoreCard({ result }: { result: TickerQuoteResult }) {
       <div className="mt-3 text-[11px] leading-snug text-text-muted/70">
         Tallies the 7 gauges below plus peer/book-value data. Informational only -- not investment advice.
       </div>
+    </div>
+  );
+}
+
+// Revenue Growth (YoY) and EPS (TTM) under the quote. Each stat hides
+// itself when Finnhub has no figure; the row hides when both are missing.
+function GrowthEpsRow({ result }: { result: TickerQuoteResult }) {
+  const rev = result.revenueGrowthYoY ?? null;
+  const eps = result.epsTTM ?? null;
+  const epsGrowth = result.epsGrowthYoY ?? null;
+  if (rev === null && eps === null) return null;
+  const pct = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
+  const tone = (v: number) => (v >= 0 ? "#3ddc97" : "#ff5c5c");
+  return (
+    <div className="mt-3 grid max-w-[360px] grid-cols-2 gap-2">
+      {rev !== null && (
+        <div className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-3 py-2">
+          <div className="text-[11px] text-text-muted">Revenue growth (YoY)</div>
+          <div className="text-base font-semibold" style={{ color: tone(rev) }}>
+            {pct(rev)}
+          </div>
+        </div>
+      )}
+      {eps !== null && (
+        <div className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-3 py-2">
+          <div className="text-[11px] text-text-muted">EPS (TTM)</div>
+          <div className="text-base font-semibold" style={{ color: eps < 0 ? "#ff5c5c" : undefined }}>
+            {eps < 0 ? `-${money(Math.abs(eps))}` : money(eps)}
+            {epsGrowth !== null && (
+              <span className="ml-1.5 text-xs font-normal" style={{ color: tone(epsGrowth) }}>
+                {pct(epsGrowth)} YoY
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
