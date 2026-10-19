@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, ImagePlus, Plus, Sparkles, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { MEAL_TYPES, sumItems, type FoodItem, type LibraryFood, type Meal } from "@/lib/health/calc";
-import { estimateFromPhoto, fetchFoodLibrary, lookupFoods, prepPhoto, saveMeal, type Estimate } from "@/lib/health/queries";
+import { estimateFromPhoto, fetchFoodLibrary, fetchRecentMeals, lookupFoods, prepPhoto, saveMeal, type Estimate } from "@/lib/health/queries";
 import FoodNameInput, { type FoodPick } from "./FoodNameInput";
 
 const INPUT =
@@ -74,6 +74,34 @@ export default function MealModal({
   const libraryRef = useRef<HTMLInputElement>(null);
   const inflight = useRef(new Set<string>());
   const [library, setLibrary] = useState<LibraryFood[]>([]);
+  const [recent, setRecent] = useState<Meal[]>([]);
+  const [pickedRecent, setPickedRecent] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (mode !== "manual" || meal) return;
+    let cancelled = false;
+    async function load() {
+      try {
+        const r = await fetchRecentMeals(createClient());
+        if (!cancelled) setRecent(r);
+      } catch {
+        /* no quick picks */
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, meal]);
+
+  // Fills the editor from a meal you've eaten before (numbers already known).
+  function applyRecent(m: Meal) {
+    setPickedRecent(m.id);
+    setTitle(m.title);
+    setNotes(m.notes ?? "");
+    setServings("1");
+    setRows(m.items.length ? m.items.map((i) => ({ ...i, sig: sigOf(i) })) : [blankRow()]);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -354,6 +382,23 @@ export default function MealModal({
 
         {showTable && (
           <>
+            {recent.length > 0 && (
+              <div className="mb-4">
+                <div className="mb-1.5 text-xs font-medium text-text-muted">Repeat a meal</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {recent.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => applyRecent(m)}
+                      className={`rounded-full border px-3 py-1 text-xs ${pickedRecent === m.id ? "border-[#f5d020] bg-[#f5d020]/15 text-[#f5d020]" : "border-white/15 text-text-primary hover:bg-white/5"}`}
+                    >
+                      {m.title} <span className="text-text-muted">· {Math.round(m.kcal)} cal</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="col-span-2">
                 <label className={LABEL}>Meal name</label>

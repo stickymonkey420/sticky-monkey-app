@@ -275,3 +275,55 @@ export async function deleteLibraryFood(supabase: SupabaseClient, id: string): P
   const { error } = await supabase.from("health_foods").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
+
+// Copies a meal to another day (photo isn't shared, so deleting one never
+// removes the other's picture).
+export async function duplicateMeal(supabase: SupabaseClient, userId: string, meal: Meal, eatenOn: string): Promise<void> {
+  const { error } = await supabase.from("health_meals").insert({
+    user_id: userId,
+    eaten_on: eatenOn,
+    meal_type: meal.meal_type,
+    title: meal.title,
+    items: meal.items,
+    kcal: meal.kcal,
+    protein_g: meal.protein_g,
+    carbs_g: meal.carbs_g,
+    fat_g: meal.fat_g,
+    fiber_g: meal.fiber_g,
+    sugar_g: meal.sugar_g,
+    sodium_mg: meal.sodium_mg,
+    source: "manual",
+    notes: meal.notes,
+  });
+  if (error) throw new Error(error.message);
+}
+
+// Most recent version of each distinct meal (by name) from the last 90 days.
+export async function fetchRecentMeals(supabase: SupabaseClient, limit = 15): Promise<Meal[]> {
+  const since = new Date(Date.now() - 90 * 86400000);
+  const from = `${since.getFullYear()}-${String(since.getMonth() + 1).padStart(2, "0")}-${String(since.getDate()).padStart(2, "0")}`;
+  const { data, error } = await supabase
+    .from("health_meals")
+    .select("*")
+    .gte("eaten_on", from)
+    .order("eaten_on", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(400);
+  if (error) throw new Error(error.message);
+  const seen = new Map<string, { meal: Meal; count: number }>();
+  for (const m of data ?? []) {
+    const key = String(m.title).trim().toLowerCase();
+    const hit = seen.get(key);
+    if (hit) hit.count += 1;
+    else
+      seen.set(key, {
+        meal: { ...m, kcal: Number(m.kcal), protein_g: Number(m.protein_g), carbs_g: Number(m.carbs_g), fat_g: Number(m.fat_g), fiber_g: Number(m.fiber_g ?? 0), sugar_g: Number(m.sugar_g ?? 0), sodium_mg: Number(m.sodium_mg ?? 0) } as Meal,
+        count: 1,
+      });
+  }
+  // Most-eaten first, then most recent.
+  return Array.from(seen.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+    .map((x) => x.meal);
+}

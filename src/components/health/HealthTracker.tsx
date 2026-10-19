@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookOpen, Camera, ChevronLeft, ChevronRight, Dumbbell, Pencil, Plus, Trash2, UserRound } from "lucide-react";
+import { BookOpen, Camera, ChevronLeft, ChevronRight, Copy, Dumbbell, Pencil, Plus, Trash2, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import {
@@ -17,7 +17,7 @@ import {
   type HealthProfile,
   type Meal,
 } from "@/lib/health/calc";
-import { deleteExercise, deleteMeal, fetchExercise, fetchHealthProfile, fetchMeals, photoUrls } from "@/lib/health/queries";
+import { deleteExercise, deleteMeal, duplicateMeal, fetchExercise, fetchHealthProfile, fetchMeals, photoUrls } from "@/lib/health/queries";
 import MealModal from "./MealModal";
 import ExerciseModal from "./ExerciseModal";
 import HealthProfileModal from "./HealthProfileModal";
@@ -47,6 +47,7 @@ export default function HealthTracker({ userId }: { userId: string }) {
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const [mealModal, setMealModal] = useState<{ mode: "photo" | "manual"; meal?: Meal } | null>(null);
   const [exModal, setExModal] = useState<{ exercise?: Exercise } | null>(null);
@@ -105,6 +106,19 @@ export default function HealthTracker({ userId }: { userId: string }) {
   const weekMax = Math.max(1, ...week.map((w) => Math.max(w.inn, w.out)));
   const logged = week.filter((w) => w.inn > 0);
   const avgNet = logged.length ? Math.round(logged.reduce((s, w) => s + (w.inn - w.out), 0) / logged.length) : null;
+
+  // "Log again": copies the meal to today (or, when viewing today, adds a second one).
+  async function repeatMeal(m: Meal) {
+    try {
+      await duplicateMeal(createClient(), userId, m, today);
+      setNotice(`Added "${m.title}" to today.`);
+      setTimeout(() => setNotice(null), 4000);
+      if (date !== today) setDate(today);
+      else refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't copy that meal.");
+    }
+  }
 
   async function removeMeal(m: Meal) {
     if (!(await confirm({ message: `Delete "${m.title}"?`, danger: true, confirmLabel: "Delete" }))) return;
@@ -180,6 +194,7 @@ export default function HealthTracker({ userId }: { userId: string }) {
         </div>
       </div>
 
+      {notice && <div className="rounded-xl border border-[#3ddc97]/40 bg-[#3ddc97]/10 px-4 py-2.5 text-sm text-[#3ddc97]">{notice}</div>}
       {error && <div className="rounded-xl border border-[#ff5c7a]/40 bg-[#ff5c7a]/10 px-4 py-2.5 text-sm text-[#ff5c7a]">{error}</div>}
       {!profile && (
         <div className="rounded-xl border border-[#f5d020]/40 bg-[#f5d020]/[0.07] px-4 py-3 text-sm text-text-primary">
@@ -242,6 +257,15 @@ export default function HealthTracker({ userId }: { userId: string }) {
                           </div>
                           <div className="text-right text-sm font-semibold text-text-primary">{fmtKcal(m.kcal)}</div>
                           <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => repeatMeal(m)}
+                              aria-label={date === today ? "Duplicate meal" : "Log again today"}
+                              title={date === today ? "Duplicate meal" : "Log again today"}
+                              className="text-text-muted hover:text-[#3ddc97]"
+                            >
+                              <Copy size={15} />
+                            </button>
                             <button type="button" onClick={() => setMealModal({ mode: m.source, meal: m })} aria-label="Edit" className="text-text-muted hover:text-text-primary">
                               <Pencil size={15} />
                             </button>
