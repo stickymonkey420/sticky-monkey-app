@@ -7,10 +7,12 @@ import {
   GOAL_LABEL,
   baselineBurn,
   bmr,
+  bmrMethod,
   cmToFtIn,
   ftInToCm,
   kgToLb,
   lbToKg,
+  leanMassKg,
   type HealthProfile,
 } from "@/lib/health/calc";
 import { saveHealthProfile } from "@/lib/health/queries";
@@ -42,6 +44,7 @@ export default function HealthProfileModal({
   const [weight, setWeight] = useState(
     profile?.weight_kg ? String(Math.round((profile.units === "metric" ? Number(profile.weight_kg) : kgToLb(Number(profile.weight_kg))) * 10) / 10) : "",
   );
+  const [bodyFat, setBodyFat] = useState(profile?.body_fat_pct ? String(Number(profile.body_fat_pct)) : "");
   const [goal, setGoal] = useState<HealthProfile["goal"]>(profile?.goal ?? "maintain");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,11 +78,13 @@ export default function HealthProfileModal({
     birth_year: Number(birthYear) || null,
     height_cm: heightCm > 0 ? Math.round(heightCm * 10) / 10 : null,
     weight_kg: weightKg > 0 ? Math.round(weightKg * 10) / 10 : null,
+    body_fat_pct: Number(bodyFat) > 0 ? Math.round(Number(bodyFat) * 10) / 10 : null,
     goal,
     units,
   };
   const b = bmr(draft);
   const base = baselineBurn(draft);
+  const lean = leanMassKg(draft);
 
   async function save() {
     const yr = Number(birthYear);
@@ -87,6 +92,7 @@ export default function HealthProfileModal({
     if (!(yr >= thisYear - 110 && yr <= thisYear - 13)) return setError("Enter a valid birth year.");
     if (!(heightCm >= 100 && heightCm <= 250)) return setError("Enter your height.");
     if (!(weightKg >= 30 && weightKg <= 350)) return setError("Enter your weight.");
+    if (bodyFat.trim() !== "" && !(Number(bodyFat) >= 2 && Number(bodyFat) <= 70)) return setError("Body fat must be between 2% and 70%, or leave it blank.");
     setSaving(true);
     setError(null);
     try {
@@ -153,6 +159,16 @@ export default function HealthProfileModal({
             <label className={LABEL}>Weight {units === "imperial" ? "lb" : "kg"}</label>
             <input className={INPUT} type="number" step="any" value={weight} onChange={(e) => setWeight(e.target.value)} />
           </div>
+          <div>
+            <label className={LABEL}>Body fat % (optional)</label>
+            <input className={INPUT} type="number" step="0.1" min={2} max={70} value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} placeholder="e.g. 22" />
+          </div>
+          <div>
+            <label className={LABEL}>Lean mass</label>
+            <div className="py-2 text-[13px] text-text-primary">
+              {lean === null ? "—" : units === "metric" ? `${Math.round(lean * 10) / 10} kg` : `${Math.round(kgToLb(lean) * 10) / 10} lb`}
+            </div>
+          </div>
           <div className="col-span-2">
             <label className={LABEL}>Goal</label>
             <select className={INPUT} value={goal} onChange={(e) => setGoal(e.target.value as HealthProfile["goal"])}>
@@ -167,7 +183,7 @@ export default function HealthProfileModal({
 
         <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-white/5 p-3 text-sm">
           <div>
-            <div className="text-[11px] text-text-muted">Resting burn (BMR)</div>
+            <div className="text-[11px] text-text-muted">Resting burn (BMR, {bmrMethod(draft) === "katch" ? "from lean mass" : "from height/weight/age"})</div>
             <div className="font-semibold text-text-primary">{b ? `${b.toLocaleString()} cal` : "—"}</div>
           </div>
           <div>

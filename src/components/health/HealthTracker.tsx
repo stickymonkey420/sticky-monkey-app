@@ -285,7 +285,8 @@ export default function HealthTracker({ userId }: { userId: string }) {
           )}
           {profile?.weight_kg && (
             <p className="mt-3 text-[11px] text-text-muted">
-              Based on {profile.units === "metric" ? `${Number(profile.weight_kg)} kg` : `${Math.round(kgToLb(Number(profile.weight_kg)))} lb`}. Update weight in Profile.
+              Based on {profile.units === "metric" ? `${Number(profile.weight_kg)} kg` : `${Math.round(kgToLb(Number(profile.weight_kg)))} lb`}
+              {profile.body_fat_pct ? `, ${Number(profile.body_fat_pct)}% body fat` : ""}. Update in Profile.
             </p>
           )}
         </div>
@@ -324,7 +325,7 @@ export default function HealthTracker({ userId }: { userId: string }) {
           ))}
         </div>
         <p className="mt-3 text-[11px] leading-snug text-text-muted/80">
-          Photo estimates are typically within 20-30%; adding weights in the note helps. Calories out = resting baseline (Mifflin-St Jeor x 1.2) + logged
+          Photo estimates are typically within 20-30%; adding weights in the note helps. Calories out = resting baseline (BMR x 1.2; BMR uses lean mass when body fat % is set) + logged
           exercise. Informational only, not medical advice.
         </p>
       </div>

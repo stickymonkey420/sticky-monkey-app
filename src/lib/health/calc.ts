@@ -7,6 +7,7 @@ export type HealthProfile = {
   birth_year: number | null;
   height_cm: number | null;
   weight_kg: number | null;
+  body_fat_pct?: number | null;
   goal: "lose" | "maintain" | "gain";
   units: "imperial" | "metric";
 };
@@ -93,8 +94,22 @@ export function ageFrom(birthYear: number | null): number | null {
   return new Date().getFullYear() - birthYear;
 }
 
-// Mifflin-St Jeor resting burn (BMR).
+// Lean body mass (kg) when body fat % is known.
+export function leanMassKg(p: HealthProfile | null): number | null {
+  const bf = Number(p?.body_fat_pct);
+  if (!p?.weight_kg || !(bf > 0 && bf < 100)) return null;
+  return Number(p.weight_kg) * (1 - bf / 100);
+}
+
+// Resting burn (BMR): Katch-McArdle (370 + 21.6 x lean kg) when body fat %
+// is set, otherwise Mifflin-St Jeor.
+export function bmrMethod(p: HealthProfile | null): "katch" | "mifflin" {
+  return leanMassKg(p) !== null ? "katch" : "mifflin";
+}
+
 export function bmr(p: HealthProfile | null): number | null {
+  const lean = leanMassKg(p);
+  if (lean !== null) return Math.round(370 + 21.6 * lean);
   if (!p || !p.sex || !p.height_cm || !p.weight_kg) return null;
   const age = ageFrom(p.birth_year);
   if (age === null) return null;
