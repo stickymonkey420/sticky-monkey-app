@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Camera, ChevronLeft, ChevronRight, Dumbbell, Pencil, Plus, Trash2, UserRound } from "lucide-react";
+import { BookOpen, Camera, ChevronLeft, ChevronRight, Dumbbell, Pencil, Plus, Trash2, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import {
@@ -21,6 +21,7 @@ import { deleteExercise, deleteMeal, fetchExercise, fetchHealthProfile, fetchMea
 import MealModal from "./MealModal";
 import ExerciseModal from "./ExerciseModal";
 import HealthProfileModal from "./HealthProfileModal";
+import FoodLibraryModal from "./FoodLibraryModal";
 
 const CARD = "rounded-2xl border border-card-border bg-card-bg p-5";
 const GREEN = "#3ddc97";
@@ -50,6 +51,7 @@ export default function HealthTracker({ userId }: { userId: string }) {
   const [mealModal, setMealModal] = useState<{ mode: "photo" | "manual"; meal?: Meal } | null>(null);
   const [exModal, setExModal] = useState<{ exercise?: Exercise } | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,7 +94,7 @@ export default function HealthTracker({ userId }: { userId: string }) {
   const net = kcalIn - kcalOut;
   const target = base !== null ? base + kcalEx + GOAL_ADJUST[profile!.goal] : null;
   const left = target !== null ? target - kcalIn : null;
-  const macros = dayMeals.reduce((a, m) => ({ p: a.p + m.protein_g, c: a.c + m.carbs_g, f: a.f + m.fat_g }), { p: 0, c: 0, f: 0 });
+  const macros = dayMeals.reduce((a, m) => ({ p: a.p + m.protein_g, c: a.c + m.carbs_g, f: a.f + m.fat_g, fiber: a.fiber + m.fiber_g }), { p: 0, c: 0, f: 0, fiber: 0 });
 
   const week = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(date, i - 6);
@@ -169,6 +171,9 @@ export default function HealthTracker({ userId }: { userId: string }) {
           <button type="button" onClick={() => setExModal({})} className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-3 py-2 text-sm text-text-primary hover:bg-white/5">
             <Dumbbell size={16} /> Log exercise
           </button>
+          <button type="button" onClick={() => setLibraryOpen(true)} className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-3 py-2 text-sm text-text-primary hover:bg-white/5">
+            <BookOpen size={16} /> Food library
+          </button>
           <button type="button" onClick={() => setProfileOpen(true)} className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-3 py-2 text-sm text-text-primary hover:bg-white/5">
             <UserRound size={16} /> Profile
           </button>
@@ -184,7 +189,7 @@ export default function HealthTracker({ userId }: { userId: string }) {
 
       {/* Day summary */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {stat("Calories in", fmtKcal(kcalIn), `P ${Math.round(macros.p)}g · C ${Math.round(macros.c)}g · F ${Math.round(macros.f)}g`)}
+        {stat("Calories in", fmtKcal(kcalIn), `P ${Math.round(macros.p)}g · C ${Math.round(macros.c)}g · F ${Math.round(macros.f)}g · Fiber ${Math.round(macros.fiber)}g`)}
         {stat("Calories out", base === null ? fmtKcal(kcalEx) : fmtKcal(kcalOut), base === null ? "Exercise only (set up profile)" : `${fmtKcal(base)} baseline + ${fmtKcal(kcalEx)} exercise`)}
         {stat(
           "Net",
@@ -336,6 +341,7 @@ export default function HealthTracker({ userId }: { userId: string }) {
       {exModal && (
         <ExerciseModal userId={userId} date={date} weightKg={profile?.weight_kg ? Number(profile.weight_kg) : null} exercise={exModal.exercise} onClose={() => setExModal(null)} onSaved={refresh} />
       )}
+      {libraryOpen && <FoodLibraryModal onClose={() => setLibraryOpen(false)} />}
       {profileOpen && (
         <HealthProfileModal
           userId={userId}

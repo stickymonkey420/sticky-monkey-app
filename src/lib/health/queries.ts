@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Exercise, FoodItem, HealthProfile, Meal } from "./calc";
+import type { Exercise, FoodItem, HealthProfile, LibraryFood, Meal } from "./calc";
 
 // Health section data access. RLS limits every table and the private
 // health-photos bucket to the signed-in App Director's own rows.
@@ -32,6 +32,9 @@ export async function fetchMeals(supabase: SupabaseClient, from: string, to: str
     protein_g: Number(m.protein_g),
     carbs_g: Number(m.carbs_g),
     fat_g: Number(m.fat_g),
+    fiber_g: Number(m.fiber_g ?? 0),
+    sugar_g: Number(m.sugar_g ?? 0),
+    sodium_mg: Number(m.sodium_mg ?? 0),
   })) as Meal[];
 }
 
@@ -56,6 +59,9 @@ export type MealInput = {
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+  fiber_g: number;
+  sugar_g: number;
+  sodium_mg: number;
   source: Meal["source"];
   notes: string | null;
 };
@@ -169,4 +175,84 @@ export async function prepPhoto(file: File): Promise<{ blob: Blob; b64: string; 
   );
   const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
   return { blob, b64: dataUrl.split(",")[1] ?? "", previewUrl: dataUrl };
+}
+
+// ---- Food library + nutrition lookup ------------------------------------
+
+export type LookupResult = FoodItem & { source: "library" | "ai" | "unresolved" };
+
+async function invokeError(error: { message: string }): Promise<string> {
+  let msg = error.message;
+  try {
+    const ctx = (error as { context?: Response }).context;
+    if (ctx) {
+      const j = (await ctx.json()) as { message?: string; error?: string };
+      msg = j.message || j.error || msg;
+    }
+  } catch {
+    /* keep default message */
+  }
+  return msg;
+}
+
+// Name + portion ("2", "1 cup", "150 g", "6 oz") -> grams + nutrition from
+// the food library; unknown foods are looked up once by AI and saved.
+export async function lookupFoods(
+  supabase: SupabaseClient,
+  items: { name: string; portion: string; grams?: number | null }[],
+): Promise<LookupResult[]> {
+  const { data, error } = await supabase.functions.invoke<{ items: (Partial<FoodItem> & { index: number; source: LookupResult["source"] })[] }>(
+    "health-food-lookup",
+    { body: { items: items.map((i) => ({ name: i.name, portion: i.portion, grams: i.grams ?? undefined })) } },
+  );
+  if (error) throw new Error(await invokeError(error));
+  return (data?.items ?? []).map((r) => ({
+    name: items[r.index]?.name ?? r.name ?? "",
+    portion: items[r.index]?.portion ?? r.portion ?? "",
+    grams: Number(r.grams) || 0,
+    kcal: Number(r.kcal) || 0,
+    protein_g: Number(r.protein_g) || 0,
+    carbs_g: Number(r.carbs_g) || 0,
+    fat_g: Number(r.fat_g) || 0,
+    fiber_g: Number(r.fiber_g) || 0,
+    sugar_g: Number(r.sugar_g) || 0,
+    sodium_mg: Number(r.sodium_mg) || 0,
+    food_id: r.food_id ?? null,
+    food_name: r.food_name ?? null,
+    source: r.source,
+  }));
+}
+
+export async function fetchFoodLibrary(supabase: SupabaseClient): Promise<LibraryFood[]> {
+  const { data, error } = await supabase.from("health_foods").select("*").order("name").limit(5000);
+  if (error) throw new Error(error.message);
+  const n = (v: unknown) => (v == null ? null : Number(v));
+  return (data ?? []).map((f) => ({
+    ...f,
+    kcal_100g: Number(f.kcal_100g),
+    protein_100g: Number(f.protein_100g),
+    carbs_100g: Number(f.carbs_100g),
+    fat_100g: Number(f.fat_100g),
+    fiber_100g: n(f.fiber_100g),
+    sugar_100g: n(f.sugar_100g),
+    sodium_mg_100g: n(f.sodium_mg_100g),
+    units: (f.units ?? {}) as Record<string, number>,
+  })) as LibraryFood[];
+}
+
+export async function updateLibraryFood(
+  supabase: SupabaseClient,
+  id: string,
+  patch: Partial<Omit<LibraryFood, "id" | "name_key" | "aliases" | "updated_at">>,
+): Promise<void> {
+  const { error } = await supabase
+    .from("health_foods")
+    .update({ ...patch, source: "manual", updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteLibraryFood(supabase: SupabaseClient, id: string): Promise<void> {
+  const { error } = await supabase.from("health_foods").delete().eq("id", id);
+  if (error) throw new Error(error.message);
 }

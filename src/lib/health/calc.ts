@@ -20,6 +20,29 @@ export type FoodItem = {
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+  fiber_g?: number;
+  sugar_g?: number;
+  sodium_mg?: number;
+  food_id?: string | null; // health_foods row the numbers came from
+  food_name?: string | null;
+};
+
+// Personal food library row (nutrition per 100 g, grams per household unit).
+export type LibraryFood = {
+  id: string;
+  name: string;
+  name_key: string;
+  aliases: string[];
+  kcal_100g: number;
+  protein_100g: number;
+  carbs_100g: number;
+  fat_100g: number;
+  fiber_100g: number | null;
+  sugar_100g: number | null;
+  sodium_mg_100g: number | null;
+  units: Record<string, number>;
+  source: "ai" | "manual";
+  updated_at: string;
 };
 
 export type Meal = {
@@ -32,6 +55,9 @@ export type Meal = {
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+  fiber_g: number;
+  sugar_g: number;
+  sodium_mg: number;
   photo_path: string | null;
   source: "photo" | "manual";
   notes: string | null;
@@ -146,14 +172,21 @@ export function sumItems(items: FoodItem[]) {
       protein_g: a.protein_g + (Number(i.protein_g) || 0),
       carbs_g: a.carbs_g + (Number(i.carbs_g) || 0),
       fat_g: a.fat_g + (Number(i.fat_g) || 0),
+      fiber_g: a.fiber_g + (Number(i.fiber_g) || 0),
+      sugar_g: a.sugar_g + (Number(i.sugar_g) || 0),
+      sodium_mg: a.sodium_mg + (Number(i.sodium_mg) || 0),
     }),
-    { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
+    { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0, sugar_g: 0, sodium_mg: 0 },
   );
+  const r = (v: number) => Math.round(v * 10) / 10;
   return {
     kcal: Math.round(t.kcal),
-    protein_g: Math.round(t.protein_g * 10) / 10,
-    carbs_g: Math.round(t.carbs_g * 10) / 10,
-    fat_g: Math.round(t.fat_g * 10) / 10,
+    protein_g: r(t.protein_g),
+    carbs_g: r(t.carbs_g),
+    fat_g: r(t.fat_g),
+    fiber_g: r(t.fiber_g),
+    sugar_g: r(t.sugar_g),
+    sodium_mg: Math.round(t.sodium_mg),
   };
 }
 
