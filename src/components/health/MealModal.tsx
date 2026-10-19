@@ -66,6 +66,8 @@ export default function MealModal({
   const [servings, setServings] = useState("1");
   const [photo, setPhoto] = useState<{ blob: Blob; b64: string; previewUrl: string } | null>(null);
   const [estimate, setEstimate] = useState<Estimate | null>(null);
+  // Photo mode: skip the AI scan and type the foods (photo is still saved).
+  const [typeFoods, setTypeFoods] = useState(false);
   const [busy, setBusy] = useState<"" | "photo" | "estimate" | "save">("");
   const [error, setError] = useState<string | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -256,7 +258,7 @@ export default function MealModal({
     }
   }
 
-  const showTable = mode === "manual" || !!meal || !!estimate;
+  const showTable = mode === "manual" || !!meal || !!estimate || typeFoods;
   const num = (v: number | undefined, unit = "") => (v ? `${Math.round(v * 10) / 10}${unit}` : "—");
 
   return (
@@ -328,6 +330,19 @@ export default function MealModal({
                 </div>
               </div>
             </div>
+            {!estimate && !typeFoods && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTypeFoods(true);
+                  setError(null);
+                  setRows((cur) => (cur.length ? cur : [blankRow()]));
+                }}
+                className="mt-2 text-xs text-[#4f8cff] hover:underline"
+              >
+                Enter foods instead (no AI)
+              </button>
+            )}
             {estimate && (
               <p className="mt-2 text-xs text-text-muted">
                 AI confidence: <span className="font-semibold text-text-primary">{estimate.confidence}</span>
