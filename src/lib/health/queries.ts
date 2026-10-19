@@ -179,7 +179,7 @@ export async function prepPhoto(file: File): Promise<{ blob: Blob; b64: string; 
 
 // ---- Food library + nutrition lookup ------------------------------------
 
-export type LookupResult = FoodItem & { source: "library" | "ai" | "unresolved" };
+export type LookupResult = FoodItem & { source: "library" | "usda" | "ai" | "unresolved"; reason?: string };
 
 async function invokeError(error: { message: string }): Promise<string> {
   let msg = error.message;
@@ -199,11 +199,11 @@ async function invokeError(error: { message: string }): Promise<string> {
 // the food library; unknown foods are looked up once by AI and saved.
 export async function lookupFoods(
   supabase: SupabaseClient,
-  items: { name: string; portion: string; grams?: number | null }[],
+  items: { name: string; portion: string; grams?: number | null; fdc_id?: number | null }[],
 ): Promise<LookupResult[]> {
-  const { data, error } = await supabase.functions.invoke<{ items: (Partial<FoodItem> & { index: number; source: LookupResult["source"] })[] }>(
+  const { data, error } = await supabase.functions.invoke<{ items: (Partial<FoodItem> & { index: number; source: LookupResult["source"]; reason?: string })[] }>(
     "health-food-lookup",
-    { body: { items: items.map((i) => ({ name: i.name, portion: i.portion, grams: i.grams ?? undefined })) } },
+    { body: { items: items.map((i) => ({ name: i.name, portion: i.portion, grams: i.grams ?? undefined, fdc_id: i.fdc_id ?? undefined })) } },
   );
   if (error) throw new Error(await invokeError(error));
   return (data?.items ?? []).map((r) => ({
@@ -220,7 +220,26 @@ export async function lookupFoods(
     food_id: r.food_id ?? null,
     food_name: r.food_name ?? null,
     source: r.source,
+    reason: r.reason,
   }));
+}
+
+export type UsdaHit = {
+  fdc_id: number;
+  name: string;
+  data_type: string;
+  category: string | null;
+  kcal_100g: number;
+  protein_100g: number;
+  carbs_100g: number;
+  fat_100g: number;
+};
+
+// Type-ahead search of USDA FoodData Central (free).
+export async function searchUsdaFoods(supabase: SupabaseClient, q: string): Promise<{ hits: UsdaHit[]; error: string | null }> {
+  const { data, error } = await supabase.functions.invoke<{ usda: UsdaHit[]; error?: string }>("health-food-search", { body: { q } });
+  if (error) return { hits: [], error: await invokeError(error) };
+  return { hits: data?.usda ?? [], error: data?.error ?? null };
 }
 
 export async function fetchFoodLibrary(supabase: SupabaseClient): Promise<LibraryFood[]> {

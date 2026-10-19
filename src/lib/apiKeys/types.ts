@@ -18,6 +18,7 @@ export const API_KEY_DEFS: ApiKeyDef[] = [
   { key: "twelvedata_api_key", label: "Twelve Data API Key" },
   { key: "anthropic_api_key", label: "Anthropic API Key (for Abu)" },
   { key: "google_tts_api_key", label: "Google TTS API Key" },
+  { key: "usda_api_key", label: "USDA FoodData Central API Key (Health food search, free)" },
 ];
 
 export type SecretStatus = { key: string; is_set: boolean; updated_at: string | null };

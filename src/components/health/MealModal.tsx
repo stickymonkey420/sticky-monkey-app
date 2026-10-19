@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, ImagePlus, Plus, Sparkles, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { MEAL_TYPES, sumItems, type FoodItem, type Meal } from "@/lib/health/calc";
-import { estimateFromPhoto, lookupFoods, prepPhoto, saveMeal, type Estimate } from "@/lib/health/queries";
+import { MEAL_TYPES, sumItems, type FoodItem, type LibraryFood, type Meal } from "@/lib/health/calc";
+import { estimateFromPhoto, fetchFoodLibrary, lookupFoods, prepPhoto, saveMeal, type Estimate } from "@/lib/health/queries";
+import FoodNameInput, { type FoodPick } from "./FoodNameInput";
 
 const INPUT =
   "w-full rounded-[10px] border border-[rgba(148,158,189,0.5)] bg-[#0d0f17] px-3 py-2 text-[13px] text-text-primary";
@@ -13,7 +14,7 @@ const CELL = "w-full rounded-md border border-[rgba(148,158,189,0.35)] bg-[#0d0f
 
 // A row in the editor: the food item plus which name|portion its numbers
 // were looked up for (sig) and its lookup state.
-type Row = FoodItem & { sig?: string; st?: "loading" | "error" | "new" };
+type Row = FoodItem & { sig?: string; st?: "loading" | "error" | "new"; fdc?: number | null; reason?: string };
 
 const blankRow = (): Row => ({ name: "", portion: "", grams: 0, kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 });
 const sigOf = (r: { name: string; portion: string }) => `${r.name.trim().toLowerCase()}|${r.portion.trim().toLowerCase()}`;
@@ -21,6 +22,8 @@ function stripRow(r: Row): FoodItem {
   const item: Row = { ...r };
   delete item.sig;
   delete item.st;
+  delete item.fdc;
+  delete item.reason;
   return item;
 }
 
@@ -67,6 +70,24 @@ export default function MealModal({
   const [error, setError] = useState<string | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
+  const inflight = useRef(new Set<string>());
+  const [library, setLibrary] = useState<LibraryFood[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const rows = await fetchFoodLibrary(createClient());
+        if (!cancelled) setLibrary(rows);
+      } catch {
+        /* type-ahead just won't show saved foods */
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -91,21 +112,33 @@ export default function MealModal({
   // nutrition. useGrams keeps the photo's gram estimate instead of
   // re-deriving it from the portion text.
   async function lookup(target: Row[], useGrams = false): Promise<Row[]> {
-    const want = target.map((r, i) => ({ r, i })).filter(({ r }) => r.name.trim() && (useGrams || r.sig !== sigOf(r)));
+    const want = target
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) => r.name.trim() && (useGrams || r.sig !== sigOf(r)) && !inflight.current.has(sigOf(r)));
     if (!want.length) return target;
     const loadingSigs = new Set(want.map(({ r }) => sigOf(r)));
+    loadingSigs.forEach((sg) => inflight.current.add(sg));
     setRows((cur) => cur.map((r) => (loadingSigs.has(sigOf(r)) && r.name.trim() ? { ...r, st: "loading" } : r)));
     try {
       const res = await lookupFoods(
         createClient(),
-        want.map(({ r }) => ({ name: r.name.trim(), portion: r.portion.trim(), grams: useGrams && r.grams > 0 ? r.grams : null })),
+        want.map(({ r }) => ({ name: r.name.trim(), portion: r.portion.trim(), grams: useGrams && r.grams > 0 ? r.grams : null, fdc_id: r.fdc ?? null })),
       );
       const bySig = new Map<string, Row>();
       want.forEach(({ r }, k) => {
         const x = res[k];
-        if (!x || x.source === "unresolved") bySig.set(sigOf(r), { ...r, st: "error" });
-        else bySig.set(sigOf(r), { ...x, name: r.name, portion: r.portion, sig: sigOf(r), st: x.source === "ai" ? "new" : undefined });
+        if (!x || x.source === "unresolved")
+          bySig.set(sigOf(r), { ...r, kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0, grams: 0, st: "error", reason: x?.reason, food_name: x?.food_name ?? null });
+        else {
+          const { reason: _ignored, ...rest } = x;
+          void _ignored;
+          bySig.set(sigOf(r), { ...rest, name: r.name, portion: r.portion, sig: sigOf(r), fdc: r.fdc, st: x.source === "library" ? undefined : "new" });
+        }
       });
+      // Newly saved foods show up in the type-ahead right away.
+      if (want.some((_, k) => res[k] && res[k].source !== "library" && res[k].source !== "unresolved")) {
+        fetchFoodLibrary(createClient()).then(setLibrary).catch(() => undefined);
+      }
       const next = target.map((r) => bySig.get(sigOf(r)) ?? r);
       setRows((cur) => cur.map((r) => bySig.get(sigOf(r)) ?? r));
       return next;
@@ -113,6 +146,8 @@ export default function MealModal({
       setError(e instanceof Error ? e.message : "Nutrition lookup failed.");
       setRows((cur) => cur.map((r) => (loadingSigs.has(sigOf(r)) ? { ...r, st: "error" } : r)));
       return target;
+    } finally {
+      loadingSigs.forEach((sg) => inflight.current.delete(sg));
     }
   }
 
@@ -163,6 +198,12 @@ export default function MealModal({
   function onRowBlur(i: number) {
     const r = rows[i];
     if (r && r.name.trim() && r.sig !== sigOf(r)) void lookup(rows);
+  }
+
+  function onPick(i: number, pick: FoodPick) {
+    const next = rows.map((r, j) => (j === i ? { ...r, name: pick.name, fdc: pick.fdc_id, sig: undefined, st: undefined, reason: undefined } : r));
+    setRows(next);
+    void lookup(next);
   }
 
   async function save() {
@@ -320,77 +361,69 @@ export default function MealModal({
             </div>
 
             <p className="mb-2 text-xs text-text-muted">
-              Type the food and portion: <span className="text-text-primary">2</span>, <span className="text-text-primary">1 cup</span>,{" "}
+              Search a food, then enter the portion: <span className="text-text-primary">2</span>, <span className="text-text-primary">1 cup</span>,{" "}
               <span className="text-text-primary">150 g</span>, <span className="text-text-primary">6 oz</span>,{" "}
-              <span className="text-text-primary">1/2 lb</span>. Nutrition fills in from your food library.
+              <span className="text-text-primary">1/2 lb</span>. Nutrition fills in automatically.
             </p>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-left text-[13px]">
-                <thead className="text-[11px] text-text-muted">
-                  <tr>
-                    <th className="pb-1.5 pr-2 font-medium">Food</th>
-                    <th className="w-24 pb-1.5 pr-2 font-medium">Portion</th>
-                    <th className="w-14 pb-1.5 pr-2 text-right font-medium">Grams</th>
-                    <th className="w-16 pb-1.5 pr-2 text-right font-medium">Calories</th>
-                    <th className="w-14 pb-1.5 pr-2 text-right font-medium">Protein</th>
-                    <th className="w-14 pb-1.5 pr-2 text-right font-medium">Carbs</th>
-                    <th className="w-14 pb-1.5 pr-2 text-right font-medium">Fat</th>
-                    <th className="w-8 pb-1.5" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r, i) => {
-                    const stale = r.name.trim() && r.sig !== sigOf(r);
-                    return (
-                      <tr key={i} className={stale ? "opacity-60" : undefined}>
-                        <td className="py-1 pr-2">
-                          <input className={CELL} value={r.name} onChange={(e) => setRow(i, { name: e.target.value })} onBlur={() => onRowBlur(i)} placeholder="Eggplant" />
-                          {r.st === "error" ? (
-                            <div className="mt-0.5 text-[10px] text-[#ff5c7a]">Couldn&apos;t find this food. Try a clearer name.</div>
-                          ) : r.food_name && r.food_name.toLowerCase() !== r.name.trim().toLowerCase() ? (
-                            <div className="mt-0.5 truncate text-[10px] text-text-muted">
-                              {r.food_name}
-                              {r.st === "new" ? " · added to library" : ""}
-                            </div>
-                          ) : r.st === "new" ? (
-                            <div className="mt-0.5 text-[10px] text-text-muted">Added to library</div>
-                          ) : null}
-                        </td>
-                        <td className="py-1 pr-2 align-top">
-                          <input
-                            className={CELL}
-                            value={r.portion}
-                            onChange={(e) => setRow(i, { portion: e.target.value })}
-                            onBlur={() => onRowBlur(i)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") onRowBlur(i);
-                            }}
-                            placeholder="1"
-                          />
-                        </td>
-                        {r.st === "loading" ? (
-                          <td colSpan={5} className="py-1 pr-2 text-right align-top text-xs text-text-muted">
-                            Looking up…
-                          </td>
-                        ) : (
-                          <>
-                            <td className="py-2 pr-2 text-right align-top text-text-muted">{num(r.grams)}</td>
-                            <td className="py-2 pr-2 text-right align-top font-semibold text-text-primary">{r.kcal ? Math.round(r.kcal) : "—"}</td>
-                            <td className="py-2 pr-2 text-right align-top">{num(r.protein_g, "g")}</td>
-                            <td className="py-2 pr-2 text-right align-top">{num(r.carbs_g, "g")}</td>
-                            <td className="py-2 pr-2 text-right align-top">{num(r.fat_g, "g")}</td>
-                          </>
-                        )}
-                        <td className="py-1 align-top">
-                          <button type="button" onClick={() => setRows((cur) => cur.filter((_, j) => j !== i))} aria-label="Remove item" className="mt-1.5 text-text-muted hover:text-[#ff5c7a]">
-                            <X size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="flex flex-col gap-2">
+              {rows.map((r, i) => {
+                const stale = !!r.name.trim() && r.sig !== sigOf(r);
+                return (
+                  <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-2.5">
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <FoodNameInput
+                          value={r.name}
+                          library={library}
+                          placeholder="Search food (e.g. eggplant)"
+                          onChange={(text) => setRow(i, { name: text, fdc: null })}
+                          onPick={(p) => onPick(i, p)}
+                          onCommit={() => onRowBlur(i)}
+                        />
+                      </div>
+                      <div className="w-24 shrink-0">
+                        <input
+                          className={CELL}
+                          value={r.portion}
+                          onChange={(e) => setRow(i, { portion: e.target.value })}
+                          onBlur={() => onRowBlur(i)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") onRowBlur(i);
+                          }}
+                          placeholder="Portion"
+                          aria-label="Portion"
+                        />
+                      </div>
+                      <button type="button" onClick={() => setRows((cur) => cur.filter((_, j) => j !== i))} aria-label="Remove item" className="mt-1.5 text-text-muted hover:text-[#ff5c7a]">
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 pl-1 text-[11px]">
+                      {r.st === "loading" ? (
+                        <span className="text-text-muted">Looking up…</span>
+                      ) : r.st === "error" ? (
+                        <span className="text-[#ff5c7a]">{r.reason || "Couldn't find this food. Pick one from the list."}</span>
+                      ) : stale ? (
+                        <span className="text-text-muted">{r.name.trim() ? "Updates when you leave the field" : ""}</span>
+                      ) : r.kcal || r.grams ? (
+                        <>
+                          <span className="font-semibold text-text-primary">{Math.round(r.kcal)} cal</span>
+                          <span className="text-text-muted">{num(r.grams)} g</span>
+                          <span className="text-text-muted">P {num(r.protein_g, "g")}</span>
+                          <span className="text-text-muted">C {num(r.carbs_g, "g")}</span>
+                          <span className="text-text-muted">F {num(r.fat_g, "g")}</span>
+                          {r.food_name && r.food_name.toLowerCase() !== r.name.trim().toLowerCase() && (
+                            <span className="truncate text-text-muted/80">· {r.food_name}</span>
+                          )}
+                          {r.st === "new" && <span className="text-[#f5d020]">· saved to library</span>}
+                        </>
+                      ) : (
+                        <span className="text-text-muted">Pick a food and portion</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             <button type="button" onClick={() => setRows((cur) => [...cur, blankRow()])} className="mt-2 inline-flex items-center gap-1 text-xs text-[#4f8cff] hover:underline">
               <Plus size={14} /> Add item

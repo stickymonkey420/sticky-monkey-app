@@ -41,7 +41,8 @@ export type LibraryFood = {
   sugar_100g: number | null;
   sodium_mg_100g: number | null;
   units: Record<string, number>;
-  source: "ai" | "manual";
+  source: "ai" | "manual" | "usda";
+  fdc_id: number | null;
   updated_at: string;
 };
 
