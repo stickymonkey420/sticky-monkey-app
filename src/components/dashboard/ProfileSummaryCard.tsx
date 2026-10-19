@@ -9,6 +9,7 @@ import { DEFAULT_AVATAR_URL } from "@/lib/profile/constants";
 import type { NetWorthSummary } from "@/lib/types/dashboard";
 import InvestmentAlertCard from "./InvestmentAlertCard";
 import ScoreboardCard from "./ScoreboardCard";
+import HealthSummaryCard from "./HealthSummaryCard";
 import QuickAccessCard from "./QuickAccessCard";
 
 const EMPTY_SUMMARY: NetWorthSummary = {
@@ -111,6 +112,9 @@ export default function ProfileSummaryCard() {
           </div>
         </div>
       </div>
+
+      {/* Health today -- App Director only (renders nothing for anyone else). */}
+      <HealthSummaryCard />
 
       {/* Funny Money -- Fantasy Finance paper cash across the practice account
           and every accepted Head to Head match. */}
