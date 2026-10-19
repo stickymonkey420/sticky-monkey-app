@@ -15,6 +15,7 @@ import {
   Briefcase,
   Trophy,
   Megaphone,
+  HeartPulse,
   MessageSquare,
   Calculator,
   type LucideIcon,
@@ -306,6 +307,7 @@ const NAV_TREE: NavNode[] = [
   { href: "/users-groups", label: "Users & Groups", requires: "admin", icon: ShieldCheck },
   { href: "/feedback", label: "Feedback", requires: "owner", icon: MessageSquare },
   { href: "/marketing", label: "Marketing", requires: "owner", icon: Megaphone },
+  { href: "/health", label: "Health", requires: "owner", icon: HeartPulse }, // App Director only (2026-10-19)
 ];
 
 function passesGate(requires: NavNode["requires"], role: Role | null, accountTypes: string[] | null): boolean {
