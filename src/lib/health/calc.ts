@@ -8,7 +8,7 @@ export type HealthProfile = {
   height_cm: number | null;
   weight_kg: number | null;
   body_fat_pct?: number | null;
-  goal: "lose" | "maintain" | "gain";
+  goal: "lose" | "lose2" | "lose3" | "maintain" | "gain";
   units: "imperial" | "metric";
   reminders?: Reminders | null;
 };
@@ -152,9 +152,12 @@ export type Exercise = {
 
 export const MEAL_TYPES: Meal["meal_type"][] = ["breakfast", "lunch", "dinner", "snack"];
 
-export const GOAL_ADJUST: Record<HealthProfile["goal"], number> = { lose: -500, maintain: 0, gain: 300 };
+// 1 lb of body fat is roughly 3,500 cal, so 500/day = ~1 lb/week.
+export const GOAL_ADJUST: Record<HealthProfile["goal"], number> = { lose: -500, lose2: -1000, lose3: -1500, maintain: 0, gain: 300 };
 export const GOAL_LABEL: Record<HealthProfile["goal"], string> = {
   lose: "Lose (~1 lb/week)",
+  lose2: "Lose (~2 lb/week)",
+  lose3: "Lose (~3 lb/week)",
   maintain: "Maintain",
   gain: "Gain (lean)",
 };

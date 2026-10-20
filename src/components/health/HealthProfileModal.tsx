@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
+  GOAL_ADJUST,
   GOAL_LABEL,
   baselineBurn,
   bmr,
@@ -189,6 +190,13 @@ export default function HealthProfileModal({
           <div>
             <div className="text-[11px] text-text-muted">Daily baseline (no workouts)</div>
             <div className="font-semibold text-text-primary">{base ? `${base.toLocaleString()} cal` : "—"}</div>
+          </div>
+          <div className="col-span-2 border-t border-white/[0.08] pt-2">
+            <div className="text-[11px] text-text-muted">Daily eating target (before workouts)</div>
+            <div className="font-semibold text-[#f5d020]">{base ? `${Math.max(0, base + GOAL_ADJUST[goal]).toLocaleString()} cal` : "—"}</div>
+            {base !== null && base + GOAL_ADJUST[goal] < 1200 && (
+              <div className="mt-0.5 text-[11px] text-text-muted">Under 1,200 cal/day. Logged workouts raise the day&apos;s target.</div>
+            )}
           </div>
         </div>
 
