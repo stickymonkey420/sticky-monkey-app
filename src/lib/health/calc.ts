@@ -10,7 +10,81 @@ export type HealthProfile = {
   body_fat_pct?: number | null;
   goal: "lose" | "maintain" | "gain";
   units: "imperial" | "metric";
+  reminders?: Reminders | null;
 };
+
+// ---- Weigh-ins / measurements + in-app reminders ----------------------
+
+export type Measurement = {
+  id: string;
+  measured_on: string;
+  weight_kg: number | null;
+  body_fat_pct: number | null;
+  muscle_mass_kg: number | null;
+  water_pct: number | null;
+  visceral_fat: number | null;
+  bone_mass_kg: number | null;
+  bmr_kcal: number | null;
+  waist_cm: number | null;
+  chest_cm: number | null;
+  hips_cm: number | null;
+  arm_cm: number | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type ReminderFreq = "daily" | "weekly" | "biweekly" | "monthly";
+export type Reminder = { on: boolean; freq: ReminderFreq; day: number; time: string };
+export type Reminders = { weigh?: Reminder; measure?: Reminder };
+export const DEFAULT_REMINDERS: Required<Reminders> = {
+  weigh: { on: false, freq: "weekly", day: 1, time: "07:00" },
+  measure: { on: false, freq: "monthly", day: 1, time: "08:00" },
+};
+export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+const isoToDate = (iso: string) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
+// The most recent moment this reminder fired (local time), or null if it
+// hasn't fired yet today/this period.
+export function lastOccurrence(r: Reminder, now = new Date()): Date | null {
+  const [hh, mm] = (r.time || "07:00").split(":").map(Number);
+  const at = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), hh || 0, mm || 0);
+  const today = at(now);
+  if (r.freq === "daily") return now >= today ? today : at(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+  if (r.freq === "monthly") {
+    const dom = Math.min(Math.max(r.day || 1, 1), 28);
+    const thisMonth = at(new Date(now.getFullYear(), now.getMonth(), dom));
+    return now >= thisMonth ? thisMonth : at(new Date(now.getFullYear(), now.getMonth() - 1, dom));
+  }
+  const wd = Math.min(Math.max(r.day ?? 1, 0), 6);
+  let back = (now.getDay() - wd + 7) % 7;
+  let occ = at(new Date(now.getFullYear(), now.getMonth(), now.getDate() - back));
+  if (occ > now) {
+    back += 7;
+    occ = at(new Date(now.getFullYear(), now.getMonth(), now.getDate() - back));
+  }
+  return occ;
+}
+
+// Due when the latest entry is older than the last time the reminder fired
+// (every-2-weeks also needs 13+ days since the last entry).
+export function reminderDue(r: Reminder | undefined, lastEntry: string | null, now = new Date()): boolean {
+  if (!r?.on) return false;
+  const occ = lastOccurrence(r, now);
+  if (!occ) return false;
+  if (!lastEntry) return true;
+  const last = isoToDate(lastEntry);
+  const occDay = new Date(occ.getFullYear(), occ.getMonth(), occ.getDate());
+  if (last >= occDay) return false;
+  if (r.freq === "biweekly") return (now.getTime() - last.getTime()) / 86400000 >= 13;
+  return true;
+}
+
+export const cmToIn = (cm: number) => cm / 2.54;
+export const inToCm = (inch: number) => inch * 2.54;
 
 export type FoodItem = {
   name: string;

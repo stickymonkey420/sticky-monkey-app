@@ -6,10 +6,10 @@ import { usePathname } from "next/navigation";
 import { HeartPulse } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { fetchMyRole } from "@/lib/usersGroups/queries";
-import { GOAL_ADJUST, baselineBurn, fmtKcal, kgToLb, localIso, type HealthProfile } from "@/lib/health/calc";
-import { fetchExercise, fetchHealthProfile, fetchMeals } from "@/lib/health/queries";
+import { GOAL_ADJUST, baselineBurn, fmtKcal, kgToLb, localIso, reminderDue, type HealthProfile } from "@/lib/health/calc";
+import { fetchExercise, fetchHealthProfile, fetchMeals, fetchMeasurements } from "@/lib/health/queries";
 
-type Today = { profile: HealthProfile | null; kcalIn: number; kcalEx: number; protein: number };
+type Today = { profile: HealthProfile | null; kcalIn: number; kcalEx: number; protein: number; due: string[] };
 
 // Today's Health at a glance in the right-side profile pane (App Director
 // only, same as the Health page): calories in vs out, what's left against
@@ -31,17 +31,24 @@ export default function HealthSummaryCard() {
       if (role !== "app_director") return;
       try {
         const today = localIso();
-        const [profile, meals, ex] = await Promise.all([
+        const [profile, meals, ex, ms] = await Promise.all([
           fetchHealthProfile(supabase, user.id),
           fetchMeals(supabase, today, today),
           fetchExercise(supabase, today, today),
+          fetchMeasurements(supabase, 30),
         ]);
         if (cancelled) return;
+        const lastWeigh = ms.find((m) => m.weight_kg != null)?.measured_on ?? null;
+        const lastTape = ms.find((m) => m.waist_cm != null || m.chest_cm != null || m.hips_cm != null || m.arm_cm != null)?.measured_on ?? null;
+        const due: string[] = [];
+        if (reminderDue(profile?.reminders?.weigh, lastWeigh)) due.push("Weigh-in due");
+        if (reminderDue(profile?.reminders?.measure, lastTape)) due.push("Measurements due");
         setData({
           profile,
           kcalIn: meals.reduce((s, m) => s + m.kcal, 0),
           kcalEx: ex.reduce((s, e) => s + e.kcal, 0),
           protein: meals.reduce((s, m) => s + m.protein_g, 0),
+          due,
         });
       } catch {
         /* card just stays hidden */
@@ -69,6 +76,9 @@ export default function HealthSummaryCard() {
         <span>Health today</span>
         <HeartPulse size={16} className="text-[#ff5c7a]" />
       </div>
+      {data.due.length > 0 && (
+        <div className="mt-2 rounded-lg bg-[#f5d020]/15 px-2.5 py-1 text-xs font-semibold text-[#f5d020]">{data.due.join(" · ")}</div>
+      )}
       <div className="mt-1 flex items-baseline gap-2">
         <span className="text-4xl font-bold text-text-primary">{left === null ? fmtKcal(data.kcalIn) : fmtKcal(left)}</span>
         <span className="text-sm text-text-muted">{left === null ? "cal in" : left >= 0 ? "cal left" : "cal over"}</span>

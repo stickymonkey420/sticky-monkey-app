@@ -13,15 +13,20 @@ import {
   fmtKcal,
   kgToLb,
   localIso,
+  reminderDue,
   type Exercise,
   type HealthProfile,
   type Meal,
+  type Measurement,
 } from "@/lib/health/calc";
-import { deleteExercise, deleteMeal, duplicateMeal, fetchExercise, fetchHealthProfile, fetchMeals, photoUrls } from "@/lib/health/queries";
+import { deleteExercise, deleteMeal, deleteMeasurement, duplicateMeal, fetchExercise, fetchHealthProfile, fetchMeals, fetchMeasurements, photoUrls } from "@/lib/health/queries";
 import MealModal from "./MealModal";
 import ExerciseModal from "./ExerciseModal";
 import HealthProfileModal from "./HealthProfileModal";
 import FoodLibraryModal from "./FoodLibraryModal";
+import BodyCard from "./BodyCard";
+import WeighInModal from "./WeighInModal";
+import RemindersModal from "./RemindersModal";
 
 const CARD = "rounded-2xl border border-card-border bg-card-bg p-5";
 const GREEN = "#3ddc97";
@@ -53,6 +58,9 @@ export default function HealthTracker({ userId }: { userId: string }) {
   const [exModal, setExModal] = useState<{ exercise?: Exercise } | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [measurements, setMeasurements] = useState<Measurement[]>([]);
+  const [weighModal, setWeighModal] = useState<{ focus: "weigh" | "measure"; entry?: Measurement } | null>(null);
+  const [remindersOpen, setRemindersOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,16 +68,18 @@ export default function HealthTracker({ userId }: { userId: string }) {
       const supabase = createClient();
       try {
         const from = addDays(date, -6);
-        const [p, m, e] = await Promise.all([
+        const [p, m, e, ms] = await Promise.all([
           fetchHealthProfile(supabase, userId),
           fetchMeals(supabase, from, date),
           fetchExercise(supabase, from, date),
+          fetchMeasurements(supabase),
         ]);
         const urls = await photoUrls(supabase, m.filter((x) => x.eaten_on === date && x.photo_path).map((x) => x.photo_path as string));
         if (cancelled) return;
         setProfile(p);
         setMeals(m);
         setExercise(e);
+        setMeasurements(ms);
         setThumbs(urls);
         setError(null);
         if (!p && reload === 0) setProfileOpen(true);
@@ -86,6 +96,11 @@ export default function HealthTracker({ userId }: { userId: string }) {
   }, [userId, date, reload]);
 
   const refresh = () => setReload((n) => n + 1);
+  const lastWeigh = measurements.find((m) => m.weight_kg != null)?.measured_on ?? null;
+  const lastTape = measurements.find((m) => m.waist_cm != null || m.chest_cm != null || m.hips_cm != null || m.arm_cm != null)?.measured_on ?? null;
+  const weighDue = reminderDue(profile?.reminders?.weigh, lastWeigh);
+  const measureDue = reminderDue(profile?.reminders?.measure, lastTape);
+  const remindersOn = !!(profile?.reminders?.weigh?.on || profile?.reminders?.measure?.on);
   const base = baselineBurn(profile);
   const dayMeals = meals.filter((m) => m.eaten_on === date);
   const dayEx = exercise.filter((e) => e.done_on === date);
@@ -117,6 +132,16 @@ export default function HealthTracker({ userId }: { userId: string }) {
       else refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't copy that meal.");
+    }
+  }
+
+  async function removeMeasurement(m: Measurement) {
+    if (!(await confirm({ message: "Delete this weigh-in entry?", danger: true, confirmLabel: "Delete" }))) return;
+    try {
+      await deleteMeasurement(createClient(), m.id);
+      refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed.");
     }
   }
 
@@ -194,6 +219,21 @@ export default function HealthTracker({ userId }: { userId: string }) {
         </div>
       </div>
 
+      {(weighDue || measureDue) && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[#f5d020]/40 bg-[#f5d020]/[0.08] px-4 py-3 text-sm text-text-primary">
+          <span className="font-semibold text-[#f5d020]">Reminder:</span>
+          {weighDue && (
+            <button type="button" onClick={() => setWeighModal({ focus: "weigh" })} className="rounded-md bg-[#f5d020] px-3 py-1 text-xs font-semibold text-[#0f131c]">
+              Weigh-in due · Log now
+            </button>
+          )}
+          {measureDue && (
+            <button type="button" onClick={() => setWeighModal({ focus: "measure" })} className="rounded-md border border-[#f5d020]/60 px-3 py-1 text-xs font-semibold text-[#f5d020]">
+              Measurements due · Log now
+            </button>
+          )}
+        </div>
+      )}
       {notice && <div className="rounded-xl border border-[#3ddc97]/40 bg-[#3ddc97]/10 px-4 py-2.5 text-sm text-[#3ddc97]">{notice}</div>}
       {error && <div className="rounded-xl border border-[#ff5c7a]/40 bg-[#ff5c7a]/10 px-4 py-2.5 text-sm text-[#ff5c7a]">{error}</div>}
       {!profile && (
@@ -321,6 +361,16 @@ export default function HealthTracker({ userId }: { userId: string }) {
         </div>
       </div>
 
+      <BodyCard
+        entries={measurements}
+        units={profile?.units ?? "imperial"}
+        onLog={(focus) => setWeighModal({ focus })}
+        onEdit={(entry) => setWeighModal({ focus: "weigh", entry })}
+        onDelete={removeMeasurement}
+        onReminders={() => setRemindersOpen(true)}
+        remindersOn={remindersOn}
+      />
+
       {/* 7-day trend */}
       <div className={CARD}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -366,6 +416,27 @@ export default function HealthTracker({ userId }: { userId: string }) {
         <ExerciseModal userId={userId} date={date} weightKg={profile?.weight_kg ? Number(profile.weight_kg) : null} exercise={exModal.exercise} onClose={() => setExModal(null)} onSaved={refresh} />
       )}
       {libraryOpen && <FoodLibraryModal onClose={() => setLibraryOpen(false)} />}
+      {weighModal && (
+        <WeighInModal
+          userId={userId}
+          units={profile?.units ?? "imperial"}
+          focus={weighModal.focus}
+          entry={weighModal.entry}
+          onClose={() => setWeighModal(null)}
+          onSaved={refresh}
+        />
+      )}
+      {remindersOpen && (
+        <RemindersModal
+          userId={userId}
+          reminders={profile?.reminders}
+          onClose={() => setRemindersOpen(false)}
+          onSaved={(r) => {
+            setProfile((p) => (p ? { ...p, reminders: r } : p));
+            refresh();
+          }}
+        />
+      )}
       {profileOpen && (
         <HealthProfileModal
           userId={userId}

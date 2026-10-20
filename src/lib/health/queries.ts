@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Exercise, FoodItem, HealthProfile, LibraryFood, Meal } from "./calc";
+import type { Exercise, FoodItem, HealthProfile, LibraryFood, Meal, Measurement, Reminders } from "./calc";
 
 // Health section data access. RLS limits every table and the private
 // health-photos bucket to the signed-in App Director's own rows.
@@ -326,4 +326,54 @@ export async function fetchRecentMeals(supabase: SupabaseClient, limit = 15): Pr
     .sort((a, b) => b.count - a.count)
     .slice(0, limit)
     .map((x) => x.meal);
+}
+
+// ---- Weigh-ins / measurements -----------------------------------------
+
+const MEASURE_NUM = ["weight_kg", "body_fat_pct", "muscle_mass_kg", "water_pct", "visceral_fat", "bone_mass_kg", "bmr_kcal", "waist_cm", "chest_cm", "hips_cm", "arm_cm"] as const;
+
+export async function fetchMeasurements(supabase: SupabaseClient, limit = 120): Promise<Measurement[]> {
+  const { data, error } = await supabase
+    .from("health_measurements")
+    .select("*")
+    .order("measured_on", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r) => {
+    const m: Record<string, unknown> = { ...r };
+    for (const k of MEASURE_NUM) m[k] = r[k] == null ? null : Number(r[k]);
+    return m as Measurement;
+  });
+}
+
+export async function saveMeasurement(
+  supabase: SupabaseClient,
+  userId: string,
+  input: Omit<Measurement, "id" | "created_at">,
+  id?: string,
+): Promise<void> {
+  const { error } = id
+    ? await supabase.from("health_measurements").update(input).eq("id", id)
+    : await supabase.from("health_measurements").insert({ ...input, user_id: userId });
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteMeasurement(supabase: SupabaseClient, id: string): Promise<void> {
+  const { error } = await supabase.from("health_measurements").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+// Keeps the calorie math current: newest weight / body fat go to the profile.
+export async function syncProfileBody(supabase: SupabaseClient, userId: string, weightKg: number | null, bodyFat: number | null): Promise<void> {
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (weightKg) patch.weight_kg = weightKg;
+  if (bodyFat) patch.body_fat_pct = bodyFat;
+  const { error } = await supabase.from("health_profiles").update(patch).eq("user_id", userId);
+  if (error) throw new Error(error.message);
+}
+
+export async function saveReminders(supabase: SupabaseClient, userId: string, reminders: Reminders): Promise<void> {
+  const { error } = await supabase.from("health_profiles").upsert({ user_id: userId, reminders, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  if (error) throw new Error(error.message);
 }
