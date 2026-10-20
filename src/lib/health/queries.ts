@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Exercise, FoodItem, HealthProfile, LibraryFood, Meal, Measurement, Reminders } from "./calc";
+import type { Exercise, Fast, FoodItem, HealthProfile, LibraryFood, Meal, Measurement, Reminders } from "./calc";
 
 // Health section data access. RLS limits every table and the private
 // health-photos bucket to the signed-in App Director's own rows.
@@ -375,5 +375,28 @@ export async function syncProfileBody(supabase: SupabaseClient, userId: string, 
 
 export async function saveReminders(supabase: SupabaseClient, userId: string, reminders: Reminders): Promise<void> {
   const { error } = await supabase.from("health_profiles").upsert({ user_id: userId, reminders, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  if (error) throw new Error(error.message);
+}
+
+// ---- Fasting -----------------------------------------------------------
+
+export async function fetchFasts(supabase: SupabaseClient, limit = 100): Promise<Fast[]> {
+  const { data, error } = await supabase.from("health_fasts").select("*").order("started_at", { ascending: false }).limit(limit);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((f) => ({ ...f, goal_hours: Number(f.goal_hours) })) as Fast[];
+}
+
+export async function startFast(supabase: SupabaseClient, userId: string, startedAt: string, goalHours: number): Promise<void> {
+  const { error } = await supabase.from("health_fasts").insert({ user_id: userId, started_at: startedAt, goal_hours: goalHours });
+  if (error) throw new Error(error.code === "23505" ? "A fast is already running." : error.message);
+}
+
+export async function updateFast(supabase: SupabaseClient, id: string, patch: Partial<Pick<Fast, "started_at" | "ended_at" | "goal_hours" | "notes">>): Promise<void> {
+  const { error } = await supabase.from("health_fasts").update(patch).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteFast(supabase: SupabaseClient, id: string): Promise<void> {
+  const { error } = await supabase.from("health_fasts").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }

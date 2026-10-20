@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookOpen, Camera, ChevronLeft, ChevronRight, Copy, Dumbbell, Pencil, Plus, Trash2, UserRound } from "lucide-react";
+import { BookOpen, Camera, ChevronLeft, ChevronRight, Copy, Dumbbell, Pencil, Plus, Timer, Trash2, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import {
@@ -14,12 +14,15 @@ import {
   kgToLb,
   localIso,
   reminderDue,
+  fastMs,
+  fmtDuration,
   type Exercise,
+  type Fast,
   type HealthProfile,
   type Meal,
   type Measurement,
 } from "@/lib/health/calc";
-import { deleteExercise, deleteMeal, deleteMeasurement, duplicateMeal, fetchExercise, fetchHealthProfile, fetchMeals, fetchMeasurements, photoUrls } from "@/lib/health/queries";
+import { deleteExercise, deleteMeal, deleteMeasurement, duplicateMeal, fetchExercise, fetchFasts, fetchHealthProfile, fetchMeals, fetchMeasurements, photoUrls } from "@/lib/health/queries";
 import MealModal from "./MealModal";
 import ExerciseModal from "./ExerciseModal";
 import HealthProfileModal from "./HealthProfileModal";
@@ -27,6 +30,8 @@ import FoodLibraryModal from "./FoodLibraryModal";
 import BodyCard from "./BodyCard";
 import WeighInModal from "./WeighInModal";
 import RemindersModal from "./RemindersModal";
+import FastModal from "./FastModal";
+import { useNow } from "./useNow";
 
 const CARD = "rounded-2xl border border-card-border bg-card-bg p-5";
 const GREEN = "#3ddc97";
@@ -61,6 +66,8 @@ export default function HealthTracker({ userId }: { userId: string }) {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [weighModal, setWeighModal] = useState<{ focus: "weigh" | "measure"; entry?: Measurement } | null>(null);
   const [remindersOpen, setRemindersOpen] = useState(false);
+  const [fasts, setFasts] = useState<Fast[]>([]);
+  const [fastOpen, setFastOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,11 +75,12 @@ export default function HealthTracker({ userId }: { userId: string }) {
       const supabase = createClient();
       try {
         const from = addDays(date, -6);
-        const [p, m, e, ms] = await Promise.all([
+        const [p, m, e, ms, fs] = await Promise.all([
           fetchHealthProfile(supabase, userId),
           fetchMeals(supabase, from, date),
           fetchExercise(supabase, from, date),
           fetchMeasurements(supabase),
+          fetchFasts(supabase),
         ]);
         const urls = await photoUrls(supabase, m.filter((x) => x.eaten_on === date && x.photo_path).map((x) => x.photo_path as string));
         if (cancelled) return;
@@ -80,6 +88,7 @@ export default function HealthTracker({ userId }: { userId: string }) {
         setMeals(m);
         setExercise(e);
         setMeasurements(ms);
+        setFasts(fs);
         setThumbs(urls);
         setError(null);
         if (!p && reload === 0) setProfileOpen(true);
@@ -96,6 +105,8 @@ export default function HealthTracker({ userId }: { userId: string }) {
   }, [userId, date, reload]);
 
   const refresh = () => setReload((n) => n + 1);
+  const activeFast = fasts.find((f) => !f.ended_at) ?? null;
+  const now = useNow(!!activeFast);
   const lastWeigh = measurements.find((m) => m.weight_kg != null)?.measured_on ?? null;
   const lastTape = measurements.find((m) => m.waist_cm != null || m.chest_cm != null || m.hips_cm != null || m.arm_cm != null)?.measured_on ?? null;
   const weighDue = reminderDue(profile?.reminders?.weigh, lastWeigh);
@@ -207,6 +218,13 @@ export default function HealthTracker({ userId }: { userId: string }) {
           <button type="button" onClick={() => setMealModal({ mode: "manual" })} className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-3 py-2 text-sm text-text-primary hover:bg-white/5">
             <Plus size={16} /> Add food
           </button>
+          <button
+            type="button"
+            onClick={() => setFastOpen(true)}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-white/5 ${activeFast ? "border-[#f5d020]/60 text-[#f5d020]" : "border-white/20 text-text-primary"}`}
+          >
+            <Timer size={16} /> {activeFast ? <span className="font-mono tabular-nums">{fmtDuration(fastMs(activeFast, now))}</span> : "Fast"}
+          </button>
           <button type="button" onClick={() => setExModal({})} className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-3 py-2 text-sm text-text-primary hover:bg-white/5">
             <Dumbbell size={16} /> Log exercise
           </button>
@@ -234,6 +252,33 @@ export default function HealthTracker({ userId }: { userId: string }) {
           )}
         </div>
       )}
+      {activeFast && (() => {
+        const ms = fastMs(activeFast, now);
+        const goalMs = Number(activeFast.goal_hours) * 3600000;
+        const done = ms >= goalMs;
+        return (
+          <button
+            type="button"
+            onClick={() => setFastOpen(true)}
+            className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-card-border bg-card-bg px-5 py-4 text-left hover:bg-white/[0.03]"
+          >
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Fasting</div>
+              <div className="font-mono text-3xl font-bold tabular-nums" style={{ color: done ? "#3ddc97" : "#f5d020" }}>
+                {fmtDuration(ms)}
+              </div>
+            </div>
+            <div className="min-w-[200px] flex-1">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                <div className="h-full rounded-full" style={{ width: `${Math.min(100, (ms / goalMs) * 100)}%`, backgroundColor: done ? "#3ddc97" : "#f5d020" }} />
+              </div>
+              <div className="mt-1 text-xs text-text-muted">
+                {done ? `Goal of ${Number(activeFast.goal_hours)}h reached` : `${fmtDuration(goalMs - ms, false)} to ${Number(activeFast.goal_hours)}h goal`}
+              </div>
+            </div>
+          </button>
+        );
+      })()}
       {notice && <div className="rounded-xl border border-[#3ddc97]/40 bg-[#3ddc97]/10 px-4 py-2.5 text-sm text-[#3ddc97]">{notice}</div>}
       {error && <div className="rounded-xl border border-[#ff5c7a]/40 bg-[#ff5c7a]/10 px-4 py-2.5 text-sm text-[#ff5c7a]">{error}</div>}
       {!profile && (
@@ -426,6 +471,7 @@ export default function HealthTracker({ userId }: { userId: string }) {
           onSaved={refresh}
         />
       )}
+      {fastOpen && <FastModal key={activeFast?.id ?? "none"} userId={userId} fasts={fasts} onClose={() => setFastOpen(false)} onChanged={refresh} />}
       {remindersOpen && (
         <RemindersModal
           userId={userId}

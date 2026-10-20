@@ -6,10 +6,11 @@ import { usePathname } from "next/navigation";
 import { HeartPulse } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { fetchMyRole } from "@/lib/usersGroups/queries";
-import { GOAL_ADJUST, baselineBurn, fmtKcal, kgToLb, localIso, reminderDue, type HealthProfile } from "@/lib/health/calc";
-import { fetchExercise, fetchHealthProfile, fetchMeals, fetchMeasurements } from "@/lib/health/queries";
+import { GOAL_ADJUST, baselineBurn, fastMs, fmtDuration, fmtKcal, kgToLb, localIso, reminderDue, type Fast, type HealthProfile } from "@/lib/health/calc";
+import { fetchExercise, fetchFasts, fetchHealthProfile, fetchMeals, fetchMeasurements } from "@/lib/health/queries";
+import { useNow } from "@/components/health/useNow";
 
-type Today = { profile: HealthProfile | null; kcalIn: number; kcalEx: number; protein: number; due: string[] };
+type Today = { profile: HealthProfile | null; kcalIn: number; kcalEx: number; protein: number; due: string[]; fast: Fast | null };
 
 // Today's Health at a glance in the right-side profile pane (App Director
 // only, same as the Health page): calories in vs out, what's left against
@@ -31,11 +32,12 @@ export default function HealthSummaryCard() {
       if (role !== "app_director") return;
       try {
         const today = localIso();
-        const [profile, meals, ex, ms] = await Promise.all([
+        const [profile, meals, ex, ms, fs] = await Promise.all([
           fetchHealthProfile(supabase, user.id),
           fetchMeals(supabase, today, today),
           fetchExercise(supabase, today, today),
           fetchMeasurements(supabase, 30),
+          fetchFasts(supabase, 1),
         ]);
         if (cancelled) return;
         const lastWeigh = ms.find((m) => m.weight_kg != null)?.measured_on ?? null;
@@ -49,6 +51,7 @@ export default function HealthSummaryCard() {
           kcalEx: ex.reduce((s, e) => s + e.kcal, 0),
           protein: meals.reduce((s, m) => s + m.protein_g, 0),
           due,
+          fast: fs[0] && !fs[0].ended_at ? fs[0] : null,
         });
       } catch {
         /* card just stays hidden */
@@ -60,6 +63,7 @@ export default function HealthSummaryCard() {
     };
   }, [pathname]);
 
+  const now = useNow(!!data?.fast, 30000);
   if (!data) return null;
 
   const base = baselineBurn(data.profile);
@@ -76,6 +80,15 @@ export default function HealthSummaryCard() {
         <span>Health today</span>
         <HeartPulse size={16} className="text-[#ff5c7a]" />
       </div>
+      {data.fast && (
+        <div className="mt-2 rounded-lg bg-white/[0.06] px-2.5 py-1 text-xs">
+          <span className="text-text-muted">Fasting </span>
+          <span className="font-mono font-semibold tabular-nums" style={{ color: fastMs(data.fast, now) >= Number(data.fast.goal_hours) * 3600000 ? "#3ddc97" : "#f5d020" }}>
+            {fmtDuration(fastMs(data.fast, now), false)}
+          </span>
+          <span className="text-text-muted"> / {Number(data.fast.goal_hours)}h</span>
+        </div>
+      )}
       {data.due.length > 0 && (
         <div className="mt-2 rounded-lg bg-[#f5d020]/15 px-2.5 py-1 text-xs font-semibold text-[#f5d020]">{data.due.join(" · ")}</div>
       )}

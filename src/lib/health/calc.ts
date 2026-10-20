@@ -275,3 +275,54 @@ export function addDays(iso: string, days: number): string {
 }
 
 export const fmtKcal = (n: number) => Math.round(n).toLocaleString();
+
+// ---- Fasting -----------------------------------------------------------
+
+export type Fast = {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  goal_hours: number;
+  notes: string | null;
+};
+
+export const FAST_PRESETS = [16, 18, 20, 24, 36, 48, 72, 96, 120, 168];
+export const FAST_MILESTONES = [12, 16, 18, 24, 36, 48, 72, 96, 120, 168];
+
+export function fastMs(f: Fast, now = Date.now()): number {
+  const end = f.ended_at ? new Date(f.ended_at).getTime() : now;
+  return Math.max(0, end - new Date(f.started_at).getTime());
+}
+
+// 1d 12:04:09 / 12:04:09
+export function fmtDuration(ms: number, seconds = true): string {
+  const total = Math.floor(ms / 1000);
+  const d = Math.floor(total / 86400);
+  const h = Math.floor((total % 86400) / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const clock = seconds ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(h)}:${pad(m)}`;
+  return d > 0 ? `${d}d ${clock}` : clock;
+}
+
+export const fmtHours = (ms: number) => `${Math.round((ms / 3600000) * 10) / 10}h`;
+
+export type FastStats = { count: number; longestMs: number; avgMs: number; monthHours: number; goalsMet: number };
+export function fastStats(fasts: Fast[], now = Date.now()): FastStats {
+  const done = fasts.filter((f) => f.ended_at);
+  const ms = done.map((f) => fastMs(f, now));
+  const monthStart = new Date(new Date(now).getFullYear(), new Date(now).getMonth(), 1).getTime();
+  const monthHours = fasts.reduce((sum, f) => {
+    const start = Math.max(new Date(f.started_at).getTime(), monthStart);
+    const end = f.ended_at ? new Date(f.ended_at).getTime() : now;
+    return sum + Math.max(0, end - start) / 3600000;
+  }, 0);
+  return {
+    count: done.length,
+    longestMs: ms.length ? Math.max(...ms) : 0,
+    avgMs: ms.length ? ms.reduce((a, b) => a + b, 0) / ms.length : 0,
+    monthHours: Math.round(monthHours),
+    goalsMet: done.filter((f) => fastMs(f, now) >= Number(f.goal_hours) * 3600000).length,
+  };
+}
