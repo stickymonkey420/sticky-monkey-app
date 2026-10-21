@@ -223,13 +223,13 @@ type NavNode = {
 const NAV_TREE: NavNode[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   {
-    // App Director + demo accounts (2026-10-21). Medical (2026-10-21): App Director only for now.
+    // App Director + demo accounts (2026-10-21). Medical included (demo data seeded).
     label: "Health",
     requires: "health",
     icon: HeartPulse,
     children: [
       { href: "/health", label: "Overview" },
-      { href: "/health/medical", label: "Medical", requires: "owner" }, // App Director only for now; demo data later
+      { href: "/health/medical", label: "Medical" }, // inherits the Health gate (App Director + demo)
     ],
   },
   {

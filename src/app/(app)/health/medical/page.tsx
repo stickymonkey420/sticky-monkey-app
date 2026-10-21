@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import MedicalDashboard from "@/components/medical/MedicalDashboard";
 
-// Health > Medical -- App Director only for now (demo accounts later).
+// Health > Medical -- App Director + demo accounts (same health_access() gate
+// as Health and the medical_* RLS policies).
 // Vaccines, preventive checks and clinics follow-up dashboard.
 export default function MedicalPage() {
   const [loading, setLoading] = useState(true);
@@ -17,9 +18,9 @@ export default function MedicalPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      const { data } = user ? await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle() : { data: null };
+      const { data: allowed } = user ? await supabase.rpc("health_access") : { data: false };
       if (cancelled) return;
-      setUserId(data?.role === "app_director" && user ? user.id : null);
+      setUserId(allowed === true && user ? user.id : null);
       setLoading(false);
     }
     load();
