@@ -39,7 +39,7 @@ export default function SmuPage() {
               className="h-16 w-16 shrink-0 rounded-full border border-card-border object-cover"
             />
             <div>
-              <h2 className="text-base font-semibold text-text-primary">Meet Abu, your finance guide</h2>
+              <h2 className="text-base font-semibold text-text-primary">Meet Abu, your lifestyle guide</h2>
               <p className="mt-1 max-w-2xl text-sm text-text-muted">
                 Learn how to use the app, analyze your own portfolio, and get lessons custom-built from
                 your real numbers.

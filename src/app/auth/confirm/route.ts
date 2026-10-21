@@ -70,7 +70,7 @@ function renderInterstitial(params: { token_hash: string; type: string; next: st
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${label} — Sticky Monkey Finance</title>
+    <title>${label} — Sticky Monkey Lifestyle</title>
     <style>
       body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
              background:hsla(222,33%,9%,1); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
@@ -85,7 +85,7 @@ function renderInterstitial(params: { token_hash: string; type: string; next: st
   </head>
   <body>
     <div class="card">
-      <div class="brand">Sticky Monkey Finance</div>
+      <div class="brand">Sticky Monkey Lifestyle</div>
       <h1>${label}</h1>
       <p>Click below to finish. This extra step keeps email security scanners from using up your link before you do.</p>
       <form method="post">

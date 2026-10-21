@@ -1,7 +1,7 @@
 import { LOGO_HEAD_URL, LOGO_WORDMARK_URL } from "@/lib/brand/logo";
 import UnsubscribeConfirm from "./UnsubscribeConfirm";
 
-export const metadata = { title: "Unsubscribe | Sticky Monkey Finance" };
+export const metadata = { title: "Unsubscribe | Sticky Monkey Lifestyle" };
 
 export default async function UnsubscribedPage({
   searchParams,
@@ -22,7 +22,7 @@ export default async function UnsubscribedPage({
             className="h-auto w-[170px]"
           />
           <span className="mt-1 text-[12px] font-light tracking-[0.35em] text-[#8a93a6]">
-            FINANCE
+            LIFESTYLE
           </span>
         </div>
         <UnsubscribeConfirm token={t ?? ""} />

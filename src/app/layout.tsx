@@ -33,8 +33,8 @@ const chakraPetch = Chakra_Petch({
 });
 
 export const metadata: Metadata = {
-  title: "Sticky Monkey Finance",
-  description: "Sticky Monkey Finance member dashboard",
+  title: "Sticky Monkey Lifestyle",
+  description: "Sticky Monkey Lifestyle member dashboard",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

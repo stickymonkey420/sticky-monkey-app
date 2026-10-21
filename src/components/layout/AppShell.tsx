@@ -684,7 +684,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       <div className="hidden min-h-[calc(100vh-2rem)] w-64 shrink-0 flex-col gap-5 md:flex">
         {/* Sizes/spacing pulled via getComputedStyle off the live site's
             .logo-wrapper: 64px-tall head icon, 188px-wide wordmark, a
-            25px/1px divider rule, then the FINANCE label at 13px/300
+            25px/1px divider rule, then the LIFESTYLE label at 13px/300
             weight/0.35em tracking -- not the placeholder sizes this used
             before. */}
         <div className="flex shrink-0 flex-col items-center px-2 pt-5">
@@ -693,7 +693,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={LOGO_WORDMARK_URL} alt="Sticky Monkey" className="h-auto w-[188px]" />
           <div className="mb-2 h-px w-[25px]" style={{ backgroundColor: "rgba(255,255,255,0.25)" }} />
-          <span className="text-[13px] font-light tracking-[0.35em] text-text-muted">FINANCE</span>
+          <span className="text-[13px] font-light tracking-[0.35em] text-text-muted">LIFESTYLE</span>
         </div>
 
         <aside

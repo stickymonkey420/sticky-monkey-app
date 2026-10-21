@@ -64,7 +64,7 @@ export default function WelcomeVideoModal({ onDone }: { onDone: () => void }) {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-5">
       <div className="w-full max-w-4xl">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-white">Get Started with Sticky Monkey Finance</h2>
+          <h2 className="text-sm font-semibold text-white">Get Started with Sticky Monkey Lifestyle</h2>
           <button
             type="button"
             onClick={close}

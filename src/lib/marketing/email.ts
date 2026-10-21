@@ -31,8 +31,8 @@ export type EmailParts = {
 };
 
 const FOOTER = {
-  members: "This email is from Sticky Monkey Finance.",
-  invitees: "You're getting this because you were personally invited to Sticky Monkey Finance. We won't email you again unless you join or ask.",
+  members: "This email is from Sticky Monkey Lifestyle.",
+  invitees: "You're getting this because you were personally invited to Sticky Monkey Lifestyle. We won't email you again unless you join or ask.",
 };
 
 export function renderMarketingEmail(p: EmailParts): { html: string; text: string } {
@@ -47,7 +47,7 @@ export function renderMarketingEmail(p: EmailParts): { html: string; text: strin
 <tr><td align="center" style="padding:28px 28px 12px;border-bottom:1px solid #262d3d">
 <img src="${LOGO_HEAD_URL}" alt="" width="56" height="56" style="display:block;margin:0 auto 6px;border:0;height:56px;width:auto">
 <img src="${LOGO_WORDMARK_URL}" alt="Sticky Monkey" width="170" style="display:block;margin:0 auto;border:0;width:170px;height:auto">
-<div style="margin-top:6px;font-size:11px;font-weight:300;letter-spacing:4px;color:#8a93a6">FINANCE</div>
+<div style="margin-top:6px;font-size:11px;font-weight:300;letter-spacing:4px;color:#8a93a6">LIFESTYLE</div>
 </td></tr>
 <tr><td style="padding:12px 28px 8px">
 <p style="margin:0 0 16px;font-size:15px;color:#e6e8ee">${esc(greeting)}</p>

@@ -28,8 +28,8 @@ export type Invitee = {
   created_at: string;
 };
 
-const INVITE_SUBJECT = "You're invited: be one of the first members of Sticky Monkey Finance";
-const INVITE_BODY = `We're opening Sticky Monkey Finance to a small group of first members, and we'd like you to be one of them.
+const INVITE_SUBJECT = "You're invited: be one of the first members of Sticky Monkey Lifestyle";
+const INVITE_BODY = `We're opening Sticky Monkey Lifestyle to a small group of first members, and we'd like you to be one of them.
 
 Sticky Monkey puts your whole money picture in one place: net worth, investments and options income, side gigs and small businesses, rentals, and a running federal and state tax estimate that updates as you go.
 
