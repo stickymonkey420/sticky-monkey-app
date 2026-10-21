@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import MedicalDashboard from "@/components/medical/MedicalDashboard";
+import HealthConsentGate from "@/components/health/HealthConsentGate";
 
 // Health > Medical -- App Director + demo accounts (same health_access() gate
 // as Health and the medical_* RLS policies).
@@ -39,7 +40,9 @@ export default function MedicalPage() {
       ) : !userId ? (
         <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">Your account doesn&apos;t have access to this page.</div>
       ) : (
-        <MedicalDashboard userId={userId} />
+        <HealthConsentGate userId={userId}>
+          <MedicalDashboard userId={userId} />
+        </HealthConsentGate>
       )}
     </>
   );

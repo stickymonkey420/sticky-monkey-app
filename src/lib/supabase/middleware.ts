@@ -48,7 +48,8 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/unsubscribed") ||
     // Public legal pages (linked from sign-up and every email).
     request.nextUrl.pathname === "/privacy" ||
-    request.nextUrl.pathname === "/terms";
+    request.nextUrl.pathname === "/terms" ||
+    request.nextUrl.pathname === "/consumer-health-data";
 
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone();
@@ -71,7 +72,8 @@ export async function updateSession(request: NextRequest) {
         path.startsWith("/api/unsubscribe") ||
         path.startsWith("/unsubscribed") ||
         path === "/privacy" ||
-        path === "/terms";
+        path === "/terms" ||
+        path === "/consumer-health-data";
       if (!allowed) {
         if (path.startsWith("/api/")) {
           return NextResponse.json({ error: "Two-factor verification required." }, { status: 401 });

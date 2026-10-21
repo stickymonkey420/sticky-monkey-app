@@ -57,6 +57,7 @@ const SECTIONS: LegalSection[] = [
     h: "Health and medical information",
     p: [
       "Sticky Monkey is a personal tracking tool. It is not a healthcare provider, and the information you enter is not covered by HIPAA. We protect it with the same per-account access controls as your financial data: only you can read it. We don't share it with insurers, employers or anyone else, and we never use it for advertising.",
+      "We collect health data only after you consent the first time you open Health. Our Consumer Health Data Privacy Policy (app.stickymonkey.net/consumer-health-data) explains the details and how to withdraw consent, get a copy or request deletion.",
     ],
   },
   {

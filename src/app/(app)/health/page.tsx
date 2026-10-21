@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import HealthTracker from "@/components/health/HealthTracker";
+import HealthConsentGate from "@/components/health/HealthConsentGate";
 import { createClient } from "@/lib/supabase/client";
 
 // App Director + demo accounts (nav: under Dashboard). Calories in (photo AI estimate or
@@ -40,7 +41,9 @@ export default function HealthPage() {
       ) : !userId ? (
         <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">Your account doesn&apos;t have access to this page.</div>
       ) : (
-        <HealthTracker userId={userId} />
+        <HealthConsentGate userId={userId}>
+          <HealthTracker userId={userId} />
+        </HealthConsentGate>
       )}
     </>
   );

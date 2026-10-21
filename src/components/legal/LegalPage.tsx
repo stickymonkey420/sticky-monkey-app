@@ -55,6 +55,7 @@ export default function LegalPage({ title, intro, sections }: { title: string; i
         <footer className="mt-10 flex flex-wrap justify-center gap-4 border-t border-card-border pt-5 text-xs text-text-muted">
           <Link href="/privacy" className="hover:text-text-primary">Privacy Policy</Link>
           <Link href="/terms" className="hover:text-text-primary">Terms of Service</Link>
+          <Link href="/consumer-health-data" className="hover:text-text-primary">Consumer Health Data</Link>
           <a href={`mailto:${LEGAL.contact}`} className="hover:text-text-primary">{LEGAL.contact}</a>
         </footer>
       </article>
