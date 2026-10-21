@@ -92,3 +92,10 @@ body {
     transform: translateX(-50%);
   }
 }
+
+/* PWA / phone: keep Abu's launcher bubble above the bottom tab bar. */
+@media (max-width: 767px) {
+  #abu-launcher {
+    bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+  }
+}

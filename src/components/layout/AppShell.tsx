@@ -18,6 +18,8 @@ import {
   HeartPulse,
   MessageSquare,
   Calculator,
+  Menu,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -568,6 +570,61 @@ function NavTree({
   );
 }
 
+// Phone / installed-PWA bottom tab bar (below md). The desktop sidebar's
+// full tree still lives in the "More" drawer; this is just the thumb-reach
+// shortcuts. Health only shows where the nav gate would show it.
+function MobileTabBar({
+  pathname,
+  showHealth,
+  onMore,
+}: {
+  pathname: string;
+  showHealth: boolean;
+  onMore: () => void;
+}) {
+  const tabs: { href: string; label: string; icon: LucideIcon; match: (p: string) => boolean }[] = [
+    { href: "/dashboard", label: "Home", icon: LayoutDashboard, match: (p) => p === "/dashboard" },
+    {
+      href: "/invest",
+      label: "Invest",
+      icon: TrendingUp,
+      match: (p) => ["/invest", "/holdings", "/options", "/stock-screener", "/invest-accounts", "/closed-positions", "/simulator"].some((x) => p.startsWith(x)),
+    },
+    ...(showHealth ? [{ href: "/health", label: "Health", icon: HeartPulse, match: (p: string) => p.startsWith("/health") }] : []),
+  ];
+  const base = "flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium";
+  return (
+    <nav
+      aria-label="Primary"
+      className="fixed inset-x-0 bottom-0 z-[90] flex border-t border-card-border bg-card-bg/95 backdrop-blur md:hidden"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      {tabs.map((t) => {
+        const on = t.match(pathname);
+        const Icon = t.icon;
+        return (
+          <Link key={t.href} href={t.href} className={`${base} ${on ? "text-[#f5d020]" : "text-text-muted"}`} aria-current={on ? "page" : undefined}>
+            <Icon className="h-5 w-5" />
+            {t.label}
+          </Link>
+        );
+      })}
+      <button
+        type="button"
+        className={`${base} text-text-muted`}
+        onClick={() => document.getElementById("abu-launcher")?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }))}
+      >
+        <MessageCircle className="h-5 w-5" />
+        Abu
+      </button>
+      <button type="button" className={`${base} text-text-muted`} onClick={onMore}>
+        <Menu className="h-5 w-5" />
+        More
+      </button>
+    </nav>
+  );
+}
+
 // useSearchParams() is what makes nav-active-highlighting reactive to
 // account= changes on /holdings (see isLeafActive/hrefQuery above) --
 // clicking Brokerage after Crypto needs the sidebar to re-evaluate which
@@ -641,7 +698,11 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           drawer instead of trying to cram ~15 grouped items into a header
           row. */}
       <header className="flex items-center justify-between border-b border-card-border bg-card-bg px-4 py-3 md:hidden">
-        <span className="text-base font-semibold text-text-primary">Sticky Monkey</span>
+        <span className="flex items-center gap-2 text-base font-semibold text-text-primary">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={LOGO_HEAD_URL} alt="" className="h-7 w-7" />
+          Sticky Monkey
+        </span>
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
@@ -737,7 +798,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         <div className="hidden md:block">
           <TopBar />
         </div>
-        <main className="relative flex-1 px-4 pb-6 pt-6 md:px-8 md:pt-5">
+        <main className="relative flex-1 px-4 pb-28 pt-6 md:px-8 md:pb-6 md:pt-5">
           <MarketStrip />
           {/* Mandatory first-run welcome + survey, on every app page (not
               just Dashboard) so it can't be bypassed by navigating away. */}
@@ -761,6 +822,11 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       <div className="hidden shrink-0 px-4 pb-4 md:flex md:px-0 md:pb-0">
         <ProfileSummaryCard />
       </div>
+      <MobileTabBar
+        pathname={pathname}
+        showHealth={role === "app_director" || isDemo}
+        onMore={() => setMobileOpen(true)}
+      />
     </div>
     </ProfileProvider>
   );
