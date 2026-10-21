@@ -3,12 +3,11 @@
 import { useEffect, useState } from "react";
 import HealthTracker from "@/components/health/HealthTracker";
 import { createClient } from "@/lib/supabase/client";
-import { fetchMyRole } from "@/lib/usersGroups/queries";
 
-// App Director only (nav: below Marketing). Calories in (photo AI estimate or
+// App Director + demo accounts (nav: under Dashboard). Calories in (photo AI estimate or
 // manual) vs calories out (resting baseline + exercise). RLS on the health_*
 // tables, the private health-photos bucket and the health-food-estimate edge
-// function all enforce app_director.
+// function enforce the same access (health_access()).
 export default function HealthPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -20,9 +19,9 @@ export default function HealthPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      const role = user ? await fetchMyRole(supabase, user.id) : null;
+      const { data: allowed } = user ? await supabase.rpc("health_access") : { data: false };
       if (cancelled) return;
-      setUserId(role === "app_director" && user ? user.id : null);
+      setUserId(allowed === true && user ? user.id : null);
       setLoading(false);
     }
     load();

@@ -182,7 +182,7 @@ type NavNode = {
   // "investOptIn" is like "paid" but with an escape hatch: a free-tier user
   // still passes it once they've explicitly ticked at least one box under
   // Profile > Account Types (profiles.account_types) -- see passesGate.
-  requires?: "paid" | "admin" | "owner" | "investOptIn";
+  requires?: "paid" | "admin" | "owner" | "investOptIn" | "health";
   // Independent of `requires` and NOT bypassed by paid tier: this leaf (or
   // group) only shows once profiles.account_types includes at least one of
   // these keys -- e.g. the "Brokerage" leaf under Investments > Taxable
@@ -220,7 +220,7 @@ type NavNode = {
 // rather than lifting Webflow's raster PNGs 1:1.
 const NAV_TREE: NavNode[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/health", label: "Health", requires: "owner", icon: HeartPulse }, // App Director only (2026-10-19)
+  { href: "/health", label: "Health", requires: "health", icon: HeartPulse }, // App Director + demo accounts (2026-10-21)
   {
     label: "My Wallet",
     icon: Wallet,
@@ -310,8 +310,9 @@ const NAV_TREE: NavNode[] = [
   { href: "/marketing", label: "Marketing", requires: "owner", icon: Megaphone },
 ];
 
-function passesGate(requires: NavNode["requires"], role: Role | null, accountTypes: string[] | null): boolean {
+function passesGate(requires: NavNode["requires"], role: Role | null, accountTypes: string[] | null, isDemo = false): boolean {
   if (!requires) return true;
+  if (requires === "health") return role === "app_director" || isDemo;
   if (requires === "investOptIn") {
     if (role === "paid" || role === "app_director") return true;
     // Free tier: only once the user has explicitly ticked at least one
@@ -358,14 +359,15 @@ function filterNode(
   role: Role | null,
   accountTypes: string[] | null,
   hasWalletData: boolean | null,
-  hasBankAccount: boolean | null
+  hasBankAccount: boolean | null,
+  isDemo = false
 ): NavNode | null {
-  if (!passesGate(node.requires, role, accountTypes)) return null;
+  if (!passesGate(node.requires, role, accountTypes, isDemo)) return null;
   if (!passesAccountTypeGate(node.accountTypeAny, accountTypes)) return null;
   if (!passesDataGate(node.dataGate, hasWalletData, hasBankAccount)) return null;
   if (node.children) {
     const children = node.children
-      .map((c) => filterNode(c, role, accountTypes, hasWalletData, hasBankAccount))
+      .map((c) => filterNode(c, role, accountTypes, hasWalletData, hasBankAccount, isDemo))
       .filter((c): c is NavNode => c !== null);
     if (children.length === 0 && !node.href) return null;
     return { ...node, children };
@@ -518,6 +520,7 @@ function NavTree({
   accountTypes,
   hasWalletData,
   hasBankAccount,
+  isDemo = false,
   onNavigate,
 }: {
   pathname: string;
@@ -526,9 +529,10 @@ function NavTree({
   accountTypes: string[] | null;
   hasWalletData: boolean | null;
   hasBankAccount: boolean | null;
+  isDemo?: boolean;
   onNavigate?: () => void;
 }) {
-  const visible = NAV_TREE.map((node) => filterNode(node, role, accountTypes, hasWalletData, hasBankAccount)).filter(
+  const visible = NAV_TREE.map((node) => filterNode(node, role, accountTypes, hasWalletData, hasBankAccount, isDemo)).filter(
     (n): n is NavNode => n !== null
   );
   return (
@@ -579,6 +583,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   // passesGate hides Investments until we actually know, not just while
   // this fetch is in flight.
   const [accountTypes, setAccountTypes] = useState<string[] | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
   // Backs the "My Wallet"/"Banking" dataGate nodes above -- null until this
   // fetch resolves (hides both), then real answers: hasWalletData is true
   // once manual_accounts (any category) or plaid_transactions has a row;
@@ -597,14 +602,15 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       } = await supabase.auth.getUser();
       if (!user) return;
       const [{ data }, { data: accountRows }, { count: txCount }] = await Promise.all([
-        supabase.from("profiles").select("role,account_types").eq("id", user.id).maybeSingle(),
+        supabase.from("profiles").select("role,account_types,is_demo").eq("id", user.id).maybeSingle(),
         supabase.from("manual_accounts").select("category").eq("user_id", user.id),
         supabase.from("plaid_transactions").select("id", { count: "exact", head: true }).eq("user_id", user.id),
       ]);
       if (cancelled) return;
       if (data) {
-        const row = data as { role: Role; account_types: string[] | null };
+        const row = data as { role: Role; account_types: string[] | null; is_demo: boolean | null };
         setRole(row.role);
+        setIsDemo(!!row.is_demo);
         setAccountTypes(row.account_types ?? []);
       }
       const accounts = (accountRows ?? []) as { category: string }[];
@@ -663,6 +669,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                 search={search}
                 role={role}
                 accountTypes={accountTypes}
+                isDemo={isDemo}
                 hasWalletData={hasWalletData}
                 hasBankAccount={hasBankAccount}
                 onNavigate={() => setMobileOpen(false)}
@@ -706,6 +713,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               search={search}
               role={role}
               accountTypes={accountTypes}
+                isDemo={isDemo}
               hasWalletData={hasWalletData}
               hasBankAccount={hasBankAccount}
             />

@@ -150,6 +150,7 @@ export async function estimateFromPhoto(
     } catch {
       /* keep default message */
     }
+    if (msg === "forbidden") msg = "Photo scanning isn't available on demo accounts. Use \"Enter foods instead\" to log this meal.";
     throw new Error(msg);
   }
   if (!data) throw new Error("No estimate returned.");

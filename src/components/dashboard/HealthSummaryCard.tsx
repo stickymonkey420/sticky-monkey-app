@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HeartPulse } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { fetchMyRole } from "@/lib/usersGroups/queries";
 import { GOAL_ADJUST, baselineBurn, fastMs, fmtDuration, fmtKcal, kgToLb, localIso, reminderDue, type Fast, type HealthProfile } from "@/lib/health/calc";
 import { fetchExercise, fetchFasts, fetchHealthProfile, fetchMeals, fetchMeasurements } from "@/lib/health/queries";
 import { useNow } from "@/components/health/useNow";
@@ -28,8 +27,8 @@ export default function HealthSummaryCard() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      const role = await fetchMyRole(supabase, user.id);
-      if (role !== "app_director") return;
+      const { data: allowed } = await supabase.rpc("health_access");
+      if (allowed !== true) return;
       try {
         const today = localIso();
         const [profile, meals, ex, ms, fs] = await Promise.all([
