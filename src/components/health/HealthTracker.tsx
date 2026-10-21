@@ -32,6 +32,7 @@ import WeighInModal from "./WeighInModal";
 import RemindersModal from "./RemindersModal";
 import FastModal from "./FastModal";
 import { useNow } from "./useNow";
+import { useLiveRefresh } from "@/lib/supabase/useLiveRefresh";
 
 const CARD = "rounded-2xl border border-card-border bg-card-bg p-5";
 const GREEN = "#3ddc97";
@@ -105,6 +106,8 @@ export default function HealthTracker({ userId }: { userId: string }) {
   }, [userId, date, reload]);
 
   const refresh = () => setReload((n) => n + 1);
+  // Live: entries made on another device (phone ↔ desktop) appear without a refresh.
+  useLiveRefresh(["health_meals", "health_exercise", "health_measurements", "health_fasts", "health_profiles", "health_foods"], userId, refresh);
   const activeFast = fasts.find((f) => !f.ended_at) ?? null;
   const now = useNow(!!activeFast);
   const lastWeigh = measurements.find((m) => m.weight_kg != null)?.measured_on ?? null;

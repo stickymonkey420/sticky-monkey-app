@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { GOAL_ADJUST, baselineBurn, fastMs, fmtDuration, fmtKcal, kgToLb, localIso, reminderDue, type Fast, type HealthProfile } from "@/lib/health/calc";
 import { fetchExercise, fetchFasts, fetchHealthProfile, fetchMeals, fetchMeasurements } from "@/lib/health/queries";
 import { useNow } from "@/components/health/useNow";
+import { useLiveRefresh } from "@/lib/supabase/useLiveRefresh";
 
 type Today = { profile: HealthProfile | null; kcalIn: number; kcalEx: number; protein: number; due: string[]; fast: Fast | null };
 
@@ -18,6 +19,10 @@ type Today = { profile: HealthProfile | null; kcalIn: number; kcalEx: number; pr
 export default function HealthSummaryCard() {
   const pathname = usePathname();
   const [data, setData] = useState<Today | null>(null);
+  const [uid, setUid] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
+  // Live: a meal, workout, weigh-in or fast logged on another device updates this card.
+  useLiveRefresh(["health_meals", "health_exercise", "health_measurements", "health_fasts", "health_profiles"], uid, () => setTick((n) => n + 1));
 
   useEffect(() => {
     let cancelled = false;
@@ -29,6 +34,7 @@ export default function HealthSummaryCard() {
       if (!user) return;
       const { data: allowed } = await supabase.rpc("health_access");
       if (allowed !== true) return;
+      if (!cancelled) setUid(user.id);
       try {
         const today = localIso();
         const [profile, meals, ex, ms, fs] = await Promise.all([
@@ -60,7 +66,7 @@ export default function HealthSummaryCard() {
     return () => {
       cancelled = true;
     };
-  }, [pathname]);
+  }, [pathname, tick]);
 
   const now = useNow(!!data?.fast, 30000);
   if (!data) return null;

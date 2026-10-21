@@ -19,6 +19,7 @@ import {
   type Vaccine,
 } from "@/lib/medical/model";
 import { CheckEditModal, CheckLogModal, DoseModal, INPUT, LABEL, ProviderModal, VaccineModal } from "./MedicalModals";
+import { useLiveRefresh } from "@/lib/supabase/useLiveRefresh";
 
 const CARD = "rounded-2xl border border-card-border bg-card-bg p-5";
 
@@ -82,6 +83,9 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
   }, [userId, reload]);
 
   const refresh = () => setReload((n) => n + 1);
+  // Live: doses, checks and clinics logged on another device appear without a
+  // refresh. (Settings are left out so typing in Visit notes isn't overwritten.)
+  useLiveRefresh(["medical_vaccines", "medical_vaccine_doses", "medical_checks", "medical_check_events", "medical_providers"], userId, refresh);
   if (error) return <div className="rounded-xl border border-[#ff5c7a]/40 bg-[#ff5c7a]/10 px-4 py-3 text-sm text-[#ff5c7a]">{error}</div>;
   if (!data) return <div className="text-sm text-text-muted">Loading…</div>;
 

@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { DEFAULT_REMINDERS, WEEKDAYS, type Reminder, type ReminderFreq, type Reminders } from "@/lib/health/calc";
 import { saveReminders } from "@/lib/health/queries";
+import PhoneNotifications from "./PhoneNotifications";
 
 const INPUT = "w-full rounded-[10px] border border-[rgba(148,158,189,0.5)] bg-[#0d0f17] px-3 py-2 text-[13px] text-text-primary";
 const LABEL = "mb-1 block text-xs font-medium text-text-muted";
@@ -15,8 +16,10 @@ const ROWS: { key: "weigh" | "measure"; title: string; freqs: ReminderFreq[] }[]
 ];
 const FREQ_LABEL: Record<ReminderFreq, string> = { daily: "Every day", weekly: "Every week", biweekly: "Every 2 weeks", monthly: "Every month" };
 
-// In-app reminders: when one is due, the Health page and the side-panel
-// Health card show it until you log an entry. Popup closes only via buttons/Escape.
+// Reminders: when one is due, the Health page and the side-panel Health card
+// show it until you log an entry; with Phone notifications on, the
+// push-reminders edge function also sends it to the device at the set time.
+// Popup closes only via buttons/Escape.
 export default function RemindersModal({
   userId,
   reminders,
@@ -124,6 +127,7 @@ export default function RemindersModal({
               </div>
             );
           })}
+          <PhoneNotifications userId={userId} />
         </div>
         {error && <p className="mt-3 text-sm text-[#ff5c7a]">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
