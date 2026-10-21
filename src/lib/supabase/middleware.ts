@@ -45,7 +45,10 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/api/unsubscribe") ||
     // Gig integration webhooks (Printful, Shopify) carry their own token / HMAC.
     request.nextUrl.pathname.startsWith("/api/webhooks/") ||
-    request.nextUrl.pathname.startsWith("/unsubscribed");
+    request.nextUrl.pathname.startsWith("/unsubscribed") ||
+    // Public legal pages (linked from sign-up and every email).
+    request.nextUrl.pathname === "/privacy" ||
+    request.nextUrl.pathname === "/terms";
 
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone();
@@ -66,7 +69,9 @@ export async function updateSession(request: NextRequest) {
         path.startsWith("/sign-in") ||
         path.startsWith("/auth/signout") ||
         path.startsWith("/api/unsubscribe") ||
-        path.startsWith("/unsubscribed");
+        path.startsWith("/unsubscribed") ||
+        path === "/privacy" ||
+        path === "/terms";
       if (!allowed) {
         if (path.startsWith("/api/")) {
           return NextResponse.json({ error: "Two-factor verification required." }, { status: 401 });

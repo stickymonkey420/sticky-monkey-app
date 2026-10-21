@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 // Trust promises shown on Sign in / Sign up. Keep these in sync with the
 // privacy policy -- they are public commitments.
 const PROMISES = [
@@ -22,6 +24,17 @@ export default function AuthPromises() {
           </li>
         ))}
       </ul>
+      <p className="mt-2.5 text-[11px] text-text-muted">
+        By continuing you agree to our{" "}
+        <Link href="/terms" className="underline hover:text-text-primary">
+          Terms
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="underline hover:text-text-primary">
+          Privacy Policy
+        </Link>
+        .
+      </p>
     </div>
   );
 }
