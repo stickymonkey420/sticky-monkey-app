@@ -54,7 +54,6 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
   const [logCheck, setLogCheck] = useState<Check | null>(null);
   const [editCheck, setEditCheck] = useState<{ c: Check | null } | null>(null);
   const [editProvider, setEditProvider] = useState<{ p: Provider | null } | null>(null);
-  const [planStart, setPlanStart] = useState("");
   const [notes, setNotes] = useState("");
   const [savingSettings, setSavingSettings] = useState(false);
 
@@ -70,7 +69,6 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
         if (cancelled) return;
         setData(d);
         setProfile((hp.data as { birth_year: number | null; sex: string | null } | null) ?? null);
-        setPlanStart(d.settings.plan_start ?? "");
         setNotes(d.settings.notes ?? "");
         setError(null);
       } catch (e) {
@@ -91,12 +89,11 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
   const age = profile?.birth_year ? new Date().getFullYear() - profile.birth_year : null;
   const vaccines = data.vaccines.filter((v) => v.active);
   const checks = data.checks.filter((c) => c.active);
-  const start = data.settings.plan_start;
 
   // Everything still open, most urgent first.
   const next: NextItem[] = [];
   for (const v of vaccines) {
-    const rows = doseRows(v, data.doses, start, today);
+    const rows = doseRows(v, data.doses, today);
     const n = rows.find((r) => !r.record);
     if (n)
       next.push({
@@ -119,7 +116,7 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
 
   const dueNow = next.filter((n) => n.status === "overdue" || n.status === "due").length;
   const soon = next.filter((n) => n.status === "soon").length;
-  const seriesDone = vaccines.filter((v) => doseRows(v, data.doses, start, today).filter((r) => !r.isBooster).every((r) => r.record)).length;
+  const seriesDone = vaccines.filter((v) => doseRows(v, data.doses, today).filter((r) => !r.isBooster).every((r) => r.record)).length;
   const checksCurrent = checks.filter((c) => {
     const s = checkRow(c, data.events, today).status;
     return s === "done" || s === "info";
@@ -128,7 +125,7 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
   async function saveSettingsNow() {
     setSavingSettings(true);
     try {
-      await saveSettings(createClient(), userId, { plan_start: planStart || null, notes: notes.trim() || null });
+      await saveSettings(createClient(), userId, { notes: notes.trim() || null });
       refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed.");
@@ -146,7 +143,7 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Profile + plan start */}
+      {/* Profile */}
       <div className={`${CARD} flex flex-wrap items-end justify-between gap-4`}>
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Your plan</div>
@@ -156,27 +153,7 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
           </div>
           <div className="text-xs text-text-muted">{age ? "From your Health profile." : "Set your birth year in Health → Profile."}</div>
         </div>
-        <div className="flex flex-wrap items-end gap-2">
-          <div>
-            <label className={LABEL}>Vaccine plan start (Day 0)</label>
-            <input className={INPUT} type="date" value={planStart} onChange={(e) => setPlanStart(e.target.value)} />
-          </div>
-          <button
-            type="button"
-            disabled={savingSettings || (planStart || null) === (start ?? null)}
-            onClick={saveSettingsNow}
-            className="rounded-md bg-[#f5d020] px-3 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-40"
-          >
-            {savingSettings ? "Saving…" : "Set"}
-          </button>
-        </div>
       </div>
-
-      {!start && (
-        <div className="rounded-xl border border-[#f5d020]/40 bg-[#f5d020]/[0.07] px-4 py-3 text-sm text-text-primary">
-          Set your <span className="font-semibold text-[#f5d020]">plan start date</span> (your first vaccine visit) to schedule every dose. Recording a dose works anytime.
-        </div>
-      )}
 
       {/* Counters */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
@@ -240,7 +217,7 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
                   {vaccines
                     .filter((v) => v.category === g)
                     .map((v) => {
-                      const rows = doseRows(v, data.doses, start, today);
+                      const rows = doseRows(v, data.doses, today);
                       const n = rows.find((r) => !r.record);
                       return (
                         <div key={v.id} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
@@ -265,7 +242,7 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
                               >
                                 <span className="font-semibold">{r.isBooster ? "Booster" : `Dose ${r.label}`}</span>
                                 {" · "}
-                                {r.record ? `given ${fmtDate(r.record.given_on)}` : r.due ? fmtDate(r.due) : "set plan start"}
+                                {r.record ? `given ${fmtDate(r.record.given_on)}` : r.due ? fmtDate(r.due) : r.status === "overdue" ? "due now" : "after previous dose"}
                               </button>
                             ))}
                             {!n && !v.repeat_days && <Pill status="done" text="Complete" />}
@@ -361,7 +338,7 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
         Your personal follow-up list, not medical advice. Dose timing follows the schedule you set for each vaccine; confirm with your doctor or travel clinic.
       </p>
 
-      {dose && <DoseModal userId={userId} vaccine={dose} doses={data.doses} planStart={start} providers={data.providers} onClose={() => setDose(null)} onSaved={refresh} />}
+      {dose && <DoseModal userId={userId} vaccine={dose} doses={data.doses} providers={data.providers} onClose={() => setDose(null)} onSaved={refresh} />}
       {editVaccine && <VaccineModal userId={userId} vaccine={editVaccine.v} onClose={() => setEditVaccine(null)} onSaved={refresh} />}
       {logCheck && <CheckLogModal userId={userId} check={logCheck} events={data.events} providers={data.providers} onClose={() => setLogCheck(null)} onSaved={refresh} />}
       {editCheck && <CheckEditModal userId={userId} check={editCheck.c} onClose={() => setEditCheck(null)} onSaved={refresh} />}

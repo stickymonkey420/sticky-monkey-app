@@ -86,7 +86,6 @@ export function DoseModal({
   userId,
   vaccine,
   doses,
-  planStart,
   providers,
   onClose,
   onSaved,
@@ -94,13 +93,12 @@ export function DoseModal({
   userId: string;
   vaccine: Vaccine;
   doses: DoseRecord[];
-  planStart: string | null;
   providers: Provider[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const confirm = useConfirm();
-  const rows = doseRows(vaccine, doses, planStart);
+  const rows = doseRows(vaccine, doses);
   const pending = rows.filter((r) => !r.record);
   const mine = doses.filter((d) => d.vaccine_id === vaccine.id).sort((a, b) => b.given_on.localeCompare(a.given_on));
   const [label, setLabel] = useState(pending[0]?.label ?? (vaccine.repeat_days ? "Booster" : vaccine.doses[0]?.label ?? "1"));
@@ -302,7 +300,7 @@ export function VaccineModal({ userId, vaccine, onClose, onSaved }: { userId: st
                 <input className={INPUT} value={d.label} onChange={(e) => setDose(i, { label: e.target.value })} />
               </div>
               {i === 0 ? (
-                <div className="col-span-2 pb-2 text-xs text-text-muted">On the plan start date</div>
+                <div className="col-span-2 pb-2 text-xs text-text-muted">Due when you start the series</div>
               ) : (
                 <>
                   <div>

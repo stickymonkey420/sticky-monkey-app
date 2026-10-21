@@ -86,11 +86,11 @@ export type DoseRow = {
   isBooster: boolean;
 };
 
-// Dose 1 is due on the plan start (Day 0). Each later dose is due
-// after_days after the previous dose was actually given (or, if it hasn't
-// been, after that dose's own due date). Repeating vaccines (flu, boosters)
-// add one more "Booster" row after the series.
-export function doseRows(v: Vaccine, doses: DoseRecord[], planStart: string | null, today = isoToday()): DoseRow[] {
+// Dose 1 of a vaccine you haven't started is due now. Each later dose is due
+// after_days after the previous dose was actually given (it stays "Not
+// scheduled" until that previous dose is logged). Repeating vaccines (flu,
+// boosters) add one more "Booster" row after the series.
+export function doseRows(v: Vaccine, doses: DoseRecord[], today = isoToday()): DoseRow[] {
   const given = doses.filter((d) => d.vaccine_id === v.id).sort((a, b) => a.given_on.localeCompare(b.given_on));
   const rows: DoseRow[] = [];
   let prevBase: string | null = null;
@@ -98,11 +98,17 @@ export function doseRows(v: Vaccine, doses: DoseRecord[], planStart: string | nu
     const record = given.find((g) => g.dose_label === spec.label) ?? null;
     let due: string | null;
     let windowEnd: string | null = null;
-    if (i === 0) due = planStart;
-    else due = prevBase ? addDaysIso(prevBase, spec.after_days) : null;
-    if (i > 0 && prevBase && spec.window_days) windowEnd = addDaysIso(prevBase, spec.window_days);
-    rows.push({ label: spec.label, record, due, windowEnd, status: record ? "done" : statusFor(due, today), isBooster: false });
-    prevBase = record?.given_on ?? due;
+    let status: DueStatus;
+    if (i === 0) {
+      due = null;
+      status = record ? "done" : "overdue";
+    } else {
+      due = prevBase ? addDaysIso(prevBase, spec.after_days) : null;
+      if (prevBase && spec.window_days) windowEnd = addDaysIso(prevBase, spec.window_days);
+      status = record ? "done" : statusFor(due, today);
+    }
+    rows.push({ label: spec.label, record, due, windowEnd, status, isBooster: false });
+    prevBase = record?.given_on ?? null;
   });
   if (v.repeat_days) {
     const last = given[given.length - 1];
@@ -116,8 +122,8 @@ export function doseRows(v: Vaccine, doses: DoseRecord[], planStart: string | nu
   return rows;
 }
 
-export function nextDose(v: Vaccine, doses: DoseRecord[], planStart: string | null, today = isoToday()): DoseRow | null {
-  return doseRows(v, doses, planStart, today).find((r) => !r.record) ?? null;
+export function nextDose(v: Vaccine, doses: DoseRecord[], today = isoToday()): DoseRow | null {
+  return doseRows(v, doses, today).find((r) => !r.record) ?? null;
 }
 
 export type CheckRow = { last: CheckEvent | null; due: string | null; status: DueStatus };
