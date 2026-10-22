@@ -168,6 +168,12 @@ export const ACTIVITIES: { label: string; met: number }[] = [
   { label: "Walking, moderate (3 mph)", met: 3.5 },
   { label: "Walking, brisk (4 mph)", met: 5.0 },
   { label: "Hiking", met: 6.0 },
+  // Rucking (walking with a weighted pack): estimates scaled from the Compendium's
+  // backpacking / load-carrying codes, by pack weight at ~3-3.5 mph.
+  { label: "Rucking, light pack (10-20 lb)", met: 5.5 },
+  { label: "Rucking, moderate pack (20-30 lb)", met: 6.5 },
+  { label: "Rucking, heavy pack (30-45 lb)", met: 7.5 },
+  { label: "Rucking, 45+ lb or hills", met: 8.5 },
   { label: "Running, 5 mph (12 min/mi)", met: 8.3 },
   { label: "Running, 6 mph (10 min/mi)", met: 9.8 },
   { label: "Running, 7.5 mph (8 min/mi)", met: 11.8 },
