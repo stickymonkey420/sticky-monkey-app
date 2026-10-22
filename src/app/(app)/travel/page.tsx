@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plane } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import TravelDashboard from "@/components/travel/TravelDashboard";
 
-// Travel -- App Director only for now.
-// Placeholder until the feature details are defined.
+// Travel -- App Director only for now (same check as the travel_* RLS
+// policies: travel_access()). Trips, budgets, care-abroad comparison, documents.
 export default function TravelPage() {
   const [loading, setLoading] = useState(true);
-  const [allowed, setAllowed] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -17,9 +17,9 @@ export default function TravelPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      const { data } = user ? await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle() : { data: null };
+      const { data: allowed } = user ? await supabase.rpc("travel_access") : { data: false };
       if (cancelled) return;
-      setAllowed(data?.role === "app_director");
+      setUserId(allowed === true && user ? user.id : null);
       setLoading(false);
     }
     load();
@@ -35,14 +35,10 @@ export default function TravelPage() {
       </div>
       {loading ? (
         <div className="text-sm text-text-muted">Loading…</div>
-      ) : !allowed ? (
+      ) : !userId ? (
         <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">Your account doesn&apos;t have access to this page.</div>
       ) : (
-        <div className="flex flex-col items-center rounded-2xl border border-card-border bg-card-bg px-6 py-12 text-center">
-          <Plane size={36} className="text-[#4f8cff]" />
-          <div className="mt-3 text-base font-semibold text-text-primary">Coming soon</div>
-          <p className="mt-1 max-w-md text-sm text-text-muted">This is where your travel planning will live. Features are being set up.</p>
-        </div>
+        <TravelDashboard userId={userId} />
       )}
     </>
   );

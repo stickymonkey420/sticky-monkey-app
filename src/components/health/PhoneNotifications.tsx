@@ -62,7 +62,7 @@ export default function PhoneNotifications({ userId }: { userId: string }) {
         {state === "on" && <span className="ml-auto rounded-full bg-[#3ddc97]/15 px-2 py-0.5 text-[11px] font-semibold text-[#3ddc97]">On</span>}
       </div>
       <p className="mt-1.5 text-xs text-text-muted">
-        Get these reminders on this device, plus fasting goals and a Monday summary of medical follow-ups.
+        Get these reminders on this device, plus fasting goals, a Monday summary of medical follow-ups, and passport/visa expiry alerts from Travel.
       </p>
       {state === "loading" && <p className="mt-2 text-xs text-text-muted">Checking…</p>}
       {state === "ios-install" && (
