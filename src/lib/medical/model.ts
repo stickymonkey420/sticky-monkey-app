@@ -62,12 +62,13 @@ export type MedicalSettings = { plan_start: string | null; notes: string | null;
 // ---- money ----
 // Costs are stored in the currency they were paid in; totals are shown per
 // currency (no exchange-rate guessing). Add a code here + to the DB check to extend.
-export type Currency = "USD" | "PHP" | "THB" | "VND";
+export type Currency = "USD" | "PHP" | "THB" | "VND" | "MXN";
 export const CURRENCIES: { code: Currency; label: string }[] = [
   { code: "USD", label: "US dollar ($)" },
   { code: "PHP", label: "Philippine peso (₱)" },
   { code: "THB", label: "Thai baht (฿)" },
   { code: "VND", label: "Vietnamese dong (₫)" },
+  { code: "MXN", label: "Mexican peso (MX$)" },
 ];
 export function fmtMoney(amount: number, currency: Currency): string {
   try {
