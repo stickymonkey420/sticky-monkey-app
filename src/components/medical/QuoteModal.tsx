@@ -4,16 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Copy, Download, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { CURRENCIES, checkRow, doseRows, isoToday, type Currency, type MedicalData } from "@/lib/medical/model";
-import { buildQuotePdf, quoteFileName, type QuoteItem } from "@/lib/medical/quotePdf";
+import { buildQuotePdf, quoteFileName, quoteMessage, type QuoteItem } from "@/lib/medical/quotePdf";
 import { INPUT, LABEL, Shell } from "./MedicalModals";
 
 type Line = QuoteItem & { key: string; open: boolean };
 
-// Build a "Request for price quote" PDF of the services still needed and send
-// it to a clinic. On a phone the PDF goes straight into the share sheet (pick
-// Mail/Gmail and it's attached). On a computer it downloads and your email app
-// opens addressed to the clinic; attach the downloaded PDF. It's sent from the
-// member's own email, so the clinic replies to them directly. $0.
+// Build a fillable "Request for price quote" PDF of the services still needed
+// and email it to a clinic. The app sends it (api/medical/quote-email): the
+// message is in the email body, the PDF is attached, replies go straight to
+// the member and they get a copy. Download PDF is there for WhatsApp/print. $0.
 export default function QuoteModal({
   data,
   currency,
@@ -65,6 +64,7 @@ export default function QuoteModal({
   const [notes, setNotes] = useState("");
   const [includePatient, setIncludePatient] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null); // null = use the generated text
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -121,18 +121,8 @@ export default function QuoteModal({
   }
 
   const subject = `Price quote request${name.trim() ? ` - ${name.trim()}` : ""}`;
-  const body = [
-    `Hello${clinic ? ` ${clinic.name}` : ""},`,
-    "",
-    `I'd like a price quote for the services in the attached PDF (${chosen.length} item${chosen.length === 1 ? "" : "s"}). Please reply with the price of each in ${cur}, whether you have them in stock, and your earliest availability.`,
-    dates.trim() ? `\nPreferred dates: ${dates.trim()}` : "",
-    "",
-    "Thank you,",
-    name.trim(),
-    phone.trim(),
-  ]
-    .filter((l, i, a) => !(l === "" && a[i - 1] === ""))
-    .join("\n");
+  const generated = quoteMessage({ clinicName: clinic?.name, name, phone, count: chosen.length, currency: cur, dates });
+  const body = message ?? generated;
 
   async function run(fn: () => Promise<void>) {
     if (!chosen.length) return setMsg("Pick at least one service.");
@@ -156,21 +146,20 @@ export default function QuoteModal({
 
   const onEmail = () =>
     run(async () => {
+      if (!clinic) throw new Error("Pick a clinic first.");
+      if (!clinic.email) throw new Error("Add this clinic's email first (Clinics › tap the clinic).");
       const { blob, file } = await makePdf();
-      const pdf = new File([blob], file, { type: "application/pdf" });
-      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-      // Phones: share sheet with the PDF attached (choose Mail or Gmail).
-      if (nav.canShare?.({ files: [pdf] }) && /Mobi|iPhone|iPad|Android/i.test(navigator.userAgent)) {
-        if (clinic?.email) await navigator.clipboard?.writeText(clinic.email).catch(() => {});
-        await navigator.share({ files: [pdf], title: subject, text: body });
-        setMsg(clinic?.email ? `Sent to your share sheet. The clinic's email (${clinic.email}) is copied; paste it in the To field.` : "Sent to your share sheet.");
-        return;
-      }
-      // Computers: download, then open the email app addressed to the clinic.
-      download(blob, file);
-      const to = clinic?.email ? encodeURIComponent(clinic.email) : "";
-      window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      setMsg("PDF downloaded and your email app opened. Attach the PDF from your Downloads folder, then send.");
+      const buf = new Uint8Array(await blob.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+      const res = await fetch("/api/medical/quote-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerId: clinic.id, subject, message: body, fileName: file, pdfBase64: btoa(bin), items: chosen.length }),
+      });
+      const j = (await res.json().catch(() => null)) as { error?: string; to?: string; cc?: string } | null;
+      if (!res.ok) throw new Error(j?.error || "Couldn't send the email.");
+      setMsg(`Sent to ${j?.to}. A copy went to ${j?.cc}, and the clinic's reply will come to you.`);
     });
 
   return (
@@ -295,6 +284,17 @@ export default function QuoteModal({
             Include my age and sex (some prices depend on them)
           </label>
         )}
+      </div>
+      <div className="mt-3">
+        <div className="mb-1 flex items-center justify-between">
+          <label className={LABEL}>Email message</label>
+          {message !== null && (
+            <button type="button" className="text-[11px] text-[#4f8cff] hover:underline" onClick={() => setMessage(null)}>
+              Reset
+            </button>
+          )}
+        </div>
+        <textarea className={`${INPUT} min-h-[140px]`} value={body} onChange={(e) => setMessage(e.target.value)} maxLength={5000} />
       </div>
       <p className="mt-3 text-[11px] text-text-muted">Only the services you tick are included. No results, conditions or other health data go in the PDF.</p>
       {msg && <p className="mt-2 text-sm text-text-primary">{msg}</p>}
