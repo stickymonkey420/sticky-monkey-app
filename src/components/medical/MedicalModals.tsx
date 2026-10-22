@@ -5,6 +5,9 @@ import { Plus, Trash2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import {
+  CURRENCIES,
+  fmtMoney,
+  parseMoney,
   deleteCheck,
   deleteCheckEvent,
   deleteDose,
@@ -20,6 +23,7 @@ import {
   saveVaccine,
   type Check,
   type CheckEvent,
+  type Currency,
   type DoseRecord,
   type DoseSpec,
   type Provider,
@@ -81,12 +85,48 @@ function useSave(onDone: () => void) {
   return { saving, error, run, setError };
 }
 
+// Amount + currency pair used on vaccines, checks, doses and results.
+export function CostInput({
+  label,
+  amount,
+  currency,
+  onAmount,
+  onCurrency,
+  placeholder,
+}: {
+  label: string;
+  amount: string;
+  currency: Currency;
+  onAmount: (v: string) => void;
+  onCurrency: (c: Currency) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className={LABEL}>{label}</label>
+      <div className="flex gap-1.5">
+        <input className={`${INPUT} min-w-0 flex-1`} inputMode="decimal" value={amount} onChange={(e) => onAmount(e.target.value)} placeholder={placeholder ?? "0"} />
+        <select className={`${INPUT} w-[84px]`} value={currency} onChange={(e) => onCurrency(e.target.value as Currency)} aria-label="Currency">
+          {CURRENCIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.code}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+const money = (n: number | null | undefined, c: Currency | null | undefined, fallback: Currency) => (n != null ? fmtMoney(Number(n), c ?? fallback) : null);
+
 // ---- Record a vaccine dose ---------------------------------------------
 export function DoseModal({
   userId,
   vaccine,
   doses,
   providers,
+  currency,
   onClose,
   onSaved,
 }: {
@@ -94,6 +134,7 @@ export function DoseModal({
   vaccine: Vaccine;
   doses: DoseRecord[];
   providers: Provider[];
+  currency: Currency;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -105,6 +146,8 @@ export function DoseModal({
   const [date, setDate] = useState(isoToday());
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
+  const [cost, setCost] = useState(vaccine.cost_per_dose != null ? String(vaccine.cost_per_dose) : "");
+  const [cur, setCur] = useState<Currency>(vaccine.cost_currency ?? currency);
   const { saving, error, run } = useSave(onSaved);
   const options = Array.from(new Set([...pending.map((p) => p.label), ...(vaccine.repeat_days ? ["Booster"] : [])]));
 
@@ -126,7 +169,15 @@ export function DoseModal({
               onClick={async () => {
                 if (!date) return;
                 const ok = await run(() =>
-                  recordDose(createClient(), userId, { vaccine_id: vaccine.id, dose_label: label, given_on: date, location: location.trim() || null, notes: notes.trim() || null }),
+                  recordDose(createClient(), userId, {
+                    vaccine_id: vaccine.id,
+                    dose_label: label,
+                    given_on: date,
+                    location: location.trim() || null,
+                    notes: notes.trim() || null,
+                    cost: parseMoney(cost),
+                    currency: parseMoney(cost) != null ? cur : null,
+                  }),
                 );
                 if (ok) onClose();
               }}
@@ -162,10 +213,11 @@ export function DoseModal({
               ))}
             </datalist>
           </div>
-          <div className="col-span-2">
+          <div>
             <label className={LABEL}>Notes (brand, lot, reaction…)</label>
             <input className={INPUT} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} />
           </div>
+          <CostInput label="Cost paid" amount={cost} currency={cur} onAmount={setCost} onCurrency={setCur} />
         </div>
       ) : (
         <p className="text-sm text-text-muted">Series complete.</p>
@@ -177,7 +229,7 @@ export function DoseModal({
             <div key={d.id} className="flex items-center gap-2 py-1 text-sm">
               <span className="w-20 text-text-primary">{d.dose_label === "Booster" ? "Booster" : `Dose ${d.dose_label}`}</span>
               <span className="text-text-muted">{fmtDate(d.given_on)}</span>
-              <span className="min-w-0 flex-1 truncate text-xs text-text-muted">{[d.location, d.notes].filter(Boolean).join(" · ")}</span>
+              <span className="min-w-0 flex-1 truncate text-xs text-text-muted">{[d.location, d.notes, money(d.cost, d.currency, currency)].filter(Boolean).join(" · ")}</span>
               <button
                 type="button"
                 aria-label="Delete"
@@ -206,13 +258,15 @@ const REPEATS: { label: string; days: number | null }[] = [
   { label: "Every 10 years", days: 3650 },
 ];
 
-export function VaccineModal({ userId, vaccine, onClose, onSaved }: { userId: string; vaccine?: Vaccine | null; onClose: () => void; onSaved: () => void }) {
+export function VaccineModal({ userId, vaccine, currency, onClose, onSaved }: { userId: string; vaccine?: Vaccine | null; currency: Currency; onClose: () => void; onSaved: () => void }) {
   const confirm = useConfirm();
   const [name, setName] = useState(vaccine?.name ?? "");
   const [category, setCategory] = useState(vaccine?.category ?? "Core");
   const [reason, setReason] = useState(vaccine?.reason ?? "");
   const [doses, setDoses] = useState<DoseSpec[]>(vaccine?.doses?.length ? vaccine.doses : [{ label: "1", after_days: 0 }]);
   const [repeat, setRepeat] = useState<number | null>(vaccine?.repeat_days ?? null);
+  const [cost, setCost] = useState(vaccine?.cost_per_dose != null ? String(vaccine.cost_per_dose) : "");
+  const [cur, setCur] = useState<Currency>(vaccine?.cost_currency ?? currency);
   const { saving, error, run, setError } = useSave(onSaved);
 
   const setDose = (i: number, patch: Partial<DoseSpec>) => setDoses((d) => d.map((x, j) => (j === i ? { ...x, ...patch } : x)));
@@ -251,7 +305,22 @@ export function VaccineModal({ userId, vaccine, onClose, onSaved }: { userId: st
                 ...(i > 0 && Number(d.window_days) > 0 ? { window_days: Math.round(Number(d.window_days)) } : {}),
               }));
               const ok = await run(() =>
-                saveVaccine(createClient(), userId, { name: name.trim(), category: category.trim() || "Core", reason: reason.trim() || null, doses: clean, repeat_days: repeat, active: true, sort: vaccine?.sort ?? 100 }, vaccine?.id),
+                saveVaccine(
+                  createClient(),
+                  userId,
+                  {
+                    name: name.trim(),
+                    category: category.trim() || "Core",
+                    reason: reason.trim() || null,
+                    doses: clean,
+                    repeat_days: repeat,
+                    active: true,
+                    sort: vaccine?.sort ?? 100,
+                    cost_per_dose: parseMoney(cost),
+                    cost_currency: parseMoney(cost) != null ? cur : null,
+                  },
+                  vaccine?.id,
+                ),
               );
               if (ok) onClose();
             }}
@@ -285,10 +354,11 @@ export function VaccineModal({ userId, vaccine, onClose, onSaved }: { userId: st
             ))}
           </select>
         </div>
-        <div className="col-span-2">
+        <div>
           <label className={LABEL}>Why / notes</label>
           <input className={INPUT} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} />
         </div>
+        <CostInput label="Cost per dose (estimate)" amount={cost} currency={cur} onAmount={setCost} onCurrency={setCur} />
       </div>
       <div className="mt-4">
         <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">Dose schedule</div>
@@ -338,6 +408,7 @@ export function CheckLogModal({
   check,
   events,
   providers,
+  currency,
   onClose,
   onSaved,
 }: {
@@ -345,6 +416,7 @@ export function CheckLogModal({
   check: Check;
   events: CheckEvent[];
   providers: Provider[];
+  currency: Currency;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -353,6 +425,8 @@ export function CheckLogModal({
   const [date, setDate] = useState(isoToday());
   const [result, setResult] = useState("");
   const [location, setLocation] = useState("");
+  const [cost, setCost] = useState(check.est_cost != null ? String(check.est_cost) : "");
+  const [cur, setCur] = useState<Currency>(check.cost_currency ?? currency);
   const { saving, error, run } = useSave(onSaved);
   return (
     <Shell
@@ -370,7 +444,14 @@ export function CheckLogModal({
             className={btnPrimary}
             onClick={async () => {
               if (!date) return;
-              const ok = await run(() => recordCheck(createClient(), userId, { check_id: check.id, done_on: date, result: result.trim() || null, location: location.trim() || null }));
+              const ok = await run(() => recordCheck(createClient(), userId, {
+                  check_id: check.id,
+                  done_on: date,
+                  result: result.trim() || null,
+                  location: location.trim() || null,
+                  cost: parseMoney(cost),
+                  currency: parseMoney(cost) != null ? cur : null,
+                }));
               if (ok) onClose();
             }}
           >
@@ -393,10 +474,11 @@ export function CheckLogModal({
             ))}
           </datalist>
         </div>
-        <div className="col-span-2">
+        <div>
           <label className={LABEL}>Result</label>
-          <input className={INPUT} value={result} onChange={(e) => setResult(e.target.value)} maxLength={500} placeholder="e.g. 122/78, A1c 5.4%, normal" />
+          <input className={INPUT} value={result} onChange={(e) => setResult(e.target.value)} maxLength={500} placeholder="e.g. 122/78, A1c 5.4%" />
         </div>
+        <CostInput label="Cost paid" amount={cost} currency={cur} onAmount={setCost} onCurrency={setCur} />
       </div>
       {mine.length > 0 && (
         <div className="mt-4 border-t border-white/[0.08] pt-3">
@@ -405,6 +487,7 @@ export function CheckLogModal({
             <div key={e.id} className="flex items-center gap-2 py-1 text-sm">
               <span className="w-28 text-text-muted">{fmtDate(e.done_on)}</span>
               <span className="min-w-0 flex-1 truncate text-text-primary">{e.result || "—"}</span>
+              {e.cost != null && <span className="text-xs text-text-muted">{money(e.cost, e.currency, currency)}</span>}
               <button
                 type="button"
                 aria-label="Delete"
@@ -425,12 +508,14 @@ export function CheckLogModal({
 }
 
 // ---- Add / edit a health check -------------------------------------------
-export function CheckEditModal({ userId, check, onClose, onSaved }: { userId: string; check?: Check | null; onClose: () => void; onSaved: () => void }) {
+export function CheckEditModal({ userId, check, currency, onClose, onSaved }: { userId: string; check?: Check | null; currency: Currency; onClose: () => void; onSaved: () => void }) {
   const confirm = useConfirm();
   const [name, setName] = useState(check?.name ?? "");
   const [why, setWhy] = useState(check?.why ?? "");
   const [kind, setKind] = useState<Check["kind"]>(check?.kind ?? "recurring");
   const [months, setMonths] = useState(String(check?.interval_months ?? 12));
+  const [cost, setCost] = useState(check?.est_cost != null ? String(check.est_cost) : "");
+  const [cur, setCur] = useState<Currency>(check?.cost_currency ?? currency);
   const { saving, error, run, setError } = useSave(onSaved);
   return (
     <Shell
@@ -464,7 +549,16 @@ export function CheckEditModal({ userId, check, onClose, onSaved }: { userId: st
                 saveCheck(
                   createClient(),
                   userId,
-                  { name: name.trim(), why: why.trim() || null, kind, interval_months: kind === "recurring" ? Math.min(240, Math.max(1, m || 12)) : null, active: true, sort: check?.sort ?? 100 },
+                  {
+                    name: name.trim(),
+                    why: why.trim() || null,
+                    kind,
+                    interval_months: kind === "recurring" ? Math.min(240, Math.max(1, m || 12)) : null,
+                    active: true,
+                    sort: check?.sort ?? 100,
+                    est_cost: parseMoney(cost),
+                    cost_currency: parseMoney(cost) != null ? cur : null,
+                  },
                   check?.id,
                 ),
               );
@@ -496,10 +590,11 @@ export function CheckEditModal({ userId, check, onClose, onSaved }: { userId: st
             <input className={INPUT} type="number" min={1} max={240} value={months} onChange={(e) => setMonths(e.target.value)} />
           </div>
         )}
-        <div className="col-span-2">
+        <div>
           <label className={LABEL}>When / why</label>
           <input className={INPUT} value={why} onChange={(e) => setWhy(e.target.value)} maxLength={300} />
         </div>
+        <CostInput label="Cost per visit (estimate)" amount={cost} currency={cur} onAmount={setCost} onCurrency={setCur} />
       </div>
       {error && <p className="mt-3 text-sm text-[#ff5c7a]">{error}</p>}
     </Shell>

@@ -14,8 +14,19 @@ export type Vaccine = {
   repeat_days: number | null;
   active: boolean;
   sort: number;
+  cost_per_dose?: number | null;
+  cost_currency?: Currency | null;
 };
-export type DoseRecord = { id: string; vaccine_id: string; dose_label: string; given_on: string; location: string | null; notes: string | null };
+export type DoseRecord = {
+  id: string;
+  vaccine_id: string;
+  dose_label: string;
+  given_on: string;
+  location: string | null;
+  notes: string | null;
+  cost?: number | null;
+  currency?: Currency | null;
+};
 export type Check = {
   id: string;
   name: string;
@@ -24,10 +35,52 @@ export type Check = {
   kind: "recurring" | "once" | "discuss" | "conditional";
   active: boolean;
   sort: number;
+  est_cost?: number | null;
+  cost_currency?: Currency | null;
 };
-export type CheckEvent = { id: string; check_id: string; done_on: string; result: string | null; location: string | null };
+export type CheckEvent = {
+  id: string;
+  check_id: string;
+  done_on: string;
+  result: string | null;
+  location: string | null;
+  cost?: number | null;
+  currency?: Currency | null;
+};
 export type Provider = { id: string; name: string; city: string | null; country: string | null; kind: string | null; phone: string | null; notes: string | null };
-export type MedicalSettings = { plan_start: string | null; notes: string | null };
+export type MedicalSettings = { plan_start: string | null; notes: string | null; currency?: Currency };
+
+// ---- money ----
+// Costs are stored in the currency they were paid in; totals are shown per
+// currency (no exchange-rate guessing). Add a code here + to the DB check to extend.
+export type Currency = "USD" | "PHP" | "THB" | "VND";
+export const CURRENCIES: { code: Currency; label: string }[] = [
+  { code: "USD", label: "US dollar ($)" },
+  { code: "PHP", label: "Philippine peso (₱)" },
+  { code: "THB", label: "Thai baht (฿)" },
+  { code: "VND", label: "Vietnamese dong (₫)" },
+];
+export function fmtMoney(amount: number, currency: Currency): string {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: currency === "VND" ? 0 : 2 }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`;
+  }
+}
+export type MoneyTotals = Partial<Record<Currency, number>>;
+export function addMoney(t: MoneyTotals, amount: number | null | undefined, currency: Currency | null | undefined, fallback: Currency) {
+  if (amount == null || !(amount > 0)) return;
+  const c = currency ?? fallback;
+  t[c] = (t[c] ?? 0) + Number(amount);
+}
+export function fmtTotals(t: MoneyTotals): string {
+  const parts = CURRENCIES.filter((c) => (t[c.code] ?? 0) > 0).map((c) => fmtMoney(t[c.code]!, c.code));
+  return parts.length ? parts.join(" + ") : "—";
+}
+export const parseMoney = (s: string): number | null => {
+  const n = Number(String(s).replace(/[^0-9.]/g, ""));
+  return s.trim() && Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
+};
 
 export type MedicalData = {
   settings: MedicalSettings;
@@ -151,7 +204,7 @@ export const STATUS_STYLE: Record<DueStatus, { label: string; color: string; bg:
 // ---- queries ----
 export async function fetchMedical(supabase: SupabaseClient, userId: string): Promise<MedicalData> {
   const [s, v, d, c, e, p] = await Promise.all([
-    supabase.from("medical_settings").select("plan_start,notes").eq("user_id", userId).maybeSingle(),
+    supabase.from("medical_settings").select("plan_start,notes,currency").eq("user_id", userId).maybeSingle(),
     supabase.from("medical_vaccines").select("*").order("sort").order("created_at"),
     supabase.from("medical_vaccine_doses").select("*").order("given_on"),
     supabase.from("medical_checks").select("*").order("sort").order("created_at"),
@@ -161,7 +214,7 @@ export async function fetchMedical(supabase: SupabaseClient, userId: string): Pr
   const err = [s, v, d, c, e, p].find((r) => r.error)?.error;
   if (err) throw new Error(err.message);
   return {
-    settings: (s.data as MedicalSettings | null) ?? { plan_start: null, notes: null },
+    settings: (s.data as MedicalSettings | null) ?? { plan_start: null, notes: null, currency: "USD" },
     vaccines: (v.data ?? []) as Vaccine[],
     doses: (d.data ?? []) as DoseRecord[],
     checks: (c.data ?? []) as Check[],

@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Building2, CalendarDays, Pencil, Plus, ShieldCheck, Stethoscope, Syringe } from "lucide-react";
+import { Building2, CalendarDays, Pencil, Plus, ShieldCheck, Stethoscope, Syringe, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
+  CURRENCIES,
   STATUS_STYLE,
+  addMoney,
   checkRow,
+  fmtMoney,
+  fmtTotals,
   daysBetween,
   doseRows,
   fetchMedical,
@@ -13,7 +17,9 @@ import {
   isoToday,
   saveSettings,
   type Check,
+  type Currency,
   type DueStatus,
+  type MoneyTotals,
   type MedicalData,
   type Provider,
   type Vaccine,
@@ -93,6 +99,27 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
   const age = profile?.birth_year ? new Date().getFullYear() - profile.birth_year : null;
   const vaccines = data.vaccines.filter((v) => v.active);
   const checks = data.checks.filter((c) => c.active);
+  const currency: Currency = data.settings.currency ?? "USD";
+
+  // Costs, kept in the currency each was entered in (no exchange-rate guessing).
+  const year = today.slice(0, 4);
+  const spent: MoneyTotals = {};
+  for (const d of data.doses) if (d.given_on.startsWith(year)) addMoney(spent, d.cost, d.currency, currency);
+  for (const e of data.events) if (e.done_on.startsWith(year)) addMoney(spent, e.cost, e.currency, currency);
+  const ahead: MoneyTotals = {};
+  let unpriced = 0;
+  for (const v of vaccines) {
+    const open = doseRows(v, data.doses, today).filter((r) => !r.record).length;
+    if (!open) continue;
+    if (v.cost_per_dose != null) addMoney(ahead, Number(v.cost_per_dose) * open, v.cost_currency, currency);
+    else unpriced++;
+  }
+  for (const c of checks) {
+    const st = checkRow(c, data.events, today).status;
+    if (st === "done" || st === "info") continue;
+    if (c.est_cost != null) addMoney(ahead, c.est_cost, c.cost_currency, currency);
+    else unpriced++;
+  }
 
   // Everything still open, most urgent first.
   const next: NextItem[] = [];
@@ -126,6 +153,15 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
     return s === "done" || s === "info";
   }).length;
 
+  async function saveCurrency(c: Currency) {
+    try {
+      await saveSettings(createClient(), userId, { currency: c });
+      refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Save failed.");
+    }
+  }
+
   async function saveSettingsNow() {
     setSavingSettings(true);
     try {
@@ -156,6 +192,34 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
             {profile?.sex ? ` · ${profile.sex[0].toUpperCase()}${profile.sex.slice(1)}` : ""}
           </div>
           <div className="text-xs text-text-muted">{age ? "From your Health profile." : "Set your birth year in Health → Profile."}</div>
+        </div>
+        <div>
+          <label className={LABEL}>Default currency</label>
+          <select className={`${INPUT} w-56`} value={currency} onChange={(e) => saveCurrency(e.target.value as Currency)}>
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Costs */}
+      <div className={`${CARD} grid grid-cols-1 gap-4 sm:grid-cols-2`}>
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+            <Wallet size={14} className="text-[#f5d020]" /> Spent in {year}
+          </div>
+          <div className="mt-1.5 text-2xl font-bold text-text-primary">{fmtTotals(spent)}</div>
+          <div className="text-[11px] text-text-muted">From the costs you log on doses and check results.</div>
+        </div>
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Still to pay (estimate)</div>
+          <div className="mt-1.5 text-2xl font-bold text-[#f5d020]">{fmtTotals(ahead)}</div>
+          <div className="text-[11px] text-text-muted">
+            Remaining doses and checks due.{unpriced ? ` ${unpriced} item${unpriced === 1 ? " has" : "s have"} no cost yet; add one with the pencil.` : ""}
+          </div>
         </div>
       </div>
 
@@ -230,6 +294,9 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
                               <div className="text-sm font-semibold text-text-primary">{v.name}</div>
                               {v.reason && <div className="text-[11px] text-text-muted">{v.reason}</div>}
                             </button>
+                            {v.cost_per_dose != null && (
+                              <span className="text-[11px] text-text-muted">{fmtMoney(Number(v.cost_per_dose), v.cost_currency ?? currency)}/dose</span>
+                            )}
                             <button type="button" onClick={() => setEditVaccine({ v })} aria-label="Edit vaccine" className="text-text-muted hover:text-text-primary">
                               <Pencil size={14} />
                             </button>
@@ -284,6 +351,7 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
                       {r.due ? ` · next ${fmtDate(r.due)}` : ""}
                     </div>
                   </button>
+                  {c.est_cost != null && <span className="text-[11px] text-text-muted">~{fmtMoney(Number(c.est_cost), c.cost_currency ?? currency)}</span>}
                   <Pill
                     status={r.status}
                     text={r.status === "overdue" && !r.last ? (c.kind === "once" ? "Not done" : "Not done") : r.status === "done" && c.kind === "once" ? "Done" : undefined}
@@ -342,10 +410,10 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
         Your personal follow-up list, not medical advice. Dose timing follows the schedule you set for each vaccine; confirm with your doctor or travel clinic.
       </p>
 
-      {dose && <DoseModal userId={userId} vaccine={dose} doses={data.doses} providers={data.providers} onClose={() => setDose(null)} onSaved={refresh} />}
-      {editVaccine && <VaccineModal userId={userId} vaccine={editVaccine.v} onClose={() => setEditVaccine(null)} onSaved={refresh} />}
-      {logCheck && <CheckLogModal userId={userId} check={logCheck} events={data.events} providers={data.providers} onClose={() => setLogCheck(null)} onSaved={refresh} />}
-      {editCheck && <CheckEditModal userId={userId} check={editCheck.c} onClose={() => setEditCheck(null)} onSaved={refresh} />}
+      {dose && <DoseModal userId={userId} vaccine={dose} doses={data.doses} providers={data.providers} currency={currency} onClose={() => setDose(null)} onSaved={refresh} />}
+      {editVaccine && <VaccineModal userId={userId} vaccine={editVaccine.v} currency={currency} onClose={() => setEditVaccine(null)} onSaved={refresh} />}
+      {logCheck && <CheckLogModal userId={userId} check={logCheck} events={data.events} providers={data.providers} currency={currency} onClose={() => setLogCheck(null)} onSaved={refresh} />}
+      {editCheck && <CheckEditModal userId={userId} check={editCheck.c} currency={currency} onClose={() => setEditCheck(null)} onSaved={refresh} />}
       {editProvider && <ProviderModal userId={userId} provider={editProvider.p} onClose={() => setEditProvider(null)} onSaved={refresh} />}
     </div>
   );
