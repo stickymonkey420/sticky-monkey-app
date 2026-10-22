@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import {
   LayoutDashboard,
   Wallet,
@@ -628,6 +628,20 @@ function MobileTabBar({
   );
 }
 
+// md breakpoint (768px), read live. The right-hand summary panel is mounted
+// only once: beside the content on computers/tablets, at the top of Home on
+// phones (two copies would double its data fetches and live-sync channels).
+// Server render assumes desktop, matching the old markup.
+const MD_QUERY = "(min-width: 768px)";
+function subscribeMd(cb: () => void) {
+  const m = window.matchMedia(MD_QUERY);
+  m.addEventListener("change", cb);
+  return () => m.removeEventListener("change", cb);
+}
+function useIsDesktop(): boolean {
+  return useSyncExternalStore(subscribeMd, () => window.matchMedia(MD_QUERY).matches, () => true);
+}
+
 // useSearchParams() is what makes nav-active-highlighting reactive to
 // account= changes on /holdings (see isLeafActive/hrefQuery above) --
 // clicking Brokerage after Crypto needs the sidebar to re-evaluate which
@@ -640,6 +654,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const search = searchParams.toString();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isDesktop = useIsDesktop();
   // Fetched once per page load (AppShell isn't a shared layout -- every
   // page mounts its own instance -- so this is a cheap single-row lookup,
   // same cost profile as the role checks already done independently on
@@ -810,6 +825,14 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           {role === "app_director" && !mfaPassed ? null : (
             <>
               <OnboardingFlow />
+              {/* Phones: Home opens on the summary panel (profile, net worth,
+                  health today, scoreboard, notifications, quick access); the
+                  full dashboard follows below. Computers keep it on the right. */}
+              {!isDesktop && pathname === "/dashboard" && (
+                <div className="mb-6">
+                  <ProfileSummaryCard />
+                </div>
+              )}
               {children}
             </>
           )}
@@ -822,9 +845,11 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           instead of being a per-page dashboard card -- so it's present,
           sticky, and height-matched to the sidebar on every page. Only the
           `children` in between changes as you navigate. */}
-      <div className="hidden shrink-0 px-4 pb-4 md:flex md:px-0 md:pb-0">
-        <ProfileSummaryCard />
-      </div>
+      {isDesktop && (
+        <div className="hidden shrink-0 px-4 pb-4 md:flex md:px-0 md:pb-0">
+          <ProfileSummaryCard />
+        </div>
+      )}
       <MobileTabBar
         pathname={pathname}
         showHealth={role === "app_director" || isDemo}
