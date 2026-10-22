@@ -610,6 +610,7 @@ export function ProviderModal({ userId, provider, onClose, onSaved }: { userId: 
     country: provider?.country ?? "",
     kind: provider?.kind ?? "",
     phone: provider?.phone ?? "",
+    email: provider?.email ?? "",
     notes: provider?.notes ?? "",
   });
   const { saving, error, run, setError } = useSave(onSaved);
@@ -646,9 +647,10 @@ export function ProviderModal({ userId, provider, onClose, onSaved }: { userId: 
             className={btnPrimary}
             onClick={async () => {
               if (!v.name.trim()) return setError("Name is required.");
+              if (v.email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email.trim())) return setError("That email doesn't look right.");
               const t = (s: string) => s.trim() || null;
               const ok = await run(() =>
-                saveProvider(createClient(), userId, { name: v.name.trim(), city: t(v.city), country: t(v.country), kind: t(v.kind), phone: t(v.phone), notes: t(v.notes) }, provider?.id),
+                saveProvider(createClient(), userId, { name: v.name.trim(), city: t(v.city), country: t(v.country), kind: t(v.kind), phone: t(v.phone), email: t(v.email), notes: t(v.notes) }, provider?.id),
               );
               if (ok) onClose();
             }}
@@ -664,6 +666,7 @@ export function ProviderModal({ userId, provider, onClose, onSaved }: { userId: 
         {field("country", "Country")}
         {field("kind", "Type", false, "Private hospital, clinic…")}
         {field("phone", "Phone")}
+        {field("email", "Email (for quote requests)", true, "appointments@clinic.com")}
         {field("notes", "Notes", true, "Hours, accreditation, what they stock")}
       </div>
       {error && <p className="mt-3 text-sm text-[#ff5c7a]">{error}</p>}

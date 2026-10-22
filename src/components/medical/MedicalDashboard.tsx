@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Building2, CalendarDays, Pencil, Plus, ShieldCheck, Stethoscope, Syringe, Wallet } from "lucide-react";
+import { Building2, CalendarDays, FileText, Pencil, Plus, ShieldCheck, Stethoscope, Syringe, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   CURRENCIES,
@@ -26,6 +26,7 @@ import {
 } from "@/lib/medical/model";
 import { CheckEditModal, CheckLogModal, DoseModal, INPUT, LABEL, ProviderModal, VaccineModal } from "./MedicalModals";
 import { useLiveRefresh } from "@/lib/supabase/useLiveRefresh";
+import QuoteModal from "./QuoteModal";
 
 const CARD = "rounded-2xl border border-card-border bg-card-bg p-5";
 
@@ -63,6 +64,7 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
   const [editProvider, setEditProvider] = useState<{ p: Provider | null } | null>(null);
   const [notes, setNotes] = useState("");
   const [savingSettings, setSavingSettings] = useState(false);
+  const [quote, setQuote] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -206,7 +208,7 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
       </div>
 
       {/* Costs */}
-      <div className={`${CARD} grid grid-cols-1 gap-4 sm:grid-cols-2`}>
+      <div className={`${CARD} grid grid-cols-1 gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-center`}>
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
             <Wallet size={14} className="text-[#f5d020]" /> Spent in {year}
@@ -221,6 +223,13 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
             Remaining doses and checks due.{unpriced ? ` ${unpriced} item${unpriced === 1 ? " has" : "s have"} no cost yet; add one with the pencil.` : ""}
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setQuote(true)}
+          className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c]"
+        >
+          <FileText size={15} /> Request a quote
+        </button>
       </div>
 
       {/* Counters */}
@@ -386,7 +395,7 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
                     <button key={p.id} type="button" onClick={() => setEditProvider({ p })} className="flex w-full items-start gap-2 rounded-lg px-1 py-1.5 text-left hover:bg-white/[0.03]">
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm text-text-primary">{p.name}</div>
-                        <div className="truncate text-[11px] text-text-muted">{[p.city, p.kind, p.notes, p.phone].filter(Boolean).join(" · ")}</div>
+                        <div className="truncate text-[11px] text-text-muted">{[p.city, p.kind, p.notes, p.phone, p.email].filter(Boolean).join(" · ")}</div>
                       </div>
                     </button>
                   ))}
@@ -414,6 +423,7 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
       {editVaccine && <VaccineModal userId={userId} vaccine={editVaccine.v} currency={currency} onClose={() => setEditVaccine(null)} onSaved={refresh} />}
       {logCheck && <CheckLogModal userId={userId} check={logCheck} events={data.events} providers={data.providers} currency={currency} onClose={() => setLogCheck(null)} onSaved={refresh} />}
       {editCheck && <CheckEditModal userId={userId} check={editCheck.c} currency={currency} onClose={() => setEditCheck(null)} onSaved={refresh} />}
+      {quote && <QuoteModal data={data} currency={currency} patient={profile ? { age, sex: profile.sex } : null} onClose={() => setQuote(false)} />}
       {editProvider && <ProviderModal userId={userId} provider={editProvider.p} onClose={() => setEditProvider(null)} onSaved={refresh} />}
     </div>
   );

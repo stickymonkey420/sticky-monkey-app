@@ -47,7 +47,16 @@ export type CheckEvent = {
   cost?: number | null;
   currency?: Currency | null;
 };
-export type Provider = { id: string; name: string; city: string | null; country: string | null; kind: string | null; phone: string | null; notes: string | null };
+export type Provider = {
+  id: string;
+  name: string;
+  city: string | null;
+  country: string | null;
+  kind: string | null;
+  phone: string | null;
+  email?: string | null;
+  notes: string | null;
+};
 export type MedicalSettings = { plan_start: string | null; notes: string | null; currency?: Currency };
 
 // ---- money ----
