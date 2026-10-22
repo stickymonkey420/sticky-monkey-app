@@ -16,6 +16,7 @@ import {
   Trophy,
   Megaphone,
   HeartPulse,
+  Plane,
   MessageSquare,
   Calculator,
   Menu,
@@ -232,6 +233,8 @@ const NAV_TREE: NavNode[] = [
       { href: "/health/medical", label: "Medical" }, // inherits the Health gate (App Director + demo)
     ],
   },
+  // Placeholder (2026-10-22): App Director only until the feature is defined.
+  { href: "/travel", label: "Travel", icon: Plane, requires: "owner" },
   {
     label: "My Wallet",
     icon: Wallet,
