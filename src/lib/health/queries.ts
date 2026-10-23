@@ -272,6 +272,32 @@ export async function updateLibraryFood(
   if (error) throw new Error(error.message);
 }
 
+// Same normalization the food lookup uses, so a custom food matches when logged by name.
+function singular(w: string): string {
+  if (w.length <= 3) return w;
+  if (w.endsWith("ies")) return w.slice(0, -3) + "y";
+  if (w.endsWith("oes")) return w.slice(0, -2);
+  if (/(ch|sh|x)es$/.test(w)) return w.slice(0, -2);
+  if (w.endsWith("s") && !w.endsWith("ss")) return w.slice(0, -1);
+  return w;
+}
+export function foodKey(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean).map(singular).join(" ");
+}
+
+export type NewLibraryFood = Pick<LibraryFood, "name" | "kcal_100g" | "protein_100g" | "carbs_100g" | "fat_100g" | "fiber_100g" | "sugar_100g" | "sodium_mg_100g" | "units">;
+
+// Adds a custom food (manual nutrition) to the member's library.
+export async function addLibraryFood(supabase: SupabaseClient, food: NewLibraryFood): Promise<void> {
+  const name_key = foodKey(food.name);
+  if (!name_key) throw new Error("Use letters or numbers in the name.");
+  const { error } = await supabase.from("health_foods").insert({ ...food, name_key, aliases: [], source: "manual" });
+  if (error) {
+    if (error.code === "23505") throw new Error(`"${food.name}" is already in your library. Search for it and edit it instead.`);
+    throw new Error(error.message);
+  }
+}
+
 export async function deleteLibraryFood(supabase: SupabaseClient, id: string): Promise<void> {
   const { error } = await supabase.from("health_foods").delete().eq("id", id);
   if (error) throw new Error(error.message);
