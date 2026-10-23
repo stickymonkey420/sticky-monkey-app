@@ -8,6 +8,7 @@ import AuthCard from "@/components/auth/AuthCard";
 import AuthPromises from "@/components/auth/AuthPromises";
 import Turnstile, { CAPTCHA_ENABLED } from "@/components/auth/Turnstile";
 import { HANDLE_HINT, isHandleTakenError, validateHandle } from "@/lib/profile/handle";
+import { SIGNUPS_OPEN, WAITLIST_URL } from "@/lib/auth/signups";
 
 const inputClass =
   "w-full rounded-lg border border-card-border bg-white/5 px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted/60 focus:border-[#4f8cff] focus:outline-none";
@@ -101,6 +102,35 @@ export default function SignUpPage() {
     }
 
     setCheckEmail(true);
+  }
+
+  if (!SIGNUPS_OPEN) {
+    return (
+      <AuthCard title="Invite only, for now" subtitle="Sticky Monkey is in private beta.">
+        <div className="flex flex-col gap-3 text-sm text-text-muted">
+          <p>
+            <span className="text-text-primary">Got an invite?</span> Open the invitation email and tap the link to set your
+            password. That creates your account.
+          </p>
+          <p>
+            <span className="text-text-primary">Want in?</span> Join the waitlist and we&apos;ll send you an invite as spots open.
+          </p>
+          <a
+            href={WAITLIST_URL}
+            className="mt-1 rounded-lg py-2.5 text-center text-sm font-semibold text-white"
+            style={{ backgroundColor: "#4f8cff" }}
+          >
+            Join the waitlist
+          </a>
+        </div>
+        <p className="mt-5 text-center text-sm text-text-muted">
+          Already a member?{" "}
+          <Link href="/sign-in" style={{ color: "#4f8cff" }}>
+            Sign in
+          </Link>
+        </p>
+      </AuthCard>
+    );
   }
 
   if (checkEmail) {

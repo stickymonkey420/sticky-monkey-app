@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import AuthCard from "@/components/auth/AuthCard";
+import { SIGNUPS_OPEN, WAITLIST_URL } from "@/lib/auth/signups";
 import AuthPromises from "@/components/auth/AuthPromises";
 import Turnstile, { CAPTCHA_ENABLED } from "@/components/auth/Turnstile";
 
@@ -224,10 +225,21 @@ export default function SignInPage() {
       <AuthPromises />
 
       <p className="mt-5 text-center text-sm text-text-muted">
-        Don&apos;t have an account?{" "}
-        <Link href="/sign-up" style={{ color: "#4f8cff" }}>
-          Sign up
-        </Link>
+        {SIGNUPS_OPEN ? (
+          <>
+            Don&apos;t have an account?{" "}
+            <Link href="/sign-up" style={{ color: "#4f8cff" }}>
+              Sign up
+            </Link>
+          </>
+        ) : (
+          <>
+            Invite-only beta.{" "}
+            <a href={WAITLIST_URL} style={{ color: "#4f8cff" }}>
+              Join the waitlist
+            </a>
+          </>
+        )}
       </p>
     </AuthCard>
   );
