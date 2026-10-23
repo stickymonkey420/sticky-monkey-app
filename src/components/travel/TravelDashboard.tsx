@@ -47,7 +47,7 @@ function Pill({ s, text }: { s: keyof typeof STATUS; text?: string }) {
 const purposeLabel = (p: string) => PURPOSES.find((x) => x.value === p)?.label ?? p;
 const categoryLabel = (c: string) => COST_CATEGORIES.find((x) => x.value === c)?.label ?? c;
 
-// Travel (App Director only for now): trips with budgets in any currency, the
+// Travel (free tier, all members): trips with budgets in any currency, the
 // care-abroad comparison (U.S. price vs. clinic quote + travel), and travel
 // documents with expiry reminders. Phase 2: days-in-country, IRS 330-day
 // counter, vaccines by destination, trip spending vs. budget.

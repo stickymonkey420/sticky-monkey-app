@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import TravelDashboard from "@/components/travel/TravelDashboard";
 
-// Travel -- App Director only for now (same check as the travel_* RLS
-// policies: travel_access()). Trips, budgets, care-abroad comparison, documents.
+// Travel -- free tier: every signed-in member, demo accounts included (same
+// check as the travel_* RLS policies: travel_access()). Trips, budgets,
+// care-abroad comparison, documents.
 export default function TravelPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);

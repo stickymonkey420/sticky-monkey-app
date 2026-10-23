@@ -1,4 +1,4 @@
-// Travel (App Director only for now): trips, trip budgets in any currency,
+// Travel (free tier, all members): trips, trip budgets in any currency,
 // travel documents with expiry reminders, and the care-abroad comparison
 // (U.S. price vs. clinic quote + travel costs). Exchange rates come from the
 // fx_rates table (fx-rates edge function, daily, free source).

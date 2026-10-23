@@ -233,8 +233,8 @@ const NAV_TREE: NavNode[] = [
       { href: "/health/medical", label: "Medical" }, // inherits the Health gate (App Director + demo)
     ],
   },
-  // Placeholder (2026-10-22): App Director only until the feature is defined.
-  { href: "/travel", label: "Travel", icon: Plane, requires: "owner" },
+  // Free tier (2026-10-23): every member, demo accounts included.
+  { href: "/travel", label: "Travel", icon: Plane },
   {
     label: "My Wallet",
     icon: Wallet,
