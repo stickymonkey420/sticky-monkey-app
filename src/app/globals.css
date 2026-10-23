@@ -99,3 +99,27 @@ body {
     bottom: calc(84px + env(safe-area-inset-bottom)) !important;
   }
 }
+
+/* ---- Keep text inside cards, platform-wide ----
+   Grid children default to min-width:auto, so one long value can push a card
+   wider than its column. min-width:0 keeps cards in their columns; long words
+   wrap only when they truly don't fit. */
+.grid > * {
+  min-width: 0;
+}
+body {
+  overflow-wrap: break-word;
+}
+/* Big stat numbers (<FitValue>): shrink to fit the card width, by character
+   count, between a readable floor and the design size; wrap as a last resort. */
+.fit-wrap {
+  container-type: inline-size;
+  width: 100%;
+  min-width: 0;
+}
+.fit-value {
+  font-size: clamp(1rem, calc(100cqi / (var(--chars) * 0.62)), var(--fit-max, 1.875rem));
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}

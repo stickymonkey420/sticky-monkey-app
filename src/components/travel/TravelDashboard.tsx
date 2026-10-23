@@ -22,6 +22,7 @@ import {
 } from "@/lib/travel/model";
 import { useLiveRefresh } from "@/lib/supabase/useLiveRefresh";
 import { CostModal, DocModal, TripModal } from "./TravelModals";
+import FitValue from "@/components/ui/FitValue";
 
 const CARD = "rounded-2xl border border-card-border bg-card-bg p-5";
 const STATUS = {
@@ -113,9 +114,11 @@ export default function TravelDashboard({ userId }: { userId: string }) {
         ].map((c) => (
           <div key={c.label} className={CARD}>
             <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">{c.label}</div>
-            <div className={`mt-1.5 text-3xl font-bold ${c.color ? "" : "text-text-primary"}`} style={c.color ? { color: c.color } : undefined}>
-              {c.value}
-            </div>
+            <FitValue
+              value={c.value}
+              className={`mt-1.5 font-bold ${c.color ? "" : "text-text-primary"}`}
+              style={c.color ? { color: c.color } : undefined}
+            />
           </div>
         ))}
       </div>
@@ -288,7 +291,7 @@ function TripDetail({
         </div>
         <div className="text-right">
           <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Trip budget</div>
-          <div className="text-2xl font-bold text-text-primary">{fmtMoney(tot.total, trip.currency)}</div>
+          <FitValue value={fmtMoney(tot.total, trip.currency)} max={24} className="font-bold text-text-primary" />
           {usd != null && <div className="text-[11px] text-text-muted">≈ {fmtMoney(usd, "USD")}</div>}
         </div>
       </div>

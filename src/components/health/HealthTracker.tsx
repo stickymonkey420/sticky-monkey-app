@@ -33,6 +33,7 @@ import RemindersModal from "./RemindersModal";
 import FastModal from "./FastModal";
 import { useNow } from "./useNow";
 import { useLiveRefresh } from "@/lib/supabase/useLiveRefresh";
+import FitValue from "@/components/ui/FitValue";
 
 const CARD = "rounded-2xl border border-card-border bg-card-bg p-5";
 const GREEN = "#3ddc97";
@@ -183,9 +184,7 @@ export default function HealthTracker({ userId }: { userId: string }) {
   const stat = (label: string, value: string, sub: string, color?: string) => (
     <div className={CARD}>
       <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">{label}</div>
-      <div className={`mt-1.5 text-3xl font-bold ${color ? "" : "text-text-primary"}`} style={color ? { color } : undefined}>
-        {value}
-      </div>
+      <FitValue value={value} className={`mt-1.5 font-bold ${color ? "" : "text-text-primary"}`} style={color ? { color } : undefined} />
       <div className="mt-1 text-xs text-text-muted">{sub}</div>
     </div>
   );

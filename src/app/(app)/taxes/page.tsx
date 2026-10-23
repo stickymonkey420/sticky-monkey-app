@@ -18,6 +18,7 @@ import {
 import TaxDisclaimer from "@/components/tax/TaxDisclaimer";
 import W2JobModal from "@/components/income/W2JobModal";
 import { W2_CHANGED_EVENT } from "@/lib/w2/types";
+import FitValue from "@/components/ui/FitValue";
 
 // Taxes > Overview: automatic federal + state ESTIMATE on everything the
 // member earns -- W-2 wages (from their last paystub), business & gig
@@ -352,7 +353,7 @@ export default function TaxesOverviewPage() {
             <div className="text-xs text-text-muted">
               Estimated total tax · {mode === "projected" ? `full year ${TAX_YEAR}` : "year to date"}
             </div>
-            <div className="mt-1 text-3xl font-bold text-text-primary">{usd(r.totalTax)}</div>
+            <FitValue value={usd(r.totalTax)} className="mt-1 font-bold text-text-primary" />
             <div className="mt-1 text-xs text-text-muted">
               On {usd(r.totalIncome)} income · Effective <b className="text-text-primary">{pct(r.effectiveRate)}</b> · Federal bracket{" "}
               <b className="text-text-primary">{pct(r.federalMarginal)}</b>

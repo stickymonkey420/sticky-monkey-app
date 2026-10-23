@@ -1,5 +1,6 @@
 import { money } from "@/lib/options/queries";
 import type { WalletOverview } from "@/lib/wallet/calc";
+import FitValue from "@/components/ui/FitValue";
 
 type WalletOverviewCardsProps = {
   overview: WalletOverview;
@@ -16,9 +17,7 @@ export default function WalletOverviewCards({ overview, loading }: WalletOvervie
   return (
     <div id="wallet-balance-card" className="rounded-2xl border border-card-border bg-card-bg p-5">
       <h3 className="mb-1 text-sm font-semibold text-text-primary">Wallet Overview</h3>
-      <div className="mb-1 text-3xl font-semibold text-text-primary">
-        {loading ? "…" : money(overview.balance)}
-      </div>
+      <FitValue value={loading ? "…" : money(overview.balance)} className="mb-1 font-semibold text-text-primary" />
       <div className={`mb-4 text-sm ${netUp ? "text-[#3ddc97]" : "text-[#ff5c7a]"}`}>
         {loading ? "" : `${netUp ? "▲" : "▼"} ${money(Math.abs(overview.netThisMonth))} this month`}
       </div>

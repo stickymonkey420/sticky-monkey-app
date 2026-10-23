@@ -6,6 +6,7 @@ import { EMPTY_INPUT, estimateTax, type TaxInput } from "@/lib/tax/calc";
 import { FILING_STATUS_LABELS, STATE_OPTIONS, TAX_YEAR, type FilingStatus } from "@/lib/tax/data2026";
 import { fetchTaxPrefill, type Prefill } from "@/lib/tax/prefill";
 import TaxDisclaimer from "@/components/tax/TaxDisclaimer";
+import FitValue from "@/components/ui/FitValue";
 
 // Taxes > Calculator: what-if federal + state ESTIMATE from hand-entered numbers. Inputs are kept
 // in this browser only (localStorage) -- nothing about a member's taxes is
@@ -210,7 +211,7 @@ export default function TaxesPage() {
         <div className="flex flex-col gap-4">
           <div className="rounded-2xl border border-card-border bg-card-bg p-5">
             <div className="text-xs text-text-muted">Estimated total tax · {TAX_YEAR}</div>
-            <div className="mt-1 text-3xl font-bold text-text-primary">{usd(r.totalTax)}</div>
+            <FitValue value={usd(r.totalTax)} className="mt-1 font-bold text-text-primary" />
             <div className="mt-1 text-xs text-text-muted">
               Effective rate <b className="text-text-primary">{pct(r.effectiveRate)}</b> · Federal bracket{" "}
               <b className="text-text-primary">{pct(r.federalMarginal)}</b>

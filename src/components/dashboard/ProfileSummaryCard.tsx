@@ -11,6 +11,7 @@ import InvestmentAlertCard from "./InvestmentAlertCard";
 import ScoreboardCard from "./ScoreboardCard";
 import HealthSummaryCard from "./HealthSummaryCard";
 import QuickAccessCard from "./QuickAccessCard";
+import FitValue from "@/components/ui/FitValue";
 
 const EMPTY_SUMMARY: NetWorthSummary = {
   categories: [],
@@ -96,7 +97,7 @@ export default function ProfileSummaryCard() {
           minus credit card balances), not a sum of every manual account. */}
       <div className="rounded-[30px] p-[30px]" style={{ backgroundColor: "rgb(32,40,56)" }}>
         <div className="text-sm text-text-muted">Net Worth</div>
-        <div className="mt-1 text-4xl font-bold text-text-primary">{loading ? "…" : money(summary.netWorth)}</div>
+        <FitValue value={loading ? "…" : money(summary.netWorth)} max={36} className="mt-1 font-bold text-text-primary" />
         <div className="mt-4 flex items-center gap-10 text-sm">
           <div>
             <div className="text-text-muted">Total Assets</div>

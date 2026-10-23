@@ -27,6 +27,7 @@ import {
 import { CheckEditModal, CheckLogModal, DoseModal, INPUT, LABEL, ProviderModal, VaccineModal } from "./MedicalModals";
 import { useLiveRefresh } from "@/lib/supabase/useLiveRefresh";
 import QuoteModal from "./QuoteModal";
+import FitValue from "@/components/ui/FitValue";
 
 const CARD = "rounded-2xl border border-card-border bg-card-bg p-5";
 
@@ -213,12 +214,12 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
             <Wallet size={14} className="text-[#f5d020]" /> Spent in {year}
           </div>
-          <div className="mt-1.5 text-2xl font-bold text-text-primary">{fmtTotals(spent)}</div>
+          <FitValue value={fmtTotals(spent)} max={24} className="mt-1.5 font-bold text-text-primary" />
           <div className="text-[11px] text-text-muted">From the costs you log on doses and check results.</div>
         </div>
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">Still to pay (estimate)</div>
-          <div className="mt-1.5 text-2xl font-bold text-[#f5d020]">{fmtTotals(ahead)}</div>
+          <FitValue value={fmtTotals(ahead)} max={24} className="mt-1.5 font-bold text-[#f5d020]" />
           <div className="text-[11px] text-text-muted">
             Remaining doses and checks due.{unpriced ? ` ${unpriced} item${unpriced === 1 ? " has" : "s have"} no cost yet; add one with the pencil.` : ""}
           </div>
@@ -242,9 +243,11 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
         ].map((t) => (
           <div key={t.label} className={CARD}>
             <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">{t.label}</div>
-            <div className={`mt-1.5 text-3xl font-bold ${t.color ? "" : "text-text-primary"}`} style={t.color ? { color: t.color } : undefined}>
-              {t.value}
-            </div>
+            <FitValue
+              value={String(t.value)}
+              className={`mt-1.5 font-bold ${t.color ? "" : "text-text-primary"}`}
+              style={t.color ? { color: t.color } : undefined}
+            />
           </div>
         ))}
       </div>
