@@ -8,7 +8,7 @@ import PlaidRelinkBanner from "@/components/accounts/PlaidRelinkBanner";
 import { createClient } from "@/lib/supabase/client";
 import { fetchManualAccounts } from "@/lib/accounts/queries";
 import { computeAccountsSummary, groupAccountsByCategory } from "@/lib/accounts/calc";
-import type { ManualAccount } from "@/lib/accounts/types";
+import type { AccountCategory, ManualAccount } from "@/lib/accounts/types";
 
 // Read-only port of the live Webflow "Banking" page (Designer title
 // "Accounts", slug invest-accounts, page id 6a858f3b38fe00bf9eef4550,
@@ -20,6 +20,8 @@ import type { ManualAccount } from "@/lib/accounts/types";
 // read-then-write split as every other page here; Add/Connect is a later
 // increment gated the same way manual_accounts writes are (paid/
 // app_director only, per RLS).
+
+const INVEST_ONLY: AccountCategory[] = ["brokerage_account", "retirement_account", "precious_metal"];
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<ManualAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,12 @@ export default function AccountsPage() {
   }, []);
 
   const summary = useMemo(() => computeAccountsSummary(accounts), [accounts]);
-  const groups = useMemo(() => groupAccountsByCategory(accounts), [accounts]);
+  // Banking shows bank, business and credit card accounts only; brokerage,
+  // retirement and precious metals live under Investments -> Accounts.
+  const groups = useMemo(
+    () => groupAccountsByCategory(accounts).filter((g) => !INVEST_ONLY.includes(g.category)),
+    [accounts]
+  );
 
   return (
     <>
