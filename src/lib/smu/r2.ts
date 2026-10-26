@@ -10,14 +10,18 @@ const PLAY_TTL = 60 * 60 * 3; // 3 h
 const UPLOAD_TTL = 60 * 15; // 15 min
 
 function cfg() {
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  // Accept the bare account ID or a pasted endpoint URL
+  // (https://<id>.r2.cloudflarestorage.com or <id>.eu.r2.cloudflarestorage.com).
+  const rawId = (process.env.R2_ACCOUNT_ID || "").trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  const host = rawId.includes(".") ? rawId : rawId ? `${rawId}.r2.cloudflarestorage.com` : "";
+  const accountId = host;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim();
   const bucket = process.env.R2_BUCKET;
   if (!accountId || !accessKeyId || !secretAccessKey || !bucket) return null;
   return {
     client: new AwsClient({ accessKeyId, secretAccessKey, service: "s3", region: "auto" }),
-    base: `https://${accountId}.r2.cloudflarestorage.com/${bucket}`,
+    base: `https://${host}/${bucket.trim()}`,
   };
 }
 
