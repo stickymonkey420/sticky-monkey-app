@@ -12,6 +12,8 @@ import type { NextConfig } from "next";
 //   plus Plaid Link's own API calls.
 // - img-src allows any https host: avatars/institution logos come from
 //   user data and Webflow's S3 asset bucket; images can't execute code.
+// - R2 (*.r2.cloudflarestorage.com): SMU videos play via signed links and
+//   the App Director uploads to them directly (connect-src).
 // - media-src data: is required for Abu's base64 MP3 voice replies; the S3
 //   Webflow asset bucket serves the SMU intro video (AbuIntro.mp4).
 // - frame-ancestors 'none' + X-Frame-Options DENY stop clickjacking.
@@ -26,8 +28,8 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self' ${supabaseUrl} ${supabaseWss} https://*.plaid.com https://challenges.cloudflare.com`,
-  "media-src 'self' data: blob: https://s3.amazonaws.com/webflow-prod-assets/",
+  `connect-src 'self' ${supabaseUrl} ${supabaseWss} https://*.plaid.com https://challenges.cloudflare.com https://*.r2.cloudflarestorage.com`,
+  "media-src 'self' data: blob: https://s3.amazonaws.com/webflow-prod-assets/ https://*.r2.cloudflarestorage.com",
   "frame-src https://cdn.plaid.com https://*.plaid.com https://challenges.cloudflare.com",
   "worker-src 'self' blob:",
   "object-src 'none'",

@@ -1,4 +1,4 @@
-import { INTRO_VIDEO_POSTER_URL } from "@/lib/dashboard/introVideo";
+import SmuLessons from "@/components/smu/SmuLessons";
 
 // Port of the live Webflow "SMU" (Sticky Monkey University) page (page id
 // 6a96641b0e5cff2da16490ad). Unlike every other ported page, this one's
@@ -16,13 +16,10 @@ import { INTRO_VIDEO_POSTER_URL } from "@/lib/dashboard/introVideo";
 // VIDEO_URL/SMU_CREST_URL come from the shared lib/dashboard/introVideo.ts
 // -- also used by WelcomeVideoModal (the first-login popup on Dashboard) --
 // so both point at the same asset.
-// Intro video pulled (2026-10) pending a re-edit -- a "coming soon" banner
-// shows in its place. Re-add the <video> using INTRO_VIDEO_URL when ready.
+// Lessons now come from SmuLessons (private Cloudflare R2 videos, managed
+// by the App Director in-app); it shows a "coming soon" card when empty.
 const ABU_AVATAR_URL =
   "https://s3.amazonaws.com/webflow-prod-assets/665f5b07319971d77a6e12a1/6a97f76bdc2bb83ea21e174f_abu-eyes-open-clean.png";
-// Shown as the video's placeholder frame before it's played, per your call
-// to swap in the SMU crest there instead of Abu's avatar.
-const SMU_CREST_URL = INTRO_VIDEO_POSTER_URL;
 
 export default function SmuPage() {
   return (
@@ -48,20 +45,7 @@ export default function SmuPage() {
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl border border-[#f5d020]/30 bg-card-bg">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={SMU_CREST_URL} alt="" className="absolute inset-0 h-full w-full object-cover opacity-15 blur-[2px]" />
-          <div className="relative flex flex-col items-center gap-2 px-6 py-14 text-center">
-            <span className="rounded-full bg-[#f5d020] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#0f131c]">
-              Coming soon
-            </span>
-            <h3 className="text-lg font-semibold text-text-primary">Abu&apos;s intro video and first lessons</h3>
-            <p className="max-w-xl text-sm text-text-muted">
-              We&apos;re polishing the intro and building plain-language lessons on budgeting, credit, investing and more.
-              Check back soon.
-            </p>
-          </div>
-        </div>
+        <SmuLessons />
       </div>
     </>
   );
