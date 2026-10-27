@@ -39,6 +39,9 @@ import type { CapTableEntry } from "@/lib/investors/types";
 // -- there is no aggregate view/RPC a non-director could read anyway, since
 // cap_table_select_own_or_director only ever returns a non-director's own
 // rows.
+
+// Private claude.ai page (App Director only): the LLC formation to-do list.
+const LAUNCH_PLAN_URL = "https://claude.ai/artifact/LX3qcJZv2pEqdy3eixc8Hw";
 export default function InvestorsPage() {
   const confirm = useConfirm();
   const [userId, setUserId] = useState<string | null>(null);
@@ -168,6 +171,23 @@ export default function InvestorsPage() {
         <div className="rounded-2xl border border-card-border bg-card-bg p-5 text-sm text-text-muted">Loading…</div>
       ) : (
         <div className="flex flex-col gap-6">
+          {isDirector && (
+            <a
+              href={LAUNCH_PLAN_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#f5d020]/40 bg-card-bg p-5 transition hover:border-[#f5d020]"
+            >
+              <div className="min-w-0">
+                <div className="text-xs font-semibold uppercase tracking-wide text-[#f5d020]">Company setup</div>
+                <div className="mt-1 text-base font-semibold text-text-primary">LLC launch plan</div>
+                <p className="mt-0.5 text-sm text-text-muted">
+                  Step-by-step list for forming the LLC in January 2027, with your questions, call notes and files. Opens in Claude.
+                </p>
+              </div>
+              <span className="rounded-md bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c]">Open plan</span>
+            </a>
+          )}
           <CompanyValuationCard settings={company} canEdit={isDirector} onSave={handleSaveValuation} />
           <YourEquityTable entries={myEntries} valuation={company?.valuation ?? null} totalShares={company?.total_shares ?? null} capPct={company?.individual_cap_pct ?? 8} />
 
