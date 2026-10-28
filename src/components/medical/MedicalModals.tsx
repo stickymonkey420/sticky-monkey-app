@@ -31,6 +31,8 @@ import {
 } from "@/lib/medical/model";
 
 export const INPUT = "w-full rounded-[10px] border border-[rgba(148,158,189,0.5)] bg-[#0d0f17] px-3 py-2 text-[13px] text-text-primary";
+// Same look without w-full, for fields sized side by side (amount + currency).
+const INPUT_NOWIDTH = INPUT.replace("w-full ", "");
 export const LABEL = "mb-1 block text-xs font-medium text-text-muted";
 
 // Shared popup shell: closes only via its buttons or Escape (app rule).
@@ -105,8 +107,8 @@ export function CostInput({
     <div>
       <label className={LABEL}>{label}</label>
       <div className="flex gap-1.5">
-        <input className={`${INPUT} min-w-0 flex-1`} inputMode="decimal" value={amount} onChange={(e) => onAmount(e.target.value)} placeholder={placeholder ?? "0"} />
-        <select className={`${INPUT} w-[84px]`} value={currency} onChange={(e) => onCurrency(e.target.value as Currency)} aria-label="Currency">
+        <input className={`${INPUT_NOWIDTH} min-w-0 flex-1`} inputMode="decimal" value={amount} onChange={(e) => onAmount(e.target.value)} placeholder={placeholder ?? "0.00"} />
+        <select className={`${INPUT_NOWIDTH} w-[88px] flex-none`} value={currency} onChange={(e) => onCurrency(e.target.value as Currency)} aria-label="Currency">
           {CURRENCIES.map((c) => (
             <option key={c.code} value={c.code}>
               {c.code}
