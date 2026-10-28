@@ -368,7 +368,14 @@ export default function MedicalDashboard({ userId }: { userId: string }) {
                     status={r.status}
                     text={r.status === "overdue" && !r.last ? (c.kind === "once" ? "Not done" : "Not done") : r.status === "done" && c.kind === "once" ? "Done" : undefined}
                   />
-                  <button type="button" onClick={() => setEditCheck({ c })} aria-label="Edit check" className="text-text-muted hover:text-text-primary">
+                  <button
+                    type="button"
+                    onClick={() => setLogCheck(c)}
+                    className="shrink-0 rounded-md bg-[#3ddc97]/15 px-2 py-1 text-[11px] font-semibold text-[#3ddc97] hover:bg-[#3ddc97]/25"
+                  >
+                    Log result
+                  </button>
+                  <button type="button" onClick={() => setEditCheck({ c })} aria-label="Edit check settings" className="text-text-muted hover:text-text-primary">
                     <Pencil size={14} />
                   </button>
                 </div>
