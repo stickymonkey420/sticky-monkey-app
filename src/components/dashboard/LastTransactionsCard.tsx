@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { BUILTIN_CATEGORIES, fmtDate, fmtTime, labelFor, money } from "@/lib/dashboard/transactions";
 import type { PlaidTransactionRow, TransactionCategory } from "@/lib/types/dashboard";
@@ -10,6 +11,10 @@ export default function LastTransactionsCard() {
   const [categories, setCategories] = useState<TransactionCategory[]>(BUILTIN_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [openMenuFor, setOpenMenuFor] = useState<string | null>(null);
+  // Menu is portaled to <body> with fixed positioning: the card is the last
+  // one on the page and AppShell's overflow-x-hidden content column clipped
+  // the old absolute dropdown, so the ⋯ click looked like it did nothing.
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; maxH: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,9 +66,37 @@ export default function LastTransactionsCard() {
         setOpenMenuFor(null);
       }
     }
+    function close() {
+      setOpenMenuFor(null);
+    }
     document.addEventListener("click", onDocClick);
-    return () => document.removeEventListener("click", onDocClick);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      document.removeEventListener("click", onDocClick);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
   }, []);
+
+  function toggleMenu(txId: string, btn: HTMLElement) {
+    if (openMenuFor === txId) {
+      setOpenMenuFor(null);
+      return;
+    }
+    const r = btn.getBoundingClientRect();
+    const W = 190;
+    const GAP = 4;
+    const below = window.innerHeight - r.bottom - GAP - 8;
+    const above = r.top - GAP - 8;
+    const want = Math.min(320, categories.length * 36 + 12);
+    const openUp = below < want && above > below;
+    const maxH = Math.max(120, Math.min(320, openUp ? above : below));
+    const top = openUp ? r.top - GAP - Math.min(want, maxH) : r.bottom + GAP;
+    const left = Math.max(8, Math.min(r.right - W, window.innerWidth - W - 8));
+    setMenuPos({ top, left, maxH });
+    setOpenMenuFor(txId);
+  }
 
   async function selectCategory(txId: string, catKey: string) {
     setOpenMenuFor(null);
@@ -113,17 +146,18 @@ export default function LastTransactionsCard() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setOpenMenuFor(openMenuFor === t.id ? null : t.id);
+                      toggleMenu(t.id, e.currentTarget);
                     }}
                     className="rounded px-2 py-1 text-text-muted hover:bg-white/10 hover:text-text-primary"
                     aria-label="Change category"
                   >
                     ⋯
                   </button>
-                  {openMenuFor === t.id && (
+                  {openMenuFor === t.id && menuPos && createPortal(
                     <div
                       ref={menuRef}
-                      className="absolute right-0 top-full z-20 mt-1 max-h-[320px] w-[190px] overflow-y-auto rounded-lg border border-[#2c3448] bg-[#1b2130] p-1.5 shadow-xl"
+                      style={{ position: "fixed", top: menuPos.top, left: menuPos.left, maxHeight: menuPos.maxH }}
+                      className="z-[60] w-[190px] overflow-y-auto rounded-lg border border-[#2c3448] bg-[#1b2130] p-1.5 shadow-xl"
                     >
                       {categories.map((c) => (
                         <button
@@ -139,7 +173,8 @@ export default function LastTransactionsCard() {
                           <span>{c.label}</span>
                         </button>
                       ))}
-                    </div>
+                    </div>,
+                    document.body,
                   )}
                 </div>
               </div>
