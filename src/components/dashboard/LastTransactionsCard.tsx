@@ -61,19 +61,26 @@ export default function LastTransactionsCard() {
   }, []);
 
   useEffect(() => {
-    function onDocClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+    // pointerdown, not click: App Router's React root is the document, so a
+    // document "click" listener ran in the same click that opened the menu
+    // and closed it instantly (the ⋯ looked dead). Clicks on a ⋯ toggle are
+    // ignored here so its own onClick can open/close the menu.
+    function onDocClick(e: Event) {
+      const target = e.target as Element | null;
+      if (target?.closest?.("[data-tx-menu-toggle]")) return;
+      if (menuRef.current && !menuRef.current.contains(target as Node)) {
         setOpenMenuFor(null);
       }
     }
-    function close() {
+    function close(e?: Event) {
+      if (e && menuRef.current && e.target instanceof Node && menuRef.current.contains(e.target)) return;
       setOpenMenuFor(null);
     }
-    document.addEventListener("click", onDocClick);
+    document.addEventListener("pointerdown", onDocClick);
     window.addEventListener("resize", close);
     window.addEventListener("scroll", close, true);
     return () => {
-      document.removeEventListener("click", onDocClick);
+      document.removeEventListener("pointerdown", onDocClick);
       window.removeEventListener("resize", close);
       window.removeEventListener("scroll", close, true);
     };
@@ -149,6 +156,7 @@ export default function LastTransactionsCard() {
                       toggleMenu(t.id, e.currentTarget);
                     }}
                     className="rounded px-2 py-1 text-text-muted hover:bg-white/10 hover:text-text-primary"
+                    data-tx-menu-toggle=""
                     aria-label="Change category"
                   >
                     ⋯
