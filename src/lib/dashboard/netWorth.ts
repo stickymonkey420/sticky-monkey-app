@@ -13,7 +13,7 @@ import type {
 // live site pixel-for-pixel, not just be "close" colors from the app's own
 // palette.
 export const CATEGORY_COLORS: Record<NetWorthBucketName, string> = {
-  Equities: "#219653",
+  Brokerages: "#219653",
   "Personal Vault": "#f2c14e",
   "IRA Traditional": "#2d9cdb",
   "IRA Roth": "#e67e22",
@@ -25,8 +25,8 @@ export const CATEGORY_COLORS: Record<NetWorthBucketName, string> = {
 
 // account_name (case-insensitive, trimmed) -> bucket name
 const NAME_TO_BUCKET: Record<string, NetWorthBucketName> = {
-  "sofi self-directed": "Equities",
-  "robinhood individual": "Equities",
+  "sofi self-directed": "Brokerages",
+  "robinhood individual": "Brokerages",
   "home safe": "Personal Vault",
   "robinhood traditional ira": "IRA Traditional",
   "robinhood roth ira": "IRA Roth",
@@ -39,7 +39,7 @@ function bucketByType(a: ManualAccount, nameKey: string): NetWorthBucketName | n
   const ret = (a.retirement_type || "").toLowerCase();
   if (a.category === "precious_metal") return "Personal Vault";
   if (a.category === "brokerage_account") {
-    return sub.includes("crypto") || nameKey.includes("crypto") ? "Crypto" : "Equities";
+    return sub.includes("crypto") || nameKey.includes("crypto") ? "Crypto" : "Brokerages";
   }
   if (a.category === "retirement_account") {
     if (ret === "self_directed_ira" || nameKey.includes("sdira") || nameKey.includes("self-directed ira")) return "Self-Directed IRA";
@@ -57,7 +57,7 @@ export function money(n: number | null | undefined): string {
 
 export function summarizeNetWorth(accounts: ManualAccount[]): NetWorthSummary {
   const buckets: Record<NetWorthBucketName, number> = {
-    Equities: 0,
+    Brokerages: 0,
     "Personal Vault": 0,
     "IRA Traditional": 0,
     "IRA Roth": 0,

@@ -7,7 +7,7 @@ export type ManualAccount = {
 };
 
 export type NetWorthBucketName =
-  | "Equities"
+  | "Brokerages"
   | "Personal Vault"
   | "IRA Traditional"
   | "IRA Roth"
