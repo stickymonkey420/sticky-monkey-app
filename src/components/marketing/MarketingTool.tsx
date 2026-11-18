@@ -549,6 +549,10 @@ function InviteList({
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<"" | Invitee["status"]>("");
+  // Inline edit (one row at a time).
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
 
   const counts = useMemo(() => {
     const m: Record<string, number> = {};
@@ -558,8 +562,15 @@ function InviteList({
   const visible = filter ? invitees.filter((i) => i.status === filter) : invitees;
   const selectable = (i: Invitee) => i.status === "pending" || i.status === "invited";
 
-  async function add(rows: { email: string; name: string | null }[]) {
-    if (!rows.length || busy) return;
+  async function add(input: { email: string; name: string | null }[]) {
+    if (!input.length || busy) return;
+    // Names are required (the invite greets them by name).
+    const rows = input.filter((r) => r.name && r.name.trim());
+    const noName = input.length - rows.length;
+    if (!rows.length) {
+      onStatus(input.length === 1 ? "Enter a name." : "Every line needs a name, e.g. \"Jane Doe <jane@example.com>\".", true);
+      return;
+    }
     setBusy(true);
     const existing = new Set(invitees.map((i) => i.email.toLowerCase()));
     const fresh = rows.filter((r) => !existing.has(r.email));
@@ -572,11 +583,50 @@ function InviteList({
       }
     } else setBusy(false);
     const skipped = rows.length - fresh.length;
-    onStatus(`Added ${fresh.length}${skipped ? `, ${skipped} already on the list` : ""}.`, false);
+    onStatus(`Added ${fresh.length}${skipped ? `, ${skipped} already on the list` : ""}${noName ? `, ${noName} skipped (no name)` : ""}.`, !!noName);
     setName("");
     setEmail("");
     setBulk("");
     setShowBulk(false);
+    onChanged();
+  }
+
+  function startEdit(i: Invitee) {
+    setEditId(i.id);
+    setEditName(i.name ?? "");
+    setEditEmail(i.email);
+  }
+
+  async function saveEdit(i: Invitee) {
+    if (busy) return;
+    const nextEmail = editEmail.trim().toLowerCase();
+    const nextName = editName.trim() || null;
+    if (!nextName) {
+      onStatus("Name is required.", true);
+      return;
+    }
+    // A joined member's email belongs to their account; only the name is editable.
+    const emailChanged = i.status !== "joined" && nextEmail !== i.email.toLowerCase();
+    if (emailChanged && !EMAIL_RE.test(nextEmail)) {
+      onStatus("Enter a valid email address.", true);
+      return;
+    }
+    if (emailChanged && invitees.some((x) => x.id !== i.id && x.email.toLowerCase() === nextEmail)) {
+      onStatus("That email is already on the list.", true);
+      return;
+    }
+    setBusy(true);
+    // New email = a new person to invite: back to pending (any earlier link went to the old address).
+    const patch: Record<string, unknown> = { name: nextName };
+    if (emailChanged) Object.assign(patch, { email: nextEmail, status: "pending", invite_count: 0, invited_at: null });
+    const { error } = await createClient().from("marketing_invitees").update(patch).eq("id", i.id);
+    setBusy(false);
+    if (error) {
+      onStatus(`Couldn't save: ${error.message}`, true);
+      return;
+    }
+    setEditId(null);
+    onStatus("Saved.", false);
     onChanged();
   }
 
@@ -594,7 +644,7 @@ function InviteList({
     <div className={CARD}>
       <div className="mb-4 flex flex-wrap items-end gap-2">
         <div className="min-w-[160px] flex-1">
-          <label className={LABEL}>Name</label>
+          <label className={LABEL}>Name (required)</label>
           <input className={INPUT} value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" />
         </div>
         <div className="min-w-[200px] flex-[1.4]">
@@ -605,14 +655,14 @@ function InviteList({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && emailOk) add([{ email: email.trim().toLowerCase(), name: name.trim() || null }]);
+              if (e.key === "Enter" && emailOk && name.trim()) add([{ email: email.trim().toLowerCase(), name: name.trim() || null }]);
             }}
             placeholder="jane@example.com"
           />
         </div>
         <button
           type="button"
-          disabled={!emailOk || busy}
+          disabled={!emailOk || !name.trim() || busy}
           onClick={() => add([{ email: email.trim().toLowerCase(), name: name.trim() || null }])}
           className="rounded-lg bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-40"
         >
@@ -625,13 +675,16 @@ function InviteList({
 
       {showBulk && (
         <div className="mb-4 rounded-xl bg-white/5 p-3">
-          <label className={LABEL}>One person per line: &quot;Jane Doe &lt;jane@example.com&gt;&quot;, &quot;jane@example.com, Jane Doe&quot; or just the email. Works with a column pasted from a spreadsheet or contacts export.</label>
+          <label className={LABEL}>One person per line with a name: &quot;Jane Doe &lt;jane@example.com&gt;&quot; or &quot;jane@example.com, Jane Doe&quot;. Lines without a name are skipped. Works with a column pasted from a spreadsheet or contacts export.</label>
           <textarea className={`${INPUT} min-h-[120px] font-mono text-xs`} value={bulk} onChange={(e) => setBulk(e.target.value)} />
           <div className="mt-2 flex items-center gap-3">
             <button type="button" disabled={!parsed.length || busy} onClick={() => add(parsed)} className="rounded-lg bg-[#f5d020] px-4 py-2 text-sm font-semibold text-[#0f131c] disabled:opacity-40">
               Add {parsed.length || ""}
             </button>
-            <span className="text-xs text-text-muted">{parsed.length} email{parsed.length === 1 ? "" : "s"} found</span>
+            <span className="text-xs text-text-muted">
+              {parsed.length} email{parsed.length === 1 ? "" : "s"} found
+              {parsed.some((r) => !r.name) ? `, ${parsed.filter((r) => !r.name).length} missing a name` : ""}
+            </span>
           </div>
         </div>
       )}
@@ -694,17 +747,58 @@ function InviteList({
                       className="h-4 w-4"
                     />
                   </td>
-                  <td className="py-2 pr-3 text-text-primary">{i.name || <span className="text-text-muted">—</span>}</td>
-                  <td className="py-2 pr-3 text-text-primary">{i.email}</td>
+                  {editId === i.id ? (
+                    <>
+                      <td className="py-2 pr-3">
+                        <input className={INPUT} value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Name" aria-label="Name" />
+                      </td>
+                      <td className="py-2 pr-3">
+                        <input
+                          className={INPUT}
+                          type="email"
+                          value={editEmail}
+                          disabled={i.status === "joined"}
+                          title={i.status === "joined" ? "Joined members keep their account email" : undefined}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveEdit(i);
+                            if (e.key === "Escape") setEditId(null);
+                          }}
+                          aria-label="Email"
+                        />
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="py-2 pr-3 text-text-primary">{i.name || <span className="text-text-muted">—</span>}</td>
+                      <td className="py-2 pr-3 text-text-primary">{i.email}</td>
+                    </>
+                  )}
                   <td className={`py-2 pr-3 capitalize ${INVITE_STATUS_STYLE[i.status]}`}>
                     {i.status}
                     {i.invite_count > 1 ? ` (${i.invite_count}x)` : ""}
                   </td>
                   <td className="py-2 pr-3 text-text-muted">{i.invited_at ? new Date(i.invited_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—"}</td>
-                  <td className="py-2 text-right">
-                    <button type="button" onClick={() => remove(i)} className="text-xs text-[#ff5c7a] hover:underline">
-                      Remove
-                    </button>
+                  <td className="whitespace-nowrap py-2 text-right">
+                    {editId === i.id ? (
+                      <>
+                        <button type="button" disabled={busy || !editName.trim()} onClick={() => saveEdit(i)} className="mr-3 text-xs font-semibold text-[#3ddc97] hover:underline disabled:opacity-40">
+                          Save
+                        </button>
+                        <button type="button" onClick={() => setEditId(null)} className="text-xs text-text-muted hover:underline">
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button type="button" onClick={() => startEdit(i)} className="mr-3 text-xs text-[#4f8cff] hover:underline">
+                          Edit
+                        </button>
+                        <button type="button" onClick={() => remove(i)} className="text-xs text-[#ff5c7a] hover:underline">
+                          Remove
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
