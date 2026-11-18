@@ -16,7 +16,31 @@ import { directorAal2Error } from "@/lib/auth/mfaGuard";
 // mode: "test" (just you), "all" (opted-in members), "invitees" (invite list:
 // people not signed up yet; optional inviteeIds limits it to a selection).
 type Body = { subject?: string; body?: string; ctaLabel?: string; ctaUrl?: string; mode?: "test" | "all" | "invitees"; inviteeIds?: string[]; testAudience?: "members" | "invitees" };
-type Recipient = { email: string; name: string | null; token: string; inviteeId?: string };
+type Recipient = { email: string; name: string | null; token: string; inviteeId?: string; joinUrl?: string };
+type Admin = ReturnType<typeof createAdminClient>;
+
+// Personal one-time join link for an invitee (invite-only beta: public
+// sign-up is off in Supabase, so this is the only way in). generateLink()
+// creates the unconfirmed auth user (handle_new_user fills profiles.name)
+// and returns the hashed token WITHOUT Supabase sending its own email; the
+// link goes through our /auth/confirm interstitial (scanner-safe) and on to
+// /update-password, then the mandatory onboarding survey. Re-sending to
+// someone who was already invited but never accepted issues a fresh link.
+async function joinLink(admin: Admin, origin: string, email: string, name: string | null, invitedBy: string): Promise<string> {
+  const data = { name: name || undefined, invited_by: invitedBy };
+  let res = await admin.auth.admin.generateLink({ type: "invite", email, options: { data } });
+  let type = "invite";
+  if (res.error && /already|registered|exists/i.test(res.error.message)) {
+    // Account exists but was never confirmed: a magic link signs them in
+    // (and confirms the email) the same one-time way.
+    res = await admin.auth.admin.generateLink({ type: "magiclink", email });
+    type = "magiclink";
+  }
+  const hash = res.data?.properties?.hashed_token;
+  if (res.error || !hash) throw new Error(res.error?.message || "no link returned");
+  const q = new URLSearchParams({ token_hash: hash, type, next: "/update-password" });
+  return `${origin}/auth/confirm?${q.toString()}`;
+}
 
 const BATCH = 100;
 
@@ -68,12 +92,16 @@ async function handle(request: Request): Promise<NextResponse> {
     recipients = [{ email, name: me.name ?? null, token: me.marketing_unsub_token }];
   } else if (mode === "invitees") {
     const admin = createAdminClient();
-    // Anyone on the list who has since signed up is marked joined and skipped.
+    // Anyone on the list who has actually joined (confirmed / signed in) is
+    // marked joined and skipped. Invited-but-not-accepted accounts exist in
+    // auth too (the join link creates them), so a bare "has a profile"
+    // check would wrongly skip them on a re-send.
     const members = new Set<string>();
-    for (let offset = 0; offset < 50000; offset += 1000) {
-      const { data } = await admin.from("profiles").select("email").not("email", "is", null).order("id").range(offset, offset + 999);
-      for (const r of data ?? []) if (r.email) members.add(String(r.email).toLowerCase());
-      if (!data || data.length < 1000) break;
+    for (let page = 1; page <= 50; page++) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error) return bad(`Couldn't check who has joined: ${error.message}`, 500);
+      for (const u of data.users) if (u.email && (u.email_confirmed_at || u.last_sign_in_at)) members.add(u.email.toLowerCase());
+      if (data.users.length < 1000) break;
     }
     let q = admin.from("marketing_invitees").select("id,email,name,unsub_token,status").in("status", ["pending", "invited"]);
     const ids = Array.isArray(input.inviteeIds) ? input.inviteeIds.filter((x) => typeof x === "string").slice(0, 1000) : [];
@@ -87,6 +115,20 @@ async function handle(request: Request): Promise<NextResponse> {
     }
     if (joined.length) await admin.from("marketing_invitees").update({ status: "joined" }).in("id", joined);
     if (!recipients.length) return bad("No one left to invite (everyone selected has joined or unsubscribed).");
+    // Each invitee's button becomes their own one-time join link.
+    const origin = new URL(request.url).origin;
+    const linkErrors: string[] = [];
+    const withLinks: Recipient[] = [];
+    for (const r of recipients) {
+      try {
+        withLinks.push({ ...r, joinUrl: await joinLink(admin, origin, r.email, r.name, user.id) });
+      } catch (e) {
+        linkErrors.push(`${r.email}: ${e instanceof Error ? e.message : "link failed"}`);
+      }
+    }
+    if (!withLinks.length) return bad(`Couldn't create join links. ${linkErrors[0] ?? ""}`.trim(), 500);
+    recipients = withLinks;
+    if (linkErrors.length) console.error("join link errors", linkErrors.join("; "));
   } else {
     const admin = createAdminClient();
     for (let offset = 0; offset < 50000; offset += 1000) {
@@ -127,8 +169,8 @@ async function handle(request: Request): Promise<NextResponse> {
       const { html, text } = renderMarketingEmail({
         subject,
         body,
-        ctaLabel: ctaLabel || undefined,
-        ctaUrl: ctaUrl || undefined,
+        ctaLabel: r.joinUrl ? ctaLabel || "Join as a founding member" : ctaLabel || undefined,
+        ctaUrl: r.joinUrl || ctaUrl || undefined,
         name: r.name,
         unsubscribeUrl,
         postalAddress: postal,

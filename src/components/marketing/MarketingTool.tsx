@@ -325,10 +325,20 @@ function EmailComposer({
             <label className={LABEL}>Button text</label>
             <input className={INPUT} value={ctaLabel} maxLength={40} onChange={(e) => setCtaLabel(e.target.value)} />
           </div>
-          <div>
-            <label className={LABEL}>Button link (optional, https://)</label>
-            <input className={INPUT} value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} placeholder="https://" />
-          </div>
+          {inviting ? (
+            <div>
+              <label className={LABEL}>Button link</label>
+              <p className="rounded-lg bg-white/5 px-3 py-2 text-xs leading-relaxed text-text-muted">
+                Each invitee gets their own one-time join link. It only works for their email, once. Public sign-up stays closed.
+                Your test email uses the sign-up page as a placeholder.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <label className={LABEL}>Button link (optional, https://)</label>
+              <input className={INPUT} value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} placeholder="https://" />
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" disabled={!ready || !!busy} onClick={() => send("test")} className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-text-primary disabled:opacity-40">
