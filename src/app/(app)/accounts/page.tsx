@@ -5,6 +5,7 @@ import AccountsSummaryCards from "@/components/accounts/AccountsSummaryCards";
 import AccountsByCategoryTable from "@/components/accounts/AccountsByCategoryTable";
 import EditManualAccountModal from "@/components/accounts/EditManualAccountModal";
 import PlaidRelinkBanner from "@/components/accounts/PlaidRelinkBanner";
+import ParkYourCashCard from "@/components/cashRates/ParkYourCashCard";
 import { createClient } from "@/lib/supabase/client";
 import { fetchManualAccounts } from "@/lib/accounts/queries";
 import { computeAccountsSummary, groupAccountsByCategory } from "@/lib/accounts/calc";
@@ -88,6 +89,7 @@ export default function AccountsPage() {
           loading={loading}
           onEdit={canEdit ? (a) => setEditing(a) : undefined}
         />
+        {!loading && <ParkYourCashCard accounts={accounts} onAddRate={canEdit ? (a) => setEditing(a) : undefined} />}
       </div>
       {editing && (
         <EditManualAccountModal

@@ -15,6 +15,7 @@ import {
   Briefcase,
   Trophy,
   Megaphone,
+  PiggyBank,
   HeartPulse,
   Plane,
   MessageSquare,
@@ -322,6 +323,7 @@ const NAV_TREE: NavNode[] = [
   { href: "/users-groups", label: "Users & Groups", requires: "admin", icon: ShieldCheck },
   { href: "/feedback", label: "Feedback", requires: "owner", icon: MessageSquare },
   { href: "/marketing", label: "Marketing", requires: "owner", icon: Megaphone },
+  { href: "/cash-rates", label: "Cash Rates", requires: "owner", icon: PiggyBank },
 ];
 
 function passesGate(requires: NavNode["requires"], role: Role | null, accountTypes: string[] | null, isDemo = false): boolean {

@@ -169,7 +169,7 @@ export default function EditManualAccountModal({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass} htmlFor="ma-rate">Interest rate %</label>
+              <label className={labelClass} htmlFor="ma-rate">Interest rate / APY %</label>
               <input id="ma-rate" type="number" step="0.01" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="optional" className={inputClass} />
             </div>
             <div>
