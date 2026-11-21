@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
-import { fetchCashOffers, fmtApy, INSURERS, isStale, KIND_LABEL, OFFER_KINDS, STALE_DAYS, type CashOffer, type OfferKind } from "@/lib/cashRates";
+import { fetchCashOffers, fetchInflation, fmtApy, fmtPeriod, INSURERS, type Inflation, isStale, KIND_LABEL, OFFER_KINDS, STALE_DAYS, type CashOffer, type OfferKind } from "@/lib/cashRates";
 
 const CARD = "rounded-2xl border border-card-border bg-card-bg p-5";
 const INPUT = "w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-text-primary outline-none focus:border-[#f5d020]/60";
@@ -111,8 +111,8 @@ function OfferFields({ f, set }: { f: Form; set: (f: Form) => void }) {
         <input className={INPUT} value={f.url} onChange={(e) => set({ ...f, url: e.target.value })} placeholder="https://" />
       </div>
       <div className="sm:col-span-2 lg:col-span-4">
-        <label className={LABEL}>Notes for members (optional)</label>
-        <input className={INPUT} value={f.notes} maxLength={300} onChange={(e) => set({ ...f, notes: e.target.value })} placeholder="No fees, no minimum balance" />
+        <label className={LABEL}>Conditions Abu should know (optional)</label>
+        <input className={INPUT} value={f.notes} maxLength={300} onChange={(e) => set({ ...f, notes: e.target.value })} placeholder="Needs $5K direct deposit for top rate; no fees; 6 withdrawals/mo" />
       </div>
     </div>
   );
@@ -127,10 +127,13 @@ export default function CashRatesAdmin({ onStatus }: { onStatus: (text: string, 
   const [addForm, setAddForm] = useState<Form>(EMPTY);
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Form>(EMPTY);
+  const [inflation, setInflation] = useState<Inflation | null>(null);
 
   const load = useCallback(async () => {
-    const rows = await fetchCashOffers(createClient());
+    const supabase = createClient();
+    const [rows, cpi] = await Promise.all([fetchCashOffers(supabase), fetchInflation(supabase)]);
     setOffers(rows);
+    setInflation(cpi);
     setLoading(false);
   }, []);
   useEffect(() => {
@@ -194,10 +197,22 @@ export default function CashRatesAdmin({ onStatus }: { onStatus: (text: string, 
     <div className="flex flex-col gap-5">
       <div className={CARD}>
         <p className="text-sm text-text-muted">
-          Members see active offers on Bank Accounts under <span className="text-text-primary">Where to park your cash</span>. Every Monday the app
-          notifies members whose cash earns well below the best offer, and reminds you to check rates. Open each bank&apos;s page, confirm the APY, then
-          tap <span className="text-text-primary">Verified</span>. Offers not verified in 21 days stop being used for alerts.
+          Members don&apos;t see this list. Abu uses the active, verified offers to answer questions like &quot;Where should I park my $25K emergency
+          fund?&quot;, and every Monday the app notifies members whose cash earns well below the best offer (pointing them to Abu) and reminds you to
+          check rates. Open each bank&apos;s page, confirm the APY and conditions, then tap <span className="text-text-primary">Verified</span>. Offers not
+          verified in 21 days are left out of Abu&apos;s answers and alerts.
         </p>
+        {inflation && (
+          <div className="mt-3 rounded-xl bg-white/5 p-3 text-sm">
+            <span className="text-text-muted">Inflation </span>
+            <span className="font-semibold text-text-primary">{inflation.value.toFixed(2)}%</span>
+            <span className="text-text-muted">
+              {" "}
+              (U.S. CPI, 12 months to {fmtPeriod(inflation.period)}, updated automatically). After inflation = APY minus inflation; a negative number means cash
+              is losing buying power. Abu tells members whether each option beats inflation.
+            </span>
+          </div>
+        )}
         <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
           <span className={stale ? "text-[#f5d020]" : "text-[#3ddc97]"}>
             {stale ? `${stale} active offer${stale === 1 ? "" : "s"} not checked in ${STALE_DAYS}+ days` : "All active offers checked this week"}
@@ -262,7 +277,15 @@ export default function CashRatesAdmin({ onStatus }: { onStatus: (text: string, 
                       )}
                     </div>
                   </div>
-                  <div className="w-20 text-right text-lg font-semibold text-text-primary">{fmtApy(o.apy)}</div>
+                  <div className="w-24 text-right">
+                    <div className="text-lg font-semibold text-text-primary">{fmtApy(o.apy)}</div>
+                    {inflation && o.apy != null && (
+                      <div className={`text-[11px] ${Number(o.apy) - inflation.value >= 0 ? "text-[#3ddc97]" : "text-[#ff5c7a]"}`}>
+                        {Number(o.apy) - inflation.value >= 0 ? "+" : ""}
+                        {(Number(o.apy) - inflation.value).toFixed(2)}% after inflation
+                      </div>
+                    )}
+                  </div>
                   <div className="w-36 text-xs">
                     {!o.active ? (
                       <span className="text-text-muted">Off for members</span>

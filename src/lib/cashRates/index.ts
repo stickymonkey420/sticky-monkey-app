@@ -1,9 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // "Where to park your cash": a short list of bank / Treasury offers the App
-// Director curates (public.cash_offers) and re-verifies weekly. Members only
-// see active offers (RLS). A weekly cron (public.cash_rate_scan, Mondays)
-// notifies members whose cash accounts earn well below the best offer.
+// Director curates (public.cash_offers) and re-verifies weekly. Members never
+// see the list directly (RLS: App Director only); Abu (abu-chat, service role)
+// uses the active, verified offers to answer "where should I park my cash?".
+// A weekly cron (public.cash_rate_scan, Mondays) notifies members whose cash
+// accounts earn well below the best offer and points them to Abu.
 
 export const OFFER_KINDS = ["savings", "money_market", "cd", "checking", "treasury"] as const;
 export type OfferKind = (typeof OFFER_KINDS)[number];
@@ -39,8 +41,22 @@ export async function fetchCashOffers(supabase: SupabaseClient): Promise<CashOff
   return error ? [] : ((data as CashOffer[]) || []);
 }
 
-// Liquid = money you can pull any time (no CD lock-up).
-export const isLiquid = (o: CashOffer) => o.kind !== "cd";
+// Latest U.S. inflation (CPI-U 12-month change), refreshed daily from BLS by
+// the econ-rates function into public.economic_indicators.
+export type Inflation = { value: number; period: string; updated_at: string };
+export async function fetchInflation(supabase: SupabaseClient): Promise<Inflation | null> {
+  const { data, error } = await supabase.from("economic_indicators").select("value,period,updated_at").eq("key", "cpi_yoy").maybeSingle();
+  if (error || !data) return null;
+  const value = Number(data.value);
+  return Number.isFinite(value) ? { value, period: String(data.period), updated_at: String(data.updated_at) } : null;
+}
+
+// "2026-09" -> "Sep 2026"
+export function fmtPeriod(period: string): string {
+  const [y, m] = period.split("-").map(Number);
+  if (!y || !m) return period;
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+}
 
 export const STALE_DAYS = 7;
 export function isStale(o: CashOffer, now = Date.now()): boolean {
@@ -51,8 +67,4 @@ export function fmtApy(v: number | string | null | undefined): string {
   if (v === null || v === undefined || v === "") return "—";
   const n = Number(v);
   return Number.isFinite(n) ? `${n.toFixed(2)}%` : "—";
-}
-
-export function yearlyInterest(balance: number, apy: number): number {
-  return Math.max(0, (balance * apy) / 100);
 }
